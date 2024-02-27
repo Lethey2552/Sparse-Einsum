@@ -1,54 +1,125 @@
 import numpy as np
 import sqlite3 as sql
 
-def get_coo_matrix(mat: np.ndarray):
-    row = []
-    col = []
-    data = []
+ASCII = [
+    "i", "j", "x", "y", "z", 
+    "a", "b", "c", "d", "e", 
+    "f", "g", "h", "k", "l", 
+    "m", "n", "o", "p", "q", 
+    "r", "s", "t", "u", "v", 
+    "w"
+]
+
+
+def sql_einsum_values(tensors: dict):
+    """
+    Creates the tensors in COO format as SQL compatible structures
+    and returns the appropriate query.
+    """
+    query = ""
+
+    for tensor_name, tensor in tensors.items():
+        cast = True
+        query += f"{tensor_name}({', '.join(ASCII[:len(tensor.shape)])}, val) AS (\n"
+
+        it = np.nditer(tensor, flags=['multi_index'])
+        for x in it:
+            # skip zero values
+            if tensor[it.multi_index] == 0:
+                continue
+
+            # give data type for first entry with COO format
+            if cast:
+                type_casts = ""
+
+                for i in it.multi_index:
+                    type_casts += f"CAST({i} AS INTEGER), "
+                type_casts += f"CAST({x} AS INTEGER)"
+
+                query += f"VALUES({type_casts}),\n"
+
+                cast = False
+            else:
+                item_coo = "("
+
+                for i in it.multi_index:
+                    item_coo += f"{i}, "
+                
+                query += f"{item_coo}{x}), "
+        query = query[:-2]
+        query += "\n), "
+
+    return query[:-2]
+
+
+def sql_einsum_query(einstein_notation: str, tensor_names: list, tensors: dict):
+    query = "WITH "
+    values_query = sql_einsum_values(tensors)
+
+    query += values_query
+
+    return query
+
+
+def get_2d_coo_matrix(mat: np.ndarray):
+    coo_mat = [[], [], []]
 
     for i in range(mat.shape[0]):
         for j in range(mat.shape[1]):
             if mat[i][j] == 0:
                 continue
 
-            row.append(i)
-            col.append(j)
-            data.append(mat[i][j])
+            coo_mat[0].append(i)
+            coo_mat[1].append(j)
+            coo_mat[2].append(mat[i][j])
 
-    print(mat)
-    print()
-    print(row)
-    print(col)
-    print(data)
+    return coo_mat
+
+
+def get_matrix_from_sql_response(SIZE: int, coo_mat: np.ndarray):
+    mat = np.zeros((SIZE, SIZE), dtype=int)
+
+    for entry in coo_mat:
+         mat[entry[0]][entry[1]] = entry[2]
+
+    return mat
+
 
 if __name__ == "__main__":
-    # mat_A = np.array([[0, 1, 0, 6], [19, 0, 0, 0], [0, 0, 5, 0], [0, 0, 0, 4]])
-    # mat_B = np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]])
+    einstein_notation = "ij,jk->ik"
 
-    # get_coo_matrix(mat_A)
-    # get_coo_matrix(mat_B)
+    tensor_names = ["A", "B"]
+    tensors = {
+        "A": np.array([[0, 1, 0, 6], [19, 0, 0, 0], [0, 0, 5, 0], [0, 0, 0, 4]]),
+        "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]])
+    }
+
+    query = sql_einsum_query(einstein_notation, tensor_names, tensors)
+    print(query)
 
     # print(np.einsum("ij,jk->ik", mat_A, mat_B))
+    
+    # with_sql = get_with_clause(coo_matrices)
 
-    db_connection = sql.connect("test.db")
-    db = db_connection.cursor()
+    # db_connection = sql.connect("test.db")
+    # db = db_connection.cursor()
 
-    res = db.execute(
-        """
-        WITH A(i, j, val) AS (
-        VALUES (CAST(0 AS INTEGER), CAST(0 AS INTEGER), CAST(0.7056014072212418 AS DOUBLE PRECISION)), (0, 1, 0.45971589315238937), 
-                (1, 0, 0.35489758282488826), (1, 1, 0.29359389730739716)
-        ), B(i, j, val) AS (
-        VALUES (CAST(0 AS INTEGER), CAST(0 AS INTEGER), CAST(0.22951224078373988 AS DOUBLE PRECISION)), (0, 1, 0.5675223248600516), 
-                (0, 2, 0.40707012918777563), (0, 3, 0.9604683213986135), (0, 4, 0.4737084865351948), (1, 0, 0.9452823353846342), 
-                (1, 1, 0.29468652270266804), (1, 2, 0.7796228987151677), (1, 3, 0.9852058160883493), (1, 4, 0.1183786073900277)
-        ), C(i, val) AS (
-        VALUES (CAST(0 AS INTEGER), CAST(0.18847560525837315 AS DOUBLE PRECISION)), (1, 0.5453807869796465), 
-                (2, 0.33211095396533385), (3, 0.6498585676438938), (4, 0.8004577043178819)
-        ),  K1 AS (
-        SELECT B.i AS i, SUM(C.val * B.val) AS val FROM C, B WHERE C.i=B.j GROUP BY B.i
-        ) SELECT A.i AS i, SUM(K1.val * A.val) AS val FROM K1, A WHERE K1.i=A.j GROUP BY A.i ORDER BY i
-        """
-    )
+    # res = db.execute(
+    #     """
+    #     WITH A(i, j, val) AS (
+    #     VALUES (CAST(0 AS INTEGER), CAST(1 AS INTEGER), CAST(1 AS INTEGER)), 
+    #             (0, 3, 6), (1, 0, 19), (2, 2, 5), (3, 3, 4)
+    #     ), B(i, j, val) AS (
+    #     VALUES (CAST(0 AS INTEGER), CAST(2 AS INTEGER), CAST(5 AS INTEGER)),
+    #             (1, 1, 1), (2, 2, 18), (3, 3, 8)
+    #     ) SELECT A.i AS i, B.j AS j,
+    #              SUM(B.val * A.val) AS val 
+    #       FROM A, B 
+    #       WHERE B.i=A.j 
+    #       GROUP BY A.i, B.j 
+    #       ORDER BY i,j
+    #     """
+    # )
 
-    print(res.fetchall())
+    # mat = get_matrix_from_sql_response(SIZE, res.fetchall())
+    # print(mat)
