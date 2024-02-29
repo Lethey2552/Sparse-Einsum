@@ -1,5 +1,6 @@
 import numpy as np
 import sqlite3 as sql
+from operator import itemgetter
 
 ASCII = [
     "i", "j", "x", "y", "z", 
@@ -97,6 +98,7 @@ def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
 
     return select_clause + "\n" + sum_clause + from_clause + where_clause + group_clause[:-2]
 
+
 def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict):
     query = "WITH "
     values_query = sql_einsum_values(tensors)
@@ -122,17 +124,21 @@ def get_2d_coo_matrix(mat: np.ndarray):
     return coo_mat
 
 
-def get_matrix_from_sql_response(SIZE: int, coo_mat: np.ndarray):
-    mat = np.zeros((SIZE, SIZE), dtype=int)
-    
+def get_matrix_from_sql_response(coo_mat: np.ndarray):
+    max_dim = ()
+    for i in range(len(coo_mat[0]) - 1):
+        max_dim = max_dim + (max(coo_mat, key=itemgetter(i))[i] + 1,)
+        
+    mat = np.zeros(max_dim, dtype=int)
+
     for entry in coo_mat:
-         mat[entry[0]][entry[1]] = entry[2]
+        mat[entry[:-1]] = entry[-1]
 
     return mat
 
 
 if __name__ == "__main__":
-    einsum_notation = "ij,kj, k->i"
+    einsum_notation = "ij,kj,k->i"
 
     tensor_names = ["A", "B", "v"]
     tensors = {
@@ -144,13 +150,13 @@ if __name__ == "__main__":
     query = sql_einsum_query(einsum_notation, tensor_names, tensors)
     print(f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
 
-    np_einsum = np.einsum("ij,kj, k->i", tensors["A"], tensors["B"], tensors["v"])
-    # with_sql = get_with_clause(coo_matrices)
-
+    # Implicitly create database if not present, run sql query and format result
     db_connection = sql.connect("test.db")
     db = db_connection.cursor()
-
     res = db.execute(query)
+    mat = get_matrix_from_sql_response(res.fetchall())
 
-    mat = get_matrix_from_sql_response(4, res.fetchall())
+    # Get reference result
+    np_einsum = np.einsum(einsum_notation, tensors["A"], tensors["B"], tensors["v"])
+
     print(f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")
