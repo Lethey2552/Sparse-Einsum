@@ -49,14 +49,60 @@ def sql_einsum_values(tensors: dict):
         query = query[:-2]
         query += "\n), "
 
-    return query[:-2]
+    return query[:-2] + "\n"
 
 
-def sql_einsum_query(einstein_notation: str, tensor_names: list, tensors: dict):
+def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
+    einsum_notation = einsum_notation.replace(" ", "")
+    einsum_notation = einsum_notation.split("->")
+
+    input_indices = einsum_notation[0].split(",")
+    output_indices = einsum_notation[1]
+
+    # <R1> FROM clause
+    from_clause = f"FROM {', '.join(tensor_names)}\n"
+
+    # <R2> SELECT and GROUP BY clause
+    select_clause = "SELECT "
+    group_clause = "GROUP BY "
+    for out_index in output_indices:
+        tensor_name_index, ascii_index = [
+                (i, tensor_index.index(out_index)) 
+                for i, tensor_index in enumerate(input_indices) 
+                if out_index in tensor_index
+            ][0]
+        
+        select_clause += f"{tensor_names[tensor_name_index]}.{ASCII[ascii_index]} AS {ASCII[ascii_index]}, "
+        group_clause += f"{tensor_names[tensor_name_index]}.{ASCII[ascii_index]}, "
+
+    # <R3> Calculation by summing the products
+    sum_clause = f"SUM({'.val * '.join(tensor_names)}.val) AS val\n"
+
+    # <R4> WHERE clause
+    where_clause = "WHERE "
+    input_index_iterator = [i for list in input_indices for i in list]
+    
+    where_equations = []
+    for index in input_index_iterator:
+        test = [
+                (i, tensor_index.index(index)) 
+                for i, tensor_index in enumerate(input_indices) 
+                if index in tensor_index
+            ]
+        
+        for i in test[1:]:
+            where_equations.append(f"{tensor_names[test[0][0]]}.{ASCII[test[0][1]]}={tensor_names[i[0]]}.{ASCII[i[1]]}")
+
+    where_clause += f"{' AND '.join(set(where_equations))}\n"
+
+    return select_clause + "\n" + sum_clause + from_clause + where_clause + group_clause[:-2]
+
+def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict):
     query = "WITH "
     values_query = sql_einsum_values(tensors)
+    contraction_query = sql_einsum_contraction(einsum_notation, tensor_names)
 
-    query += values_query
+    query += values_query + contraction_query
 
     return query
 
@@ -78,7 +124,7 @@ def get_2d_coo_matrix(mat: np.ndarray):
 
 def get_matrix_from_sql_response(SIZE: int, coo_mat: np.ndarray):
     mat = np.zeros((SIZE, SIZE), dtype=int)
-
+    
     for entry in coo_mat:
          mat[entry[0]][entry[1]] = entry[2]
 
@@ -86,40 +132,25 @@ def get_matrix_from_sql_response(SIZE: int, coo_mat: np.ndarray):
 
 
 if __name__ == "__main__":
-    einstein_notation = "ij,jk->ik"
+    einsum_notation = "ij,kj, k->i"
 
-    tensor_names = ["A", "B"]
+    tensor_names = ["A", "B", "v"]
     tensors = {
         "A": np.array([[0, 1, 0, 6], [19, 0, 0, 0], [0, 0, 5, 0], [0, 0, 0, 4]]),
-        "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]])
+        "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]]),
+        "v": np.array([1, 0, 9, 11])
     }
 
-    query = sql_einsum_query(einstein_notation, tensor_names, tensors)
-    print(query)
+    query = sql_einsum_query(einsum_notation, tensor_names, tensors)
+    print(f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
 
-    # print(np.einsum("ij,jk->ik", mat_A, mat_B))
-    
+    np_einsum = np.einsum("ij,kj, k->i", tensors["A"], tensors["B"], tensors["v"])
     # with_sql = get_with_clause(coo_matrices)
 
-    # db_connection = sql.connect("test.db")
-    # db = db_connection.cursor()
+    db_connection = sql.connect("test.db")
+    db = db_connection.cursor()
 
-    # res = db.execute(
-    #     """
-    #     WITH A(i, j, val) AS (
-    #     VALUES (CAST(0 AS INTEGER), CAST(1 AS INTEGER), CAST(1 AS INTEGER)), 
-    #             (0, 3, 6), (1, 0, 19), (2, 2, 5), (3, 3, 4)
-    #     ), B(i, j, val) AS (
-    #     VALUES (CAST(0 AS INTEGER), CAST(2 AS INTEGER), CAST(5 AS INTEGER)),
-    #             (1, 1, 1), (2, 2, 18), (3, 3, 8)
-    #     ) SELECT A.i AS i, B.j AS j,
-    #              SUM(B.val * A.val) AS val 
-    #       FROM A, B 
-    #       WHERE B.i=A.j 
-    #       GROUP BY A.i, B.j 
-    #       ORDER BY i,j
-    #     """
-    # )
+    res = db.execute(query)
 
-    # mat = get_matrix_from_sql_response(SIZE, res.fetchall())
-    # print(mat)
+    mat = get_matrix_from_sql_response(4, res.fetchall())
+    print(f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")
