@@ -1,4 +1,5 @@
 import numpy as np
+import sesum.sr as sr
 import sqlite3 as sql
 from operator import itemgetter
 
@@ -147,11 +148,25 @@ if __name__ == "__main__":
         "v": np.array([1, 0, 9, 11])
     }
 
+    tensor_shapes = []
+    for tensor in tensors.values():
+        tensor_shapes.append(tensor.shape)
+
+    # Get Sesum contraction path
+    path, flops_log10, size_log2 = sr.compute_path(einsum_notation, *tensor_shapes, seed=0, minimize='size', algorithm="greedy", max_repeats=8,
+                                               max_time=0.0, progbar=False, is_outer_optimal=False,
+                                               threshold_optimal=12)
+    
+    print(path)
+
     query = sql_einsum_query(einsum_notation, tensor_names, tensors)
+    with open("SQL/test_query.sql", "w") as file:
+        file.write(query)
+
     print(f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
 
     # Implicitly create database if not present, run sql query and format result
-    db_connection = sql.connect("test.db")
+    db_connection = sql.connect("SQL/test.db")
     db = db_connection.cursor()
     res = db.execute(query)
     mat = get_matrix_from_sql_response(res.fetchall())
