@@ -83,6 +83,7 @@ def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
     # <R3> Calculation by summing the products
     sum_clause = f"SUM({'.val * '.join(tensor_names)}.val) AS val\n"
 
+    # TODO: WHERE too True if scalar
     # <R4> WHERE clause
     where_clause = "WHERE "
     input_index_iterator = [i for list in input_indices for i in list]

@@ -72,13 +72,25 @@ def time_sqlite_query(query):
 
 if __name__ == "__main__":
     QUERY_PATH = False
+    SAT_952 = True
     sql_file = "test_query.sql"
 
     if QUERY_PATH:
         with open(sql_file, "r") as file:
             query = file.read()
     else:
-        einsum_notation, tensor_names, tensors = create_sat_952()
+        if SAT_952:
+            einsum_notation, tensor_names, tensors = create_sat_952()
+        else:
+            einsum_notation = "ij,kj,k->i"
+
+            tensor_names = ["A", "B", "v"]
+            tensors = {
+                "A": np.array([[0, 1, 0, 6], [19, 0, 0, 0], [0, 0, 5, 0], [0, 0, 0, 4]]),
+                "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]]),
+                "v": np.array([1, 0, 9, 11])
+            }
+        
         query = sql_einsum_query_opt(einsum_notation, tensor_names, tensors)
 
         print(query)
