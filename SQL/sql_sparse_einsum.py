@@ -5,11 +5,11 @@ import opt_einsum as oe
 from operator import itemgetter
 
 ASCII = [
-    "i", "j", "x", "y", "z", 
-    "a", "b", "c", "d", "e", 
-    "f", "g", "h", "k", "l", 
-    "m", "n", "o", "p", "q", 
-    "r", "s", "t", "u", "v", 
+    "i", "j", "x", "y", "z",
+    "a", "b", "c", "d", "e",
+    "f", "g", "h", "k", "l",
+    "m", "n", "o", "p", "q",
+    "r", "s", "t", "u", "v",
     "w"
 ]
 
@@ -47,7 +47,7 @@ def sql_einsum_values(tensors: dict):
 
                 for i in it.multi_index:
                     item_coo += f"{i}, "
-                
+
                 query += f"{item_coo}{x}), "
         query = query[:-2]
         query += "\n), "
@@ -55,55 +55,126 @@ def sql_einsum_values(tensors: dict):
     return query[:-2] + "\n"
 
 
-def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
-    einsum_notation = einsum_notation.replace(" ", "")
-    einsum_notation = einsum_notation.split("->")
+def sql_einsum_contraction(einsum_notation: str, tensor_names: list, current_removed: set):
+    # get einsum-notation indices
+    formula = einsum_notation.replace(" ", "")
+    tensorindices, outindices = formula.replace(" ", "").split("->")
+    tensorindices = tensorindices.split(",")
 
-    input_indices = einsum_notation[0].split(",")
-    output_indices = einsum_notation[1]
+    # get tensor names and set constants
+    arrays = tensor_names
+    len_arrays = len(arrays)
+    array_aliases = []
+    names = set()
+    i = 1
 
-    # <R1> FROM clause
-    from_clause = f"FROM {', '.join(tensor_names)} "
+    # generate einsum-summation
+    from_clause = "FROM "
+    for arr in arrays:
+        alias = arr
+        while alias in names:
+            alias = "T" + str(i)
+            i += 1
+        names.add(alias)
+        array_aliases.append(alias)
+        from_clause += arr
+        if arr != alias:
+            from_clause += " " + alias
+        from_clause += ", "
+    from_clause = from_clause[:-2]
 
-    # <R2> SELECT and GROUP BY clause
+    group_by_clause = "GROUP BY "
     select_clause = "SELECT "
-    group_clause = "GROUP BY "
-    id = 0
-    for out_index in output_indices:
-        tensor_name_index, ascii_index = [
-                (i, tensor_index.index(out_index)) 
-                for i, tensor_index in enumerate(input_indices) 
-                if out_index in tensor_index
-            ][-1]
-        
-        select_clause += f"{tensor_names[tensor_name_index]}.{ASCII[ascii_index]} AS {ASCII[id]}, "
-        group_clause += f"{tensor_names[tensor_name_index]}.{ASCII[ascii_index]}, "
-        id += 1
 
-    # <R3> Calculation by summing the products
-    sum_clause = f"SUM({'.val * '.join(tensor_names)}.val) AS val "
+    # Die Indizes die bleiben, kommen in GROUP BY, diese Indice kommen auch aufgezählt in Ausgabereihenfolge in SELECT
+    used_indices = set()
+    idx = 0
+    for i in range(len(outindices)):
+        for t in range(len(tensorindices)):
+            for j in range(len(tensorindices[t])):
+                if tensorindices[t][j] == outindices[i] and outindices[i] not in used_indices:
+                    used_indices.add(outindices[i])
+                    varSQL = array_aliases[t] + "." + ASCII[j]
+                    select_clause += varSQL + " AS " + ASCII[idx] + ", "
+                    group_by_clause += varSQL + ", "
+                    idx += 1
 
-    # <R4> WHERE clause
-    where_clause = "WHERE "
-    input_index_iterator = [i for list in input_indices for i in list]
-    
-    where_equations = []
-    for index in input_index_iterator:
-        equate_list = [
-                (i, tensor_index.index(index)) 
-                for i, tensor_index in enumerate(input_indices) 
-                if index in tensor_index
-            ]
-        
-        for i in equate_list[1:]:
-            where_equations.append(f"{tensor_names[equate_list[0][0]]}.{ASCII[equate_list[0][1]]}={tensor_names[i[0]]}.{ASCII[i[1]]}")
+    group_by_clause = group_by_clause[:-2]
 
-    if len(output_indices) > 0:
-        where_clause += f"{' AND '.join(set(where_equations))} "
+    # neue val ist immer SUM von allen val aufmultipliziert
+    if False:
+        if len_arrays == 1:
+            select_clause += "SUM("
+            for t in array_aliases:
+                select_clause += t + ".re * "
+            select_clause = select_clause[:-3] + ") AS re"
+
+            select_clause += ", SUM("
+            for t in array_aliases:
+                select_clause += t + ".im * "
+            select_clause = select_clause[:-3] + ") AS im"
+        else:
+            # (a+bi)(c+di) = (ac−bd) + (ad+bc)i
+            a = array_aliases[0] + ".re"
+            b = array_aliases[0] + ".im"
+            c = array_aliases[1] + ".re"
+            d = array_aliases[1] + ".im"
+            select_clause += "SUM(" + a + " * " + c + \
+                " - " + b + " * " + d + ") AS re"
+            select_clause += ", SUM(" + a + " * " + \
+                d + " + " + b + " * " + c + ") AS im"
     else:
-        where_clause += "TRUE\n"
+        select_clause += "SUM("
+        for t in array_aliases:
+            select_clause += t + ".val * "
+        select_clause = select_clause[:-3] + ") AS val"
 
-    return select_clause + sum_clause + from_clause + where_clause + (group_clause[:-2] if len(output_indices) > 0 else "")
+    # Indices die gleich sind zwischen den Eingabetensoren kommen in die WHERE Klausel in transitiver Beziehung zueinander
+    unique_indices = ""
+    for t in range(len(tensorindices)):
+        for j in range(len(tensorindices[t])):
+            if tensorindices[t][j] not in unique_indices:
+                unique_indices += tensorindices[t][j]
+
+    related_tensors_per_index = []
+    for i in range(len(unique_indices)):
+        related_tensors_per_index.append([])
+        for t in range(len(tensorindices)):
+            for j in range(len(tensorindices[t])):
+                if unique_indices[i] == tensorindices[t][j]:
+                    related_tensors_per_index[i].append((t, j))
+
+    where_clause = "WHERE "
+    for i in range(len(related_tensors_per_index)):
+        if len(related_tensors_per_index[i]) > 1:
+            t, j = related_tensors_per_index[i][0]
+            firstvarSQL = array_aliases[t] + "." + ASCII[j]
+            for j in range(1, len(related_tensors_per_index[i])):
+                t, j = related_tensors_per_index[i][j]
+                varSQL = array_aliases[t] + "." + ASCII[j]
+                where_clause += firstvarSQL + "=" + varSQL + " AND "
+
+    where_clause = where_clause[:-5]
+
+    # use an order by for
+    order_by_clause = "ORDER BY "
+    for c in ASCII[:len(outindices)]:
+        order_by_clause += c + ", "
+    order_by_clause = order_by_clause[:-2]
+
+    if len(where_clause) < 5:
+        where_clause = ""
+    else:
+        where_clause = " " + where_clause
+
+    gb_and_ob = ""
+    if outindices:
+        gb_and_ob = " " + group_by_clause + \
+            (" " + order_by_clause if True else "")
+
+    # combine everything
+    query = select_clause + " " + from_clause + where_clause + gb_and_ob
+    return query
 
 
 def find_contraction(positions, input_sets, output_set):
@@ -113,7 +184,7 @@ def find_contraction(positions, input_sets, output_set):
     idc_remain = output_set.union(*remaining)
 
     new_result = idc_remain & idc_contract
-    idc_removed = idc_contract- new_result
+    idc_removed = idc_contract - new_result
     remaining.append(new_result)
 
     return new_result, remaining, idc_removed, idc_contract
@@ -121,7 +192,8 @@ def find_contraction(positions, input_sets, output_set):
 
 def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict, path_info):
     # Contraction list
-    cl = path_info
+    path = path_info
+    cl = []
 
     # Generating SQL query
     i = 1
@@ -135,33 +207,45 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
     einsum_notation = einsum_notation.split("->")
 
     input_idc = einsum_notation[0].split(",")
+    output_idc = einsum_notation[1]
     input_sets = [set(indices) for indices in einsum_notation[0].split(",")]
     output_set = set(einsum_notation[1])
-    
+
     ##### INFO ######
 
     #   2           GEMM                k,kj->j                               ij,j->i
     #   2           GEMM                j,ij->i                                  i->i
-    #[((2, 1), {'k'}, 'k,kj->j', ('ij', 'j'), 'GEMM'), ((1, 0), {'j'}, 'j,ij->i', ('i',), 'GEMM')]
+    # [((2, 1), {'k'}, 'k,kj->j', ('ij', 'j'), 'GEMM'), ((1, 0), {'j'}, 'j,ij->i', ('i',), 'GEMM')]
 
     ##### INFO END #####
 
-    for cnum, contract_idc in enumerate(cl):
-        contract_idc = tuple(sorted(list(contract_idc)))
+    # Create contraction list with (contract_idc, idc_removed, current_formula, remaining_formula)
+    for cnum, contract_idc in enumerate(path):
+        contract_idc = tuple(sorted(list(contract_idc), reverse=True))
 
-        output_idc, input_sets, idc_removed, idc_contract = find_contraction(contract_idc, input_sets, output_set)
+        out_idc, input_sets, idc_removed, idc_contract = find_contraction(
+            contract_idc, input_sets, output_set)
 
-        current_formula = f"{''.join(input_idc[contract_idc[0]])},{''.join(input_idc[contract_idc[1]])}->{''.join(output_idc)}"
+        tmp_inputs = [input_idc.pop(x) for x in contract_idc]
+
+        # Last contraction
+        if (cnum - len(path)) == -1:
+            idx_result = output_idc
+        else:
+            # use tensordot order to minimize transpositions
+            all_input_inds = "".join(tmp_inputs)
+            idx_result = "".join(sorted(out_idc, key=all_input_inds.find))
+
+        einsum_str = ",".join(tmp_inputs) + "->" + idx_result
+
         remaining_formula = tuple(["".join(i) for i in input_sets])
-        cl[cnum] = tuple([contract_idc, idc_removed, current_formula, remaining_formula])
+        cl.append(tuple([contract_idc, idc_removed,
+                         einsum_str, remaining_formula]))
 
-        del input_idc[contract_idc[1]]
-        del input_idc[contract_idc[0]]
-
-        input_idc.append(output_idc)
+        input_idc.append(idx_result)
 
     with open("tmp.txt", "w", encoding="utf-8") as file:
-        
+
         for inum, l in enumerate(cl):
 
             file.write(f"{inum}.      ")
@@ -176,16 +260,17 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                 else:
                     file.write(str(l[k]))
                     file.write(", ")
-            
+
             file.write("\n\n\n")
 
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
-        for id in reversed(contraction[0]):
+        for id in contraction[0]:
             arrays.pop(id)
-        
+
         current_formula = contraction[2]
+        current_removed = contraction[1]
 
         name = f"K{i}"
         while name in names:
@@ -195,14 +280,17 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
         arrays.append(name)
         i += 1
         c += 1
-            
+
         # Generate SQL query for Einsum
         if c < len(cl):
             query += name + " AS (\n "
-            query += sql_einsum_contraction(current_formula, current_arrays) + "\n), "
+            query += sql_einsum_contraction(current_formula,
+                                            current_arrays, current_removed) + "\n), "
         else:
 
-            query = query[:-2] + " " + sql_einsum_contraction(current_formula, current_arrays) + "\n"
+            query = query[:-2] + " " + \
+                sql_einsum_contraction(
+                    current_formula, current_arrays, current_removed) + "\n"
 
     return query
 
@@ -212,9 +300,11 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
     values_query = sql_einsum_values(tensors)
 
     if path_info:
-        contraction_query = sql_einsum_with_path(einsum_notation, tensor_names, tensors, path_info)
+        contraction_query = sql_einsum_with_path(
+            einsum_notation, tensor_names, tensors, path_info)
     else:
-        contraction_query = sql_einsum_contraction(einsum_notation, tensor_names)
+        contraction_query = sql_einsum_contraction(
+            einsum_notation, tensor_names)
 
     query += values_query + contraction_query
 
@@ -228,10 +318,11 @@ def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict
 
     # Get Sesum contraction path
     path, flops_log10, size_log2 = sr.compute_path(einsum_notation, *arrays, seed=0, minimize='size', algorithm="greedy", max_repeats=8,
-                                               max_time=0.0, progbar=False, is_outer_optimal=False,
-                                               threshold_optimal=12)
+                                                   max_time=0.0, progbar=False, is_outer_optimal=False,
+                                                   threshold_optimal=12)
 
-    query = sql_einsum_query(einsum_notation, tensor_names, tensors, path_info=path)
+    query = sql_einsum_query(
+        einsum_notation, tensor_names, tensors, path_info=path)
     return query
 
 
@@ -254,7 +345,7 @@ def get_matrix_from_sql_response(coo_mat: np.ndarray):
     max_dim = ()
     for i in range(len(coo_mat[0]) - 1):
         max_dim = max_dim + (max(coo_mat, key=itemgetter(i))[i] + 1,)
-        
+
     mat = np.zeros(max_dim, dtype=int)
 
     for entry in coo_mat:
@@ -286,11 +377,13 @@ if __name__ == "__main__":
     }
     arrays = [tensors["A"], tensors["B"], tensors["v"]]
 
-    query = sql_einsum_query_opt(einsum_notation, tensor_names, tensors, arrays)
+    query = sql_einsum_query_opt(
+        einsum_notation, tensor_names, tensors, arrays)
     # with open("SQL/test_query.sql", "w") as file:
     #     file.write(query)
 
-    print(f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
+    print(
+        f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
 
     # Implicitly create database if not present, run sql query and format result
     db_connection = sql.connect("SQL/test.db")
@@ -299,6 +392,8 @@ if __name__ == "__main__":
     mat = get_matrix_from_sql_response(res.fetchall())
 
     # Get reference result
-    np_einsum = np.einsum(einsum_notation, tensors["A"], tensors["B"], tensors["v"])
+    np_einsum = np.einsum(
+        einsum_notation, tensors["A"], tensors["B"], tensors["v"])
 
-    print(f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")
+    print(
+        f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")
