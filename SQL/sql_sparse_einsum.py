@@ -63,7 +63,7 @@ def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
     output_indices = einsum_notation[1]
 
     # <R1> FROM clause
-    from_clause = f"FROM {', '.join(tensor_names)}\n"
+    from_clause = f"FROM {', '.join(tensor_names)} "
 
     # <R2> SELECT and GROUP BY clause
     select_clause = "SELECT "
@@ -74,34 +74,36 @@ def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
                 (i, tensor_index.index(out_index)) 
                 for i, tensor_index in enumerate(input_indices) 
                 if out_index in tensor_index
-            ][0]
+            ][-1]
         
         select_clause += f"{tensor_names[tensor_name_index]}.{ASCII[ascii_index]} AS {ASCII[id]}, "
         group_clause += f"{tensor_names[tensor_name_index]}.{ASCII[ascii_index]}, "
         id += 1
 
     # <R3> Calculation by summing the products
-    sum_clause = f"SUM({'.val * '.join(tensor_names)}.val) AS val\n"
+    sum_clause = f"SUM({'.val * '.join(tensor_names)}.val) AS val "
 
-    # TODO: WHERE too True if scalar
     # <R4> WHERE clause
     where_clause = "WHERE "
     input_index_iterator = [i for list in input_indices for i in list]
     
     where_equations = []
     for index in input_index_iterator:
-        test = [
+        equate_list = [
                 (i, tensor_index.index(index)) 
                 for i, tensor_index in enumerate(input_indices) 
                 if index in tensor_index
             ]
         
-        for i in test[1:]:
-            where_equations.append(f"{tensor_names[test[0][0]]}.{ASCII[test[0][1]]}={tensor_names[i[0]]}.{ASCII[i[1]]}")
+        for i in equate_list[1:]:
+            where_equations.append(f"{tensor_names[equate_list[0][0]]}.{ASCII[equate_list[0][1]]}={tensor_names[i[0]]}.{ASCII[i[1]]}")
 
-    where_clause += f"{' AND '.join(set(where_equations))}\n"
+    if len(output_indices) > 0:
+        where_clause += f"{' AND '.join(set(where_equations))} "
+    else:
+        where_clause += "TRUE\n"
 
-    return select_clause + "\n" + sum_clause + from_clause + where_clause + (group_clause[:-2] if len(output_indices) > 0 else "")
+    return select_clause + sum_clause + from_clause + where_clause + (group_clause[:-2] if len(output_indices) > 0 else "")
 
 
 def find_contraction(positions, input_sets, output_set):
@@ -136,14 +138,13 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
     input_sets = [set(indices) for indices in einsum_notation[0].split(",")]
     output_set = set(einsum_notation[1])
     
-##### INFO ######
+    ##### INFO ######
 
-#   2           GEMM                k,kj->j                               ij,j->i
-#   2           GEMM                j,ij->i                                  i->i
-#[((2, 1), {'k'}, 'k,kj->j', ('ij', 'j'), 'GEMM'), ((1, 0), {'j'}, 'j,ij->i', ('i',), 'GEMM')]
+    #   2           GEMM                k,kj->j                               ij,j->i
+    #   2           GEMM                j,ij->i                                  i->i
+    #[((2, 1), {'k'}, 'k,kj->j', ('ij', 'j'), 'GEMM'), ((1, 0), {'j'}, 'j,ij->i', ('i',), 'GEMM')]
 
-##### INFO END #####
-
+    ##### INFO END #####
 
     for cnum, contract_idc in enumerate(cl):
         contract_idc = tuple(sorted(list(contract_idc)))
@@ -177,8 +178,6 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                     file.write(", ")
             
             file.write("\n\n\n")
-    
-    # cl = cl[:-5]
 
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
@@ -222,18 +221,17 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
     return query
 
 
-def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict):
+def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict, arrays: list):
     tensor_shapes = []
     for tensor in tensors.values():
         tensor_shapes.append(tensor.shape)
-    
+
     # Get Sesum contraction path
-    path, flops_log10, size_log2 = sr.compute_path(einsum_notation, *tensor_shapes, seed=0, minimize='size', algorithm="greedy", max_repeats=8,
+    path, flops_log10, size_log2 = sr.compute_path(einsum_notation, *arrays, seed=0, minimize='size', algorithm="greedy", max_repeats=8,
                                                max_time=0.0, progbar=False, is_outer_optimal=False,
                                                threshold_optimal=12)
-    
-    query = sql_einsum_query(einsum_notation, tensor_names, tensors, path_info=path)
 
+    query = sql_einsum_query(einsum_notation, tensor_names, tensors, path_info=path)
     return query
 
 
@@ -286,8 +284,9 @@ if __name__ == "__main__":
         "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]]),
         "v": np.array([1, 0, 9, 11])
     }
+    arrays = [tensors["A"], tensors["B"], tensors["v"]]
 
-    query = sql_einsum_query(einsum_notation, tensor_names, tensors)
+    query = sql_einsum_query_opt(einsum_notation, tensor_names, tensors, arrays)
     # with open("SQL/test_query.sql", "w") as file:
     #     file.write(query)
 
