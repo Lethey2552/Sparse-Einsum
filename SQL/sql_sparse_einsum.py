@@ -102,32 +102,10 @@ def sql_einsum_contraction(einsum_notation: str, tensor_names: list, current_rem
     group_by_clause = group_by_clause[:-2]
 
     # neue val ist immer SUM von allen val aufmultipliziert
-    if False:
-        if len_arrays == 1:
-            select_clause += "SUM("
-            for t in array_aliases:
-                select_clause += t + ".re * "
-            select_clause = select_clause[:-3] + ") AS re"
-
-            select_clause += ", SUM("
-            for t in array_aliases:
-                select_clause += t + ".im * "
-            select_clause = select_clause[:-3] + ") AS im"
-        else:
-            # (a+bi)(c+di) = (ac−bd) + (ad+bc)i
-            a = array_aliases[0] + ".re"
-            b = array_aliases[0] + ".im"
-            c = array_aliases[1] + ".re"
-            d = array_aliases[1] + ".im"
-            select_clause += "SUM(" + a + " * " + c + \
-                " - " + b + " * " + d + ") AS re"
-            select_clause += ", SUM(" + a + " * " + \
-                d + " + " + b + " * " + c + ") AS im"
-    else:
-        select_clause += "SUM("
-        for t in array_aliases:
-            select_clause += t + ".val * "
-        select_clause = select_clause[:-3] + ") AS val"
+    select_clause += "SUM("
+    for t in array_aliases:
+        select_clause += t + ".val * "
+    select_clause = select_clause[:-3] + ") AS val"
 
     # Indices die gleich sind zwischen den Eingabetensoren kommen in die WHERE Klausel in transitiver Beziehung zueinander
     unique_indices = ""
@@ -243,25 +221,6 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                          einsum_str, remaining_formula]))
 
         input_idc.append(idx_result)
-
-    with open("tmp.txt", "w", encoding="utf-8") as file:
-
-        for inum, l in enumerate(cl):
-
-            file.write(f"{inum}.      ")
-
-            for k in range(4):
-                if type(l[k]) is tuple:
-                    file.write("(")
-                    for j in l[k]:
-                        file.write(str(j))
-                        file.write(", ")
-                    file.write("), ")
-                else:
-                    file.write(str(l[k]))
-                    file.write(", ")
-
-            file.write("\n\n\n")
 
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
@@ -379,8 +338,6 @@ if __name__ == "__main__":
 
     query = sql_einsum_query_opt(
         einsum_notation, tensor_names, tensors, arrays)
-    # with open("SQL/test_query.sql", "w") as file:
-    #     file.write(query)
 
     print(
         f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")

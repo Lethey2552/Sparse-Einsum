@@ -37,7 +37,7 @@ def time_hyper_query(query, parameters):
     mode = "compiled" if parameters["initial_compilation_mode"] == "o" else "interpreted"
 
     with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=parameters) as hyper:
-        with Connection(hyper.endpoint, "data.hyper", CreateMode.CREATE_AND_REPLACE) as connection:
+        with Connection(hyper.endpoint, "SQL/data.hyper", CreateMode.CREATE_AND_REPLACE) as connection:
             # plan
             tic = timer()
             hyper_res = connection.execute_list_query("EXPLAIN " + query)
@@ -54,7 +54,7 @@ def time_hyper_query(query, parameters):
 
 
 def time_sqlite_query(query):
-    db_connection = sql.connect("test.db")
+    db_connection = sql.connect("SQL/test.db")
     db = db_connection.cursor()
     res = db.execute(query)
 
@@ -99,9 +99,6 @@ if __name__ == "__main__":
 
         query = sql_einsum_query_opt(
             einsum_notation, tensor_names, tensors, arrays)
-
-        with open("SQL/sat_test_query.sql", "w") as file:
-            file.write(query)
 
     # ----- HYPER ------
 
