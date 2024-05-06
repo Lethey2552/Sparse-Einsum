@@ -1,84 +1,129 @@
 import numpy as np
+import math
 
 
-def find_idc_types(input_set, input_idc, output_set, output_idc):
-    triv_sum_idc = []
-    contracted_idc = []
-    contraction_idc = []
-    batch_idc = []
+def find_idc_types(input_idc, output_idc, shape_left, shape_right):
+    # TODO Add shapes of a and b to get the sizes dictionary. Use the sizes
+    # dictionary to calculate the new shapes of the left, right and out groups
+    # for reshaping the tensors.
+    triv_sum_idc = []       # ., ., .
+    batch_idc = []          # A, B, O
+    con_idc = []            # A, B, .
+    keep_left = []          # A, . , O
+    keep_right = []         # ., B, O
+    sizes = {}
 
-    for i in input_set:
-        count = 0
-        output = True
+    # Left input
+    seen = set()
+    for i, d in zip(input_idc[0], shape_left):
 
-        if i not in output_set:
-            output = False
+        if sizes.setdefault(i, d) != d:
+            raise ValueError("Error with indices.")
 
-        for list in input_idc:
-            if i in list:
-                count += 1
+        if i in seen:
+            continue
+        seen.add(i)
 
-        # Trivial sum or contracted indices
-        if not output:
-
-            if count < len(input_idc) or len(input_idc) == 1:
-                triv_sum_idc.append(i)
-            else:
-                contracted_idc.append(i)
-
-        # Batch dimension or contraction indices
-        else:
-
-            if count == len(input_idc):
+        # Batch dimension, contraction or keep left indices
+        if i in input_idc[1]:
+            if i in output_idc:
                 batch_idc.append(i)
             else:
-                contraction_idc.append(i)
+                con_idc.append(i)
+        elif i in output_idc:
+            keep_left.append(i)
 
-    order_left = batch_idc + \
-        [idx for idx in contraction_idc if idx in input_idc[0]] + contracted_idc
-    order_right = batch_idc + contracted_idc + \
-        [idx for idx in contraction_idc if idx in input_idc[1]]
-    order_output = batch_idc + \
-        [idx for idx in output_idc if idx not in contracted_idc]
+    # Right input
+    seen = set()
+    for i, d in zip(input_idc[1], shape_right):
 
+        if sizes.setdefault(i, d) != d:
+            raise ValueError("Error with indices.")
+
+        if i in seen:
+            continue
+        seen.add(i)
+
+        # Keep right indices
+        if i not in input_idc[0]:
+            if i in output_idc:
+                keep_right.append(i)
+
+    # Remove trivial axis and transpose if necessary
+    order_left = "".join((*batch_idc, *keep_left, *con_idc))
+    if input_idc[0] != order_left:
+        eq_left = f"{input_idc[0]}->{order_left}"
+    else:
+        eq_left = None
+
+    order_right = "".join((*batch_idc, *con_idc, *keep_right))
+    if input_idc[1] != order_right:
+        eq_right = f"{input_idc[1]}->{order_right}"
+    else:
+        eq_right = None
+
+    # Get permutation for output
+    order_output = "".join((*batch_idc, *keep_left, *keep_right))
     perm_AB = tuple(order_output.index(i) for i in output_idc)
     if perm_AB == tuple(range(len(perm_AB))):
         perm_AB = None
 
-    return order_left, order_right, order_output, perm_AB
+    # Get new shapes for left, right and output
+    if batch_idc:
+        groups_left = (batch_idc, keep_left, con_idc)
+        groups_right = (batch_idc, con_idc, keep_right)
+        groups_out = (batch_idc, keep_left, keep_right)
+
+    if any(len(group) != 1 for group in groups_left):
+        shape_left = tuple(
+            math.prod(sizes[i] for i in i_group) for i_group in groups_left
+        )
+    else:
+        shape_left = None
+
+    if any(len(group) != 1 for group in groups_right):
+        shape_right = tuple(
+            math.prod(sizes[i] for i in i_group) for i_group in groups_right
+        )
+    else:
+        shape_right = None
+
+    if any(len(group) != 1 for group in groups_out):
+        shape_out = tuple(
+            sizes[i] for i_group in groups_out for i in i_group
+        )
+    else:
+        shape_out = None
+
+    return eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB
 
 
 def single_einsum(eq: str, tensor: np.ndarray):
     return np.einsum(eq, tensor)
 
 
-def bmm_contraction(tensors: dict, input_idc: list, results: tuple):
-    eq_a, eq_b = input_idc
-    target_order_A, target_order_B, target_order_out, perm_AB = results
+def bmm_contraction(tensors: dict, results: tuple):
+    a = tensors["A"]
+    b = tensors["B"]
+    eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
     # Left side
-    if eq_a is not None:
-        a = single_einsum(eq_a, tensors["A"])
-        print(eq_a)
-        print(a)
-    # if target_order_A is not None:
-    #     transpose_A = [current_order_A.index(dim) for dim in target_order_A]
-    #     a = np.transpose(tensors["A"], transpose_A)
-    print("\n")
+    if eq_left is not None:
+        a = single_einsum(eq_left, tensors["A"])
+    if shape_left is not None:
+        a = np.reshape(a, shape_left)
+
     # Right side
-    if eq_b is not None:
-        b = single_einsum(eq_b, tensors["B"])
-        print(eq_b)
-        print(b)
-    # if target_order_B is not None:
-    #     transpose_B = [current_order_B.index(dim) for dim in target_order_B]
-    #     b = np.transpose(tensors["B"], transpose_B)
+    if eq_right is not None:
+        b = single_einsum(eq_right, tensors["B"])
+    if shape_right is not None:
+        b = np.reshape(b, shape_right)
 
     ab = a @ b
 
     # Output reshape
-    # if target_order_out is not None:
-    #     ab =
+    if shape_out is not None:
+        ab = np.reshape(ab, shape_out)
     if perm_AB is not None:
         ab = np.transpose(ab, perm_AB)
 
@@ -105,18 +150,18 @@ if __name__ == "__main__":
     # Get index lists and sets
     einsum_notation = einsum_notation.replace(" ", "")
     input_idc = einsum_notation.split("->")[0].split(",")
+    shape_left = np.shape(tensors["A"])
+    shape_right = np.shape(tensors["B"])
     output_idc = einsum_notation.split("->")[1]
-    input_sets = set().union(*input_idc)
-    output_sets = set(output_idc)
 
-    results = find_idc_types(input_sets, input_idc, output_sets, output_idc)
-    target_order_A, target_order_B, target_order_out, _ = results
-    current_order_A, current_order_B = input_idc
-    current_order_out = output_idc
+    results = find_idc_types(
+        input_idc,
+        output_idc,
+        shape_left,
+        shape_right
+    )
 
-    transpose_out = [current_order_out.index(dim) for dim in target_order_out]
-
-    ab = bmm_contraction(tensors, input_idc, results)
+    ab = bmm_contraction(tensors, results)
 
     print(ab)
 
