@@ -3,10 +3,6 @@ import math
 
 
 def find_idc_types(input_idc, output_idc, shape_left, shape_right):
-    # TODO Add shapes of a and b to get the sizes dictionary. Use the sizes
-    # dictionary to calculate the new shapes of the left, right and out groups
-    # for reshaping the tensors.
-    triv_sum_idc = []       # ., ., .
     batch_idc = []          # A, B, O
     con_idc = []            # A, B, .
     keep_left = []          # A, . , O
