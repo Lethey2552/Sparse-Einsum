@@ -1,3 +1,10 @@
+# Latex
+*.aux
+*.fls
+*.gz
+*.*latexmk
+*.eps
+
 # DB
 *.hyper
 *.db
