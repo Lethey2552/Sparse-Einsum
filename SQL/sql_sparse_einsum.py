@@ -326,15 +326,14 @@ def _get_sizes(einsum_notation, tensor_names, tensors):
 
 
 if __name__ == "__main__":
-    einsum_notation = "ij,kj,k->i"
+    einsum_notation = "kbi,bkj->bij"
 
-    tensor_names = ["A", "B", "v"]
+    tensor_names = ["A", "B"]
     tensors = {
-        "A": np.array([[0, 1, 0, 6], [19, 0, 0, 0], [0, 0, 5, 0], [0, 0, 0, 4]]),
-        "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]]),
-        "v": np.array([1, 0, 9, 11])
+        "A": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
+        "B": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
     }
-    arrays = [tensors["A"], tensors["B"], tensors["v"]]
+    arrays = [tensors["A"], tensors["B"]]
 
     query = sql_einsum_query_opt(
         einsum_notation, tensor_names, tensors, arrays)
@@ -350,7 +349,7 @@ if __name__ == "__main__":
 
     # Get reference result
     np_einsum = np.einsum(
-        einsum_notation, tensors["A"], tensors["B"], tensors["v"])
+        einsum_notation, tensors["A"], tensors["B"])
 
     print(
         f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")
