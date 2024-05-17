@@ -276,28 +276,27 @@ def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict
         tensor_shapes.append(tensor.shape)
 
     # Get Sesum contraction path
-    path, flops_log10, size_log2 = sr.compute_path(einsum_notation, *arrays, seed=0, minimize='size', algorithm="greedy", max_repeats=8,
-                                                   max_time=0.0, progbar=False, is_outer_optimal=False,
-                                                   threshold_optimal=12)
+    path, flops_log10, size_log2 = sr.compute_path(
+        einsum_notation, 
+        *arrays, 
+        seed=0, 
+        minimize='size', 
+        algorithm="greedy", 
+        max_repeats=8,
+        max_time=0.0, 
+        progbar=False, 
+        is_outer_optimal=False,
+        threshold_optimal=12
+    )
 
     query = sql_einsum_query(
-        einsum_notation, tensor_names, tensors, path_info=path)
+        einsum_notation, 
+        tensor_names, 
+        tensors, 
+        path_info=path
+    )
+
     return query
-
-
-def get_2d_coo_matrix(mat: np.ndarray):
-    coo_mat = [[], [], []]
-
-    for i in range(mat.shape[0]):
-        for j in range(mat.shape[1]):
-            if mat[i][j] == 0:
-                continue
-
-            coo_mat[0].append(i)
-            coo_mat[1].append(j)
-            coo_mat[2].append(mat[i][j])
-
-    return coo_mat
 
 
 def get_matrix_from_sql_response(coo_mat: np.ndarray):
