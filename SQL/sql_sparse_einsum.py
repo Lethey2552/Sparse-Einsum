@@ -2,7 +2,12 @@ import numpy as np
 import sesum.sr as sr
 import sqlite3 as sql
 import opt_einsum as oe
+import sys
 from operator import itemgetter
+
+sys.path.append("./Utilities")
+import utilities as util    # type: ignore
+
 
 ASCII = [
     "i", "j", "x", "y", "z",
@@ -344,7 +349,7 @@ if __name__ == "__main__":
     db_connection = sql.connect("SQL/test.db")
     db = db_connection.cursor()
     res = db.execute(query)
-    mat = get_matrix_from_sql_response(res.fetchall())
+    mat = util.coo_to_standard(res.fetchall())
 
     # Get reference result
     np_einsum = np.einsum(

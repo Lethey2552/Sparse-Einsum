@@ -1,5 +1,8 @@
-from operator import itemgetter
 import numpy as np
+import sys
+
+sys.path.append("./Utilities")
+import utilities as util    # type: ignore
 
 
 def get_2d_coo_matrix(mat: np.ndarray):
@@ -83,6 +86,10 @@ if __name__ == "__main__":
     A_coo = get_2d_coo_matrix(A)
     B_coo = get_2d_coo_matrix(B)
 
-    print(coo_matmul(A_coo, B_coo))
+    AB_coo = coo_matmul(A_coo, B_coo)
+    AB = A @ B
+
+    print(AB_coo)
     print()
-    print(A @ B)
+    print(AB)
+    print(util.compare_matrices(AB_coo, AB))
