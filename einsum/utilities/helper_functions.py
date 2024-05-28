@@ -1,6 +1,6 @@
 import numpy as np
 import math
-
+from einsum.utilities.classes.coo_matrix import Coo_matrix
 
 def find_idc_types(input_idc, output_idc, shape_left, shape_right):
     batch_idc = []          # A, B, O
@@ -93,76 +93,45 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
 
     return eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB
 
+def coo_to_standard(coo_mat: np.ndarray) -> np.ndarray:
+    """
+    Converts a sparse matrix in COO (Coordinate) format to a dense standard NumPy array.
 
-def single_einsum(eq: str, tensor: np.ndarray):
-    return np.einsum(eq, tensor)
+    The input `coo_mat` is expected to be an ndarray where each row represents a non-zero 
+    entry in the sparse matrix. The last element of each row is the value, and the preceding 
+    elements are the coordinates of the value.
+
+    Parameters:
+    coo_mat (np.ndarray): A 2D NumPy array of shape (n, m+1), where `n` is the number of 
+                          non-zero entries and `m` is the number of dimensions of the 
+                          resulting dense matrix. Each row gives the coordinates for the
+                          dimensions and the corresponding value.
+
+    Returns:
+    np.ndarray: A dense NumPy array with the same dimensionality as the coordinate 
+                representation, populated with the values from `coo_mat` and zeros elsewhere.
+
+    Example:
+    >>> coo_mat = np.array([[0, 0, 1],
+                            [1, 2, 3],
+                            [2, 1, 4]])
+    >>> coo_to_standard(coo_mat)
+    array([[1, 0, 0],
+           [0, 0, 3],
+           [0, 4, 0]])
+    """
+
+    max_dim = tuple(max(coo_mat[:, i]) + 1 for i in range(coo_mat.shape[1] - 1))
+        
+    mat = np.zeros(max_dim, dtype=int)
+
+    for entry in coo_mat:
+        mat[tuple(entry[:-1])] = entry[-1]
+
+    return mat
 
 
-def bmm_contraction(tensors: dict, results: tuple):
-    a = tensors["A"]
-    b = tensors["B"]
-    eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
+def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
+    mat_a = mat_a.coo_to_standard()
 
-    # Left side
-    if eq_left is not None:
-        a = single_einsum(eq_left, tensors["A"])
-    if shape_left is not None:
-        a = np.reshape(a, shape_left)
-
-    # Right side
-    if eq_right is not None:
-        b = single_einsum(eq_right, tensors["B"])
-    if shape_right is not None:
-        b = np.reshape(b, shape_right)
-
-    ab = a @ b
-
-    # Output reshape
-    if shape_out is not None:
-        ab = np.reshape(ab, shape_out)
-    if perm_AB is not None:
-        ab = np.transpose(ab, perm_AB)
-
-    return ab
-
-
-def determine_transpose(order, target_order):
-    # Find the transpose required to match the target order
-    return [order.index(i) for i in target_order if i in order]
-
-
-if __name__ == "__main__":
-    einsum_notation = "kbi,bkj->bij"
-
-    tensor_names = ["A", "B"]
-    tensors = {
-        "A": np.random.rand(2, 3, 4),  # kbi -> bik (3, 4, 2)
-        "B": np.random.rand(3, 2, 5),  # bkj -> bkj (3, 2, 5)
-    }
-    arrays = [tensors["A"], tensors["B"]]
-
-    # sql_einsum_query_opt(einsum_notation, tensor_names, tensors, arrays)
-
-    # Get index lists and sets
-    einsum_notation = einsum_notation.replace(" ", "")
-    input_idc = einsum_notation.split("->")[0].split(",")
-    shape_left = np.shape(tensors["A"])
-    shape_right = np.shape(tensors["B"])
-    output_idc = einsum_notation.split("->")[1]
-
-    results = find_idc_types(
-        input_idc,
-        output_idc,
-        shape_left,
-        shape_right
-    )
-
-    ab = bmm_contraction(tensors, results)
-
-    print(ab)
-
-    # Get reference result
-    np_einsum = np.einsum(
-        einsum_notation, tensors["A"], tensors["B"])
-
-    print(f"\n\n{np.allclose(ab, np_einsum)}")
+    return(np.allclose(mat_a, mat_b))

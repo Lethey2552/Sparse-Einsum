@@ -1,0 +1,5 @@
+numpy==1.26.4
+opt_einsum==3.3.0
+sesum==0.3.2
+setuptools==70.0.0
+tableauhyperapi==0.0.18825

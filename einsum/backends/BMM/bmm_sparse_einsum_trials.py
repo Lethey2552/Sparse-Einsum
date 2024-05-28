@@ -1,9 +1,8 @@
+import logging
 import numpy as np
 import sys
-
-sys.path.append("./Utilities")
-import utilities as util    # type: ignore
-
+from einsum.utilities.helper_functions import find_idc_types, compare_matrices
+from einsum.utilities.classes.coo_matrix import Coo_matrix
 
 def get_2d_coo_matrix(mat: np.ndarray):
     coo_mat = [[], [], []]
@@ -20,31 +19,8 @@ def get_2d_coo_matrix(mat: np.ndarray):
     return np.transpose(np.array(coo_mat))
 
 
-def coo_transpose(M, sort=True):
-    M[:, [1, 0]] = M[:, [0, 1]]
-
-    if sort:
-        M = M[np.lexsort((M[:, 1], M[:, 0]))]
-
-    return M
-
-
-def coo_matmul(A, B, debug=False):
-    B_T = coo_transpose(B.copy())
-
-    if debug:
-        print("A:")
-        print(A)
-        print()
-
-        print("B:")
-        print(B)
-        print()
-
-        print("B':")
-        print(B_T)
-        print()
-
+def coo_matmul(A: Coo_matrix, B: Coo_matrix, debug=False):
+    B_T = B.coo_transpose()
     C_dict = {}
 
     for i in range(len(A)):
@@ -63,10 +39,24 @@ def coo_matmul(A, B, debug=False):
         C[1].append(j)
         C[2].append(v)
 
-    return np.transpose(np.array(C))
+    AB_shape = tuple([A.shape[0], B.shape[1]])
+    AB = Coo_matrix(np.transpose(np.array(C)), AB_shape)
+
+    if debug:
+        log_message = f"""
+            \nMatrix A:\n{A}\n
+            \nMatrix B:\n{B}\n
+            \nMatrix B^T:\n{B_T}\n
+            \nMatrix AxB:\n{AB}\n
+        """
+        logging.debug(log_message)
+
+    return AB
 
 
 if __name__ == "__main__":
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
     A = np.array([
         [0, 0, 0, 0, 0],
         [0, 0, 10, 4, 2],
@@ -83,13 +73,13 @@ if __name__ == "__main__":
         [0, 2, 7, 0, 0]
     ])
 
-    A_coo = get_2d_coo_matrix(A)
-    B_coo = get_2d_coo_matrix(B)
+    A_coo = Coo_matrix.coo_from_standard(A)
+    B_coo = Coo_matrix.coo_from_standard(B)
 
-    AB_coo = coo_matmul(A_coo, B_coo)
+    AB_coo = coo_matmul(A_coo, B_coo, debug=False)
     AB = A @ B
 
-    print(AB_coo)
-    print()
-    print(AB)
-    print(util.compare_matrices(AB_coo, AB))
+    print(
+        f"""Comparing coo matmul result to standard python matmul:
+        \n{'Passed' if compare_matrices(AB_coo, AB) else 'Not passed'}"""
+    )
