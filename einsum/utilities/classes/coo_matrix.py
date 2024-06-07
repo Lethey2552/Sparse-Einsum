@@ -7,16 +7,16 @@ class Coo_matrix:
 
     @classmethod
     def coo_from_standard(cls, mat: np.ndarray):
-        coo_mat = [[], [], []]
+        coo_mat = [[] for _ in range(len(mat.shape) + 1)]
+        
+        for idx, value in np.ndenumerate(mat):
+            if mat[idx] == 0:
+                continue
 
-        for i in range(mat.shape[0]):
-            for j in range(mat.shape[1]):
-                if mat[i][j] == 0:
-                    continue
-
-                coo_mat[0].append(i)
-                coo_mat[1].append(j)
-                coo_mat[2].append(mat[i][j])
+            for i, id in enumerate(idx):
+                coo_mat[i].append(id)
+            
+            coo_mat[-1].append(value)
 
         return cls(np.transpose(np.array(coo_mat)), mat.shape)
 
@@ -37,6 +37,10 @@ class Coo_matrix:
 
     def __len__(self):
         return len(self.data)
+
+
+    def __str__(self):
+        return np.array2string(self.data)
 
 
     def coo_transpose(self, sort=True):
@@ -75,7 +79,7 @@ class Coo_matrix:
         """
 
         mat = np.zeros(self.shape, dtype=int)
-
+        
         for entry in self.data:
             mat[tuple(entry[:-1])] = entry[-1]
 
