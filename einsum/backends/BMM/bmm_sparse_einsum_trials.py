@@ -44,10 +44,10 @@ def coo_matmul(A: Coo_matrix, B: Coo_matrix, debug=False):
 
     if debug:
         log_message = f"""
-            \nMatrix A:\n{A}\n
-            \nMatrix B:\n{B}\n
-            \nMatrix B^T:\n{B_T}\n
-            \nMatrix AxB:\n{AB}\n
+            \nMatrix A {A.shape}:\n{A}\n
+            \nMatrix B {B.shape}:\n{B}\n
+            \nMatrix B^T {B_T.shape}:\n{B_T}\n
+            \nMatrix AxB {AB.shape}:\n{AB}\n
         """
         logging.debug(log_message)
 
@@ -58,15 +58,35 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
     np.random.seed(0)
-    A = np.random.randint(0, 10, (2, 2, 1))
+    A = np.random.randint(0, 10, (2, 2, 2))
     np.random.seed(1)
-    B = np.random.randint(0, 10, (2, 1, 2))
+    B = np.random.randint(0, 10, (2, 2, 2))
 
     A_coo = Coo_matrix.coo_from_standard(A)
     B_coo = Coo_matrix.coo_from_standard(B)
 
-    AB_coo = coo_matmul(A_coo, B_coo, debug=False)
+    batch_col_idx = [0]
+    for b in batch_col_idx:
+        for i in range(A_coo.shape[b]):
+
+            A_mask = (A_coo[:, 0] == i)
+            B_mask = (B_coo[:, 0] == i)
+
+            A_test = A_coo[A_mask, :]
+            B_test = B_coo[B_mask, :]
+
+            A_test = Coo_matrix(A_test[:, 1:], A_coo.shape[1:])
+            B_test = Coo_matrix(B_test[:, 1:], B_coo.shape[1:])
+
+            print("RESULTS:")
+            print(coo_matmul(A_test, B_test))
+            print("RESULTS END")
+
+    AB_coo = coo_matmul(A_coo, B_coo, debug=True)
     AB = A @ B
+
+    print(f"""True Matrix AB {AB.shape}:\n{AB}\n""")
+    print(Coo_matrix.coo_from_standard(AB))
 
     print(
         f"""Comparing coo matmul result to standard python matmul:
