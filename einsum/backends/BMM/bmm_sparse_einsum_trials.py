@@ -57,21 +57,10 @@ def coo_matmul(A: Coo_matrix, B: Coo_matrix, debug=False):
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
-    A = np.array([
-        [0, 0, 0, 0, 0],
-        [0, 0, 10, 4, 2],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 3, 0],
-        [0, 4, 2, 0, 0]
-    ])
-
-    B = np.array([
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 8, 0],
-        [0, 0, 0, 0, 3],
-        [0, 0, 2, 9, 0],
-        [0, 2, 7, 0, 0]
-    ])
+    np.random.seed(0)
+    A = np.random.randint(0, 10, (2, 2, 1))
+    np.random.seed(1)
+    B = np.random.randint(0, 10, (2, 1, 2))
 
     A_coo = Coo_matrix.coo_from_standard(A)
     B_coo = Coo_matrix.coo_from_standard(B)
