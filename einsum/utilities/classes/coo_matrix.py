@@ -1,9 +1,11 @@
+import logging
 import numpy as np
 
 class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
         self.data = data
         self.shape = shape
+
 
     @classmethod
     def coo_from_standard(cls, mat: np.ndarray):
@@ -20,6 +22,42 @@ class Coo_matrix:
 
         return cls(np.transpose(np.array(coo_mat)), mat.shape)
 
+
+    @classmethod
+    def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix", debug=False):
+        B_T = B.coo_transpose()
+        C_dict = {}
+
+        for i in range(len(A)):
+            for j in range(len(B_T)):
+
+                if A[i, 1] == B_T[j, 1]:
+                    key = (A[i, 0], B_T[j, 0])
+
+                    if key not in C_dict:
+                        C_dict[key] = 0
+                    C_dict[key] += A[i, 2] * B_T[j, 2]
+
+        C = [[], [], []]
+        for (i, j), v in C_dict.items():
+            C[0].append(i)
+            C[1].append(j)
+            C[2].append(v)
+
+        AB_shape = tuple([A.shape[0], B.shape[1]])
+        AB = Coo_matrix(np.transpose(np.array(C)), AB_shape)
+
+        if debug:
+            log_message = f"""
+                \nMatrix A {A.shape}:\n{A}\n
+                \nMatrix B {B.shape}:\n{B}\n
+                \nMatrix B^T {B_T.shape}:\n{B_T}\n
+                \nMatrix AxB {AB.shape}:\n{AB}\n
+            """
+            logging.debug(log_message)
+
+        return cls(np.transpose(np.array(C)), AB_shape)
+    
 
     def __getitem__(self, items):
         return self.data[tuple(items)]
