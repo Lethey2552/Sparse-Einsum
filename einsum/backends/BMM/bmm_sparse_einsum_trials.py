@@ -3,7 +3,6 @@ import numpy as np
 import sys
 from einsum.utilities.helper_functions import find_idc_types, compare_matrices
 from einsum.utilities.classes.coo_matrix import Coo_matrix
-from itertools import product
 
 def get_2d_coo_matrix(mat: np.ndarray):
     coo_mat = [[], [], []]
@@ -59,37 +58,14 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
     np.random.seed(0)
-    A = np.random.randint(0, 10, (2, 2, 2))
+    A = np.random.randint(0, 10, (4, 2, 5, 2))
     np.random.seed(1)
-    B = np.random.randint(0, 10, (2, 2, 2))
+    B = np.random.randint(0, 10, (4, 2, 2, 3))
 
     A_coo = Coo_matrix.coo_from_standard(A)
     B_coo = Coo_matrix.coo_from_standard(B)
 
-    cols_to_consider = A_coo[:, :-3]
-    unique_values = [np.unique(cols_to_consider[:, i]) for i in range(cols_to_consider.shape[1])]
-    combinations = list(product(*unique_values))
-
-    AB_coo = None
-    for comb in combinations:
-        A_test = A_coo[np.all(cols_to_consider == comb, axis=1), :]
-        B_test = B_coo[np.all(B_coo[:, :-3] == comb, axis=1), :]
-
-        A_test = Coo_matrix(A_test[:, -3:], A_coo.shape[-2:])
-        B_test = Coo_matrix(B_test[:, -3:], B_coo.shape[-2:])
-
-        AB = Coo_matrix.coo_matmul(A_test, B_test)
-        insert_shape = np.zeros((len(comb)), dtype=int)
-
-        if AB_coo is not None:
-            AB_coo.data = np.vstack([AB_coo.data, np.insert(AB.data, insert_shape, list(comb), axis=1)])
-        else:
-            AB_coo = AB
-            AB_coo.data = np.insert(AB_coo.data, insert_shape, list(comb), axis=1)
-
-            new_shape = list(AB_coo.shape)
-            new_shape = np.insert(new_shape, insert_shape, list(A_coo.shape[:len(comb)]))
-            AB_coo.shape = tuple(new_shape)
+    AB_coo = Coo_matrix.coo_bmm(A_coo, B_coo)
 
     AB = A @ B
 
