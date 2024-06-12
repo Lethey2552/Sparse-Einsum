@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from einsum.utilities.helper_functions import find_idc_types, compare_matrices
 from einsum.utilities.classes.coo_matrix import Coo_matrix
+from itertools import product
 
 def get_2d_coo_matrix(mat: np.ndarray):
     coo_mat = [[], [], []]
@@ -65,28 +66,38 @@ if __name__ == "__main__":
     A_coo = Coo_matrix.coo_from_standard(A)
     B_coo = Coo_matrix.coo_from_standard(B)
 
-    batch_col_idx = [0]
-    for b in batch_col_idx:
-        for i in range(A_coo.shape[b]):
+    cols_to_consider = A_coo[:, :-3]
+    unique_values = [np.unique(cols_to_consider[:, i]) for i in range(cols_to_consider.shape[1])]
+    combinations = list(product(*unique_values))
 
-            A_mask = (A_coo[:, 0] == i)
-            B_mask = (B_coo[:, 0] == i)
+    AB_coo = None
+    for comb in combinations:
+        A_test = A_coo[np.all(cols_to_consider == comb, axis=1), :]
+        B_test = B_coo[np.all(B_coo[:, :-3] == comb, axis=1), :]
 
-            A_test = A_coo[A_mask, :]
-            B_test = B_coo[B_mask, :]
+        A_test = Coo_matrix(A_test[:, -3:], A_coo.shape[-2:])
+        B_test = Coo_matrix(B_test[:, -3:], B_coo.shape[-2:])
 
-            A_test = Coo_matrix(A_test[:, 1:], A_coo.shape[1:])
-            B_test = Coo_matrix(B_test[:, 1:], B_coo.shape[1:])
+        AB = Coo_matrix.coo_matmul(A_test, B_test)
+        insert_shape = np.zeros((len(comb)), dtype=int)
 
-            print("RESULTS:")
-            print(coo_matmul(A_test, B_test))
-            print("RESULTS END")
+        if AB_coo is not None:
+            AB_coo.data = np.vstack([AB_coo.data, np.insert(AB.data, insert_shape, list(comb), axis=1)])
+        else:
+            AB_coo = AB
+            AB_coo.data = np.insert(AB_coo.data, insert_shape, list(comb), axis=1)
 
-    AB_coo = coo_matmul(A_coo, B_coo, debug=True)
+            new_shape = list(AB_coo.shape)
+            new_shape = np.insert(new_shape, insert_shape, list(A_coo.shape[:len(comb)]))
+            AB_coo.shape = tuple(new_shape)
+
     AB = A @ B
 
     print(f"""True Matrix AB {AB.shape}:\n{AB}\n""")
-    print(Coo_matrix.coo_from_standard(AB))
+
+    print("Coo matmul result:")
+    print(AB_coo.coo_to_standard())
+    print()
 
     print(
         f"""Comparing coo matmul result to standard python matmul:
