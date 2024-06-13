@@ -40,12 +40,12 @@ def determine_transpose(order, target_order):
 
 
 if __name__ == "__main__":
-    einsum_notation = "kbi,bkj->bij"
+    einsum_notation = "ckbi,cbkj->cbij"
 
     tensor_names = ["A", "B"]
     tensors = {
-        "A": np.random.rand(2, 3, 4),  # kbi -> bik (3, 4, 2)
-        "B": np.random.rand(3, 2, 5),  # bkj -> bkj (3, 2, 5)
+        "A": np.random.rand(2, 2, 3, 4),  # kbi -> bik (3, 4, 2)
+        "B": np.random.rand(2, 3, 2, 5),  # bkj -> bkj (3, 2, 5)
     }
     arrays = [tensors["A"], tensors["B"]]
 
