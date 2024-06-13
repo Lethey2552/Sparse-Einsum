@@ -2,11 +2,8 @@ import numpy as np
 import sesum.sr as sr
 import sqlite3 as sql
 import opt_einsum as oe
-import sys
+from einsum.utilities.classes.coo_matrix import Coo_matrix
 from operator import itemgetter
-
-sys.path.append("./Utilities")
-import utilities as util    # type: ignore
 
 
 ASCII = [
@@ -226,7 +223,7 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                          einsum_str, remaining_formula]))
 
         input_idc.append(idx_result)
-
+        
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
@@ -276,10 +273,6 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 
 
 def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict, arrays: list):
-    tensor_shapes = []
-    for tensor in tensors.values():
-        tensor_shapes.append(tensor.shape)
-
     # Get Sesum contraction path
     path, flops_log10, size_log2 = sr.compute_path(
         einsum_notation, 
@@ -337,7 +330,7 @@ if __name__ == "__main__":
         "A": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
         "B": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
     }
-    arrays = [tensors["A"], tensors["B"]]
+    arrays = [tensors["A"].shape, tensors["B"].shape]
 
     query = sql_einsum_query_opt(
         einsum_notation, tensor_names, tensors, arrays)
@@ -346,10 +339,13 @@ if __name__ == "__main__":
         f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
 
     # Implicitly create database if not present, run sql query and format result
-    db_connection = sql.connect("SQL/test.db")
+    db_connection = sql.connect("./test.db")
     db = db_connection.cursor()
-    res = db.execute(query)
-    mat = util.coo_to_standard(res.fetchall())
+    res = db.execute(query).fetchall()
+    coo_data = np.array([list(row) for row in res])
+    coo_shape = tuple([(max(col) + 1 )for col in coo_data[:, :-1].T])
+    coo_mat = Coo_matrix(coo_data, coo_shape)
+    mat = coo_mat.coo_to_standard()
 
     # Get reference result
     np_einsum = np.einsum(
