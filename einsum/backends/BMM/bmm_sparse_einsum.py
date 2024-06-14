@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import sesum.sr as sr
 import sys
-from einsum.utilities.helper_functions import find_idc_types, compare_matrices
+from einsum.utilities.helper_functions import compare_matrices
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 
 
@@ -12,22 +12,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
 
         for id in contraction[0]:
             arrays.pop(id)
-
-        current_formula = contraction[2]
-        current_removed = contraction[1]
-
-        # Get index lists and sets
-        input_idc, output_idc = clean_einsum_notation(current_formula)
-
-        # results = find_idc_types(
-        #     input_idc,
-        #     output_idc,
-        #     current_arrays[0].shape,
-        #     current_arrays[1].shape
-        # )
-
-        # TODO: use results to bring both tensors into the right order
-        # to perform the bmm
+        
         arrays.append(Coo_matrix.coo_bmm(current_arrays[1], current_arrays[0]))
 
     return arrays[0]
@@ -82,7 +67,7 @@ def generate_contraction_list(in_out_idc: str, path):
         remaining_formula = tuple(["".join(i) for i in input_sets])
         cl.append(tuple([contract_idc, idc_removed,
                          einsum_str, remaining_formula]))
-
+        
         input_idc.append(idx_result)
 
     return cl
@@ -97,7 +82,6 @@ def clean_einsum_notation(einsum_notation: str):
 
 
 def sparse_einsum(einsum_notation: str, arrays: np.ndarray):
-
     in_out_idc = clean_einsum_notation(einsum_notation)
 
     # Get Sesum contraction path
@@ -123,18 +107,18 @@ if __name__ == "__main__":
     logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
     np.random.seed(0)
-    A = np.random.randint(0, 10, (4, 2, 5, 2))
+    A = np.random.randint(0, 10, (4, 2, 3, 5, 2))
     np.random.seed(1)
-    B = np.random.randint(0, 10, (4, 2, 2, 3))
+    B = np.random.randint(0, 10, (4, 2, 3, 2, 3))
     np.random.seed(2)
-    C = np.random.randint(0, 10, (4, 2, 3, 6))
+    C = np.random.randint(0, 10, (4, 2, 3, 3, 6))
 
     A_coo = Coo_matrix.coo_from_standard(A)
     B_coo = Coo_matrix.coo_from_standard(B)
     C_coo = Coo_matrix.coo_from_standard(C)
 
     # EINSUM TESTS
-    einsum_notation = "blik,blkj,bljr->blir"
+    einsum_notation = "blaik,blakj,blajr->blair"
     arrays = [A_coo, B_coo, C_coo]
     
     AB_coo = sparse_einsum(einsum_notation, arrays)
