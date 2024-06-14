@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 from itertools import product
+from timeit import default_timer as timer
 
 class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
@@ -58,36 +59,40 @@ class Coo_matrix:
             logging.debug(log_message)
 
         return cls(np.transpose(np.array(C)), AB_shape)
-    
 
     @classmethod
     def coo_bmm(cls, A: "Coo_matrix", B: "Coo_matrix"):
-        cols_to_consider = A[:, :-3]
-        unique_values = [np.unique(cols_to_consider[:, i]) for i in range(cols_to_consider.shape[1])]
+        cols_to_consider_A = A[:, :-3]
+        cols_to_consider_B = B[:, :-3]
+        unique_values = [np.unique(cols_to_consider_A[:, i]) for i in range(cols_to_consider_A.shape[1])]
         combinations = list(product(*unique_values))
 
-        AB_coo = None
-        for comb in combinations:
-            A_test = A[np.all(cols_to_consider == comb, axis=1), :]
-            B_test = B[np.all(B[:, :-3] == comb, axis=1), :]
+        # time = 0
+        # tic = timer()
+        # toc = timer()
+        # time += toc - tic
+        # print(f"Measured result: {time}s")
 
-            A_test = Coo_matrix(A_test[:, -3:], A.shape[-2:])
-            B_test = Coo_matrix(B_test[:, -3:], B.shape[-2:])
+        AB_data = []
+        for comb in combinations:
+            A_masked = A[np.all(cols_to_consider_A == comb, axis=1), :]
+            B_masked = B[np.all(cols_to_consider_B == comb, axis=1), :]
+
+            A_test = Coo_matrix(A_masked[:, -3:], A.shape[-2:])
+            B_test = Coo_matrix(B_masked[:, -3:], B.shape[-2:])
 
             AB = Coo_matrix.coo_matmul(A_test, B_test)
-            insert_shape = np.zeros((len(comb)), dtype=int)
 
-            if AB_coo is not None:
-                AB_coo.data = np.vstack([AB_coo.data, np.insert(AB.data, insert_shape, list(comb), axis=1)])
-            else:
-                AB_coo = AB
-                AB_coo.data = np.insert(AB_coo.data, insert_shape, list(comb), axis=1)
-
-                new_shape = list(AB_coo.shape)
-                new_shape = np.insert(new_shape, insert_shape, list(A.shape[:len(comb)]))
-                AB_coo.shape = tuple(new_shape)
-                
-        return cls(AB_coo.data, AB_coo.shape)
+            # Append combination to the results
+            comb_with_values = np.hstack([np.full((AB.data.shape[0], len(comb)), comb), AB.data])
+            AB_data.append(comb_with_values)
+ 
+        if AB_data:
+            AB_data = np.vstack(AB_data)
+            new_shape = tuple(A.shape[:-2]) + AB.shape[-2:]
+            return cls(AB_data, new_shape)
+        else:
+            return cls(np.array([]), A.shape)
 
 
     def __getitem__(self, items):
@@ -146,10 +151,10 @@ class Coo_matrix:
                [0, 0, 3],
                [0, 4, 0]])
         """
-
+        
         mat = np.zeros(self.shape, dtype=int)
         
         for entry in self.data:
-            mat[tuple(entry[:-1])] = entry[-1]
+            mat[tuple([int(i) for i in entry[:-1]])] = entry[-1]
 
         return mat
