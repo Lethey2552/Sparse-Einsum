@@ -8,10 +8,28 @@ from einsum.utilities.classes.coo_matrix import Coo_matrix
 
 def calculate_contractions(cl: list, arrays: np.ndarray):
     for contraction in cl:
+        print(contraction)
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
         for id in contraction[0]:
             arrays.pop(id)
+        
+        # Get index lists and sets
+        input_idc, output_idc = clean_einsum_notation(contraction[2])
+        shape_left = current_arrays[1].shape
+        shape_right = current_arrays[0].shape
+
+        print(input_idc)
+        print(output_idc)
+        print(shape_left)
+        print(shape_right)
+        
+        # results = find_idc_types(
+        #     input_idc,
+        #     output_idc,
+        #     shape_left,
+        #     shape_right
+        # )
         
         arrays.append(Coo_matrix.coo_bmm(current_arrays[1], current_arrays[0]))
 
