@@ -86,13 +86,13 @@ class Coo_matrix:
             # Append combination to the results
             comb_with_values = np.hstack([np.full((AB.data.shape[0], len(comb)), comb), AB.data])
             AB_data.append(comb_with_values)
- 
+
         if AB_data:
             AB_data = np.vstack(AB_data)
             new_shape = tuple(A.shape[:-2]) + AB.shape[-2:]
             return cls(AB_data, new_shape)
         else:
-            return cls(np.array([]), A.shape)
+            return cls(np.array([]), A.shape[:-1] + B.shape[-1:])
 
 
     def __getitem__(self, items):
@@ -152,7 +152,7 @@ class Coo_matrix:
                [0, 4, 0]])
         """
         
-        mat = np.zeros(self.shape, dtype=int)
+        mat = np.zeros(self.shape)
         
         for entry in self.data:
             mat[tuple([int(i) for i in entry[:-1]])] = entry[-1]
