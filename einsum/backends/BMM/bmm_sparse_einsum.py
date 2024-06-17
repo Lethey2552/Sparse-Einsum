@@ -1,14 +1,22 @@
-import logging
 import numpy as np
 import sesum.sr as sr
-import sys
-from einsum.utilities.helper_functions import compare_matrices
+import sqlite3 as sql
+from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
+
+
+def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
+    if eq is not None:
+        mat = np.einsum(eq, mat.coo_to_standard())
+        mat = Coo_matrix.coo_from_standard(mat)
+    # if shape is not None:
+    #     mat = np.reshape(mat, shape)
+
+    return mat
 
 
 def calculate_contractions(cl: list, arrays: np.ndarray):
     for contraction in cl:
-        print(contraction)
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
         for id in contraction[0]:
@@ -19,19 +27,26 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         shape_left = current_arrays[1].shape
         shape_right = current_arrays[0].shape
 
-        print(input_idc)
-        print(output_idc)
-        print(shape_left)
-        print(shape_right)
-        
-        # results = find_idc_types(
-        #     input_idc,
-        #     output_idc,
-        #     shape_left,
-        #     shape_right
-        # )
-        
+        results = find_idc_types(
+            input_idc,
+            output_idc,
+            shape_left,
+            shape_right
+        )
+
+        eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
+
+        # Fit both input tensors to match contraction
+        current_arrays[1] = fit_tensor_to_bmm(current_arrays[1], eq_left, shape_left)
+        current_arrays[0] = fit_tensor_to_bmm(current_arrays[0], eq_right, shape_right)
+
         arrays.append(Coo_matrix.coo_bmm(current_arrays[1], current_arrays[0]))
+
+        # Output reshape
+        # if shape_out is not None:
+        #     arrays[-1] = np.reshape(arrays[-1], shape_out)
+        if perm_AB is not None:
+            arrays[-1].swap_cols(perm_AB)
 
     return arrays[0]
 
@@ -80,7 +95,7 @@ def generate_contraction_list(in_out_idc: str, path):
             all_input_inds = "".join(tmp_inputs)
             idx_result = "".join(sorted(out_idc, key=all_input_inds.find))
 
-        einsum_str = ",".join(tmp_inputs) + "->" + idx_result
+        einsum_str = ",".join(reversed(tmp_inputs)) + "->" + idx_result
 
         remaining_formula = tuple(["".join(i) for i in input_sets])
         cl.append(tuple([contract_idc, idc_removed,
@@ -120,40 +135,3 @@ def sparse_einsum(einsum_notation: str, arrays: np.ndarray):
     res = calculate_contractions(cl, arrays)
 
     return res
-
-if __name__ == "__main__":
-    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-
-    np.random.seed(0)
-    A = np.random.randint(0, 10, (4, 2, 3, 5, 2))
-    np.random.seed(1)
-    B = np.random.randint(0, 10, (4, 2, 3, 2, 3))
-    np.random.seed(2)
-    C = np.random.randint(0, 10, (4, 2, 3, 3, 6))
-
-    A_coo = Coo_matrix.coo_from_standard(A)
-    B_coo = Coo_matrix.coo_from_standard(B)
-    C_coo = Coo_matrix.coo_from_standard(C)
-
-    # EINSUM TESTS
-    einsum_notation = "blaik,blakj,blajr->blair"
-    arrays = [A_coo, B_coo, C_coo]
-    
-    AB_coo = sparse_einsum(einsum_notation, arrays)
-
-    # EINSUM TESTS END
-
-    # AB_coo = Coo_matrix.coo_bmm(A_coo, B_coo)
-
-    AB = A @ B @ C
-
-    print(f"""True Matrix AB {AB.shape}:\n{AB}\n""")
-
-    print(f"""Coo matmul result {AB_coo.shape}:""")
-    print(AB_coo.coo_to_standard())
-    print()
-
-    print(
-        f"""Comparing coo matmul result to standard python matmul:
-        \n{'Passed' if compare_matrices(AB_coo, AB) else 'Not passed'}"""
-    )
