@@ -9,13 +9,13 @@ from timeit import default_timer as timer
 if __name__ == "__main__":
     print_results = False
 
-    einsum_notation = "abcik,abcjr,abcrk->abcij"
+    einsum_notation = "bacik,bacrk,bacrj->abcij"
 
-    A = sparse.random((20, 11, 10, 4, 2), idx_dtype=int)
-    B = sparse.random((20, 11, 10, 2, 3), idx_dtype=int)
-    C = sparse.random((20, 11, 10, 3, 2), idx_dtype=int)
+    A = sparse.random((11, 20, 10, 4, 2), density=1.0, idx_dtype=int)
+    B = sparse.random((11, 20, 10, 3, 2), density=1.0, idx_dtype=int)
+    C = sparse.random((11, 20, 10, 3, 7), density=1.0, idx_dtype=int)
     sparse_arrays = [A, B, C]
-
+    
     A = sparse.asnumpy(A)
     B = sparse.asnumpy(B)
     C = sparse.asnumpy(C)
