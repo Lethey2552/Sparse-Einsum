@@ -117,6 +117,20 @@ class Coo_matrix:
         return np.array2string(self.data)
 
 
+    def swap_cols(self, idc: tuple | list):
+        if type(idc) == tuple:
+            idc = list(idc)
+        
+        # Swap columns given by idc list
+        max_id = max(idc)
+        idc.append(max_id + 1)
+        self.data = self.data[:, idc]
+
+        # Adjust shape 
+        new_shape = np.array(self.shape)[idc[:-1]]
+        self.shape = new_shape
+
+
     def coo_transpose(self, sort=True):
         M = np.array(self.data)
 
