@@ -132,6 +132,6 @@ def coo_to_standard(coo_mat: np.ndarray) -> np.ndarray:
 
 
 def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
-    mat_a = mat_a.coo_to_standard()
+    mat_a_standard = mat_a.coo_to_standard()
 
-    return(np.allclose(mat_a, mat_b))
+    return(np.allclose(mat_a_standard, mat_b))
