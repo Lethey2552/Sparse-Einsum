@@ -57,7 +57,7 @@ def sql_einsum_values(tensors: dict):
     return query[:-2] + "\n"
 
 
-def sql_einsum_contraction(einsum_notation: str, tensor_names: list, current_removed: set):
+def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
     # get einsum-notation indices
     formula = einsum_notation.replace(" ", "")
     tensorindices, outindices = formula.replace(" ", "").split("->")
@@ -246,12 +246,12 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
         if c < len(cl):
             query += name + " AS (\n "
             query += sql_einsum_contraction(current_formula,
-                                            current_arrays, current_removed) + "\n), "
+                                            current_arrays) + "\n), "
         else:
 
             query = query[:-2] + " " + \
                 sql_einsum_contraction(
-                    current_formula, current_arrays, current_removed) + "\n"
+                    current_formula, current_arrays) + "\n"
 
     return query
 
