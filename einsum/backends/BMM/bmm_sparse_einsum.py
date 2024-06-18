@@ -1,21 +1,22 @@
 import numpy as np
 import sesum.sr as sr
-import sqlite3 as sql
 from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
+from timeit import default_timer as timer
 
 
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
-    if eq is not None:
-        mat = np.einsum(eq, mat.coo_to_standard())
-        mat = Coo_matrix.coo_from_standard(mat)
-    # if shape is not None:
-    #     mat = np.reshape(mat, shape)
+    if eq:
+        mat.single_einsum(eq)
+    if shape:
+        mat.reshape(shape)
 
     return mat
 
 
 def calculate_contractions(cl: list, arrays: np.ndarray):
+    time = 0
+
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
@@ -40,13 +41,18 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         current_arrays[1] = fit_tensor_to_bmm(current_arrays[1], eq_left, shape_left)
         current_arrays[0] = fit_tensor_to_bmm(current_arrays[0], eq_right, shape_right)
 
+        tic = timer()
         arrays.append(Coo_matrix.coo_bmm(current_arrays[1], current_arrays[0]))
+        toc = timer()
+        time += toc - tic
 
         # Output reshape
-        # if shape_out is not None:
-        #     arrays[-1] = np.reshape(arrays[-1], shape_out)
+        if shape_out is not None:
+            arrays[-1].reshape(shape_out)
         if perm_AB is not None:
             arrays[-1].swap_cols(perm_AB)
+
+    print(f"Measured result: {time}s")
 
     return arrays[0]
 
