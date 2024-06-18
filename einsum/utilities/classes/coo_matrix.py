@@ -1,4 +1,3 @@
-import logging
 import numpy as np
 from itertools import product
 from timeit import default_timer as timer
@@ -26,7 +25,7 @@ class Coo_matrix:
 
 
     @classmethod
-    def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix", debug=False):
+    def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix"):
         B_T = B.coo_transpose()
         C_dict = {}
 
@@ -48,15 +47,6 @@ class Coo_matrix:
 
         AB_shape = tuple([A.shape[0], B.shape[1]])
         AB = Coo_matrix(np.transpose(np.array(C)), AB_shape)
-
-        if debug:
-            log_message = f"""
-                \nMatrix A {A.shape}:\n{A}\n
-                \nMatrix B {B.shape}:\n{B}\n
-                \nMatrix B^T {B_T.shape}:\n{B_T}\n
-                \nMatrix AxB {AB.shape}:\n{AB}\n
-            """
-            logging.debug(log_message)
 
         return cls(np.transpose(np.array(C)), AB_shape)
 
@@ -111,10 +101,58 @@ class Coo_matrix:
 
     def __len__(self):
         return len(self.data)
+    
+
+    def __size__(self):
+        return self.data.size
 
 
     def __str__(self):
         return np.array2string(self.data)
+
+
+    def single_einsum(self, notation: str):
+        input_notation, output_notation = notation.split('->')
+        
+        # Ensure that the notation is for a single input tensor
+        assert ',' not in input_notation
+
+        indices = {k: i for i, k in enumerate(input_notation)}
+        output_indices = [indices[idx] for idx in output_notation if idx in indices]
+
+        result_dict = {}
+
+        for row in self.data:
+            key = tuple(row[idx] for idx in output_indices)
+            if key in result_dict:
+                result_dict[key] += row[-1]
+            else:
+                result_dict[key] = row[-1]
+        
+        self.data = np.array([list(key) + [value] for key, value in result_dict.items() if value != 0])
+        
+        # Adjust shape
+        if self.data.size == 0:
+            self.shape = (0,) * len(output_notation)
+        else:
+            self.shape = tuple(int(max(self.data[:, i]) + 1) for i in range(self.data.shape[1] - 1))
+
+
+    def reshape(self, new_shape):
+        if np.prod(self.shape) != np.prod(new_shape):
+            raise ValueError("The total number of elements must remain the same for reshaping.")
+        
+        integer_indices = self.data[:, :-1].astype(int)
+        float_values = self.data[:, -1]
+
+        # Flatten, calculate new indices and create new data array
+        original_flat_indices = np.ravel_multi_index(integer_indices.T, self.shape)
+        new_indices = np.unravel_index(original_flat_indices, new_shape)
+        new_data = np.hstack([np.array(new_indices).T, float_values.reshape(-1, 1)])
+        
+        # Update the data and shape
+        self.data = new_data
+        self.shape = new_shape
 
 
     def swap_cols(self, idc: tuple | list):
