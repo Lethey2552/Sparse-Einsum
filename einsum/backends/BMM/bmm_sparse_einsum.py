@@ -1,8 +1,20 @@
 import numpy as np
+import os
 import sesum.sr as sr
 from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
+
+
+os.system("""g++ -std=c++17 -fopenmp -O2 -march=native -shared -fPIC \
+    -DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION \
+    -IC:/Users/Leon/AppData/Local/Programs/Python/Python312/Lib/site-packages/numpy/core/include \
+    -IC:/Users/Leon/AppData/Local/Programs/Python/Python312/include \
+    -LC:/Users/Leon/AppData/Local/Programs/Python/Python312/libs \
+    ./einsum/backends/BMM/cpp_methods/coo_methods_lib.cpp \
+    ./einsum/backends/BMM/cpp_methods/coo_methods.cpp \
+    -o ./einsum/backends/BMM/cpp_methods/coo_methods_lib.pyd \
+    -lpython312""")
 
 
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):

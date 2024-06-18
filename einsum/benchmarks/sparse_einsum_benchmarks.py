@@ -5,7 +5,6 @@ from einsum.utilities.helper_functions import compare_matrices
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
 
-
 if __name__ == "__main__":
     print_results = False
 

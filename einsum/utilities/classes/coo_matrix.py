@@ -1,6 +1,10 @@
 import numpy as np
 from itertools import product
 from timeit import default_timer as timer
+from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
+    c_coo_matmul
+)
+
 
 class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
@@ -46,7 +50,6 @@ class Coo_matrix:
             C[2].append(v)
 
         AB_shape = tuple([A.shape[0], B.shape[1]])
-        AB = Coo_matrix(np.transpose(np.array(C)), AB_shape)
 
         return cls(np.transpose(np.array(C)), AB_shape)
 
