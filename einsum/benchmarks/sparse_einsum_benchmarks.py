@@ -9,11 +9,11 @@ from timeit import default_timer as timer
 if __name__ == "__main__":
     print_results = False
 
-    einsum_notation = "bacik,bacrk,bacrj->abcij"
+    einsum_notation = "tbacik,abcrk,bacjr->abcij"
 
-    A = sparse.random((11, 20, 10, 4, 2), density=1.0, idx_dtype=int)
-    B = sparse.random((11, 20, 10, 3, 2), density=1.0, idx_dtype=int)
-    C = sparse.random((11, 20, 10, 3, 7), density=1.0, idx_dtype=int)
+    A = sparse.random((5, 11, 40, 10, 4, 2), density=0.2, idx_dtype=int)
+    B = sparse.random((40, 11, 10, 3, 2), density=0.1, idx_dtype=int)
+    C = sparse.random((11, 40, 10, 7, 3), density=0.1, idx_dtype=int)
     sparse_arrays = [A, B, C]
     
     A = sparse.asnumpy(A)
@@ -25,12 +25,9 @@ if __name__ == "__main__":
     C_coo = Coo_matrix.coo_from_standard(C)
     arrays = [A_coo, B_coo, C_coo]
 
-    # Python
+    # Numpy Dense
     tic = timer()
-    try:
-        python_res = A @ B @ C
-    except:
-        python_res = None
+    numpy_res = np.einsum(einsum_notation, A, B, C)
     toc = timer()
 
     python_time = toc - tic
@@ -49,14 +46,15 @@ if __name__ == "__main__":
 
     sparse_einsum_time = toc - tic
 
-    print(f"Shapes: Python - {python_res.shape if python_res is not None else 'None'},    Sparse - {sparse_res.shape},    Sparse Einsum - {sparse_einsum_res.shape}")
-    print(f"Results are correct: {compare_matrices(sparse_einsum_res, sparse.asnumpy(sparse_res))}")
+    print(f"Shapes: Numpy - {numpy_res.shape if numpy_res is not None else 'None'},    Sparse - {sparse_res.shape},    Sparse Einsum - {sparse_einsum_res.shape}")
+    print(f"""Results are correct:\n    Sparse Einsum - Sparse: {compare_matrices(sparse_einsum_res, sparse.asnumpy(sparse_res))}
+    Sparse Einsum - Numpy: {compare_matrices(sparse_einsum_res, numpy_res)}""")
 
-    print(f"Python time: {python_time}s")
+    print(f"Numpy time: {python_time}s")
     print(f"Sparse time: {sparse_time}s")
     print(f"Sparse Einsum time: {sparse_einsum_time}s")
 
     if print_results:
-        print(f"Python result:\n{python_res}")
+        print(f"Numpy result:\n{numpy_res}")
         print(f"Sparse result:\n{sparse.asnumpy(sparse_res)}\n")
         print(f"Sparse Einsum result:\n{sparse_einsum_res.coo_to_standard()}")
