@@ -11,10 +11,11 @@ if __name__ == "__main__":
     einsum_notation = "tbacik,abcrk,bacjr->abcij"
 
     A = sparse.random((5, 11, 40, 10, 4, 2), density=0.2, idx_dtype=int)
-    B = sparse.random((40, 11, 10, 3, 2), density=0.1, idx_dtype=int)
-    C = sparse.random((11, 40, 10, 7, 3), density=0.1, idx_dtype=int)
+    B = sparse.random((40, 11, 10, 3, 2), density=0.2, idx_dtype=int)
+    C = sparse.random((11, 40, 10, 7, 3), density=0.2, idx_dtype=int)
+
     sparse_arrays = [A, B, C]
-    
+
     A = sparse.asnumpy(A)
     B = sparse.asnumpy(B)
     C = sparse.asnumpy(C)
@@ -33,7 +34,8 @@ if __name__ == "__main__":
 
     # Sparse
     tic = timer()
-    sparse_res = sparse.einsum(einsum_notation, sparse_arrays[0], sparse_arrays[1], sparse_arrays[2])
+    sparse_res = sparse.einsum(
+        einsum_notation, sparse_arrays[0], sparse_arrays[1], sparse_arrays[2])
     toc = timer()
 
     sparse_time = toc - tic
