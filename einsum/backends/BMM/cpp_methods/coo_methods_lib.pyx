@@ -1,8 +1,7 @@
 # windows version (compiler directives for cython compiler)
 # cython: language_level = 3
 # distutils: language = c++
-# distutils: sources = coo_methods.cpp
-# distutils: extra_compile_args = -std=c++14 -fopenmp -O2 -march=native
+# distutils: extra_compile_args = /openmp:experimental /O2 /arch:AVX2 /std:c++17
 # cython: cplus = 14
 
 import numpy as np
@@ -15,7 +14,7 @@ cdef extern from "coo_methods.h":
                     double** C_data, int* C_rows, int* C_cols);
 
 def c_coo_matmul(double[:] A_data, int A_rows, int A_cols,
-                 double[:] B_data, int B_rows, int B_cols) -> tuple:
+                 double[:] B_data, int B_rows, int B_cols) -> np.ndarray:
     cdef double* A_data_ptr = &A_data[0]
     cdef double* B_data_ptr = &B_data[0]
     cdef double* C_data_ptr
