@@ -1,3 +1,9 @@
+# Cython
+*_lib.cpp
+
+# VSCode
+*.json
+
 # DB
 *.hyper
 *.db

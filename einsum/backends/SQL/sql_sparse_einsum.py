@@ -2,7 +2,9 @@ import numpy as np
 import sesum.sr as sr
 import sqlite3 as sql
 import opt_einsum as oe
+from einsum.utilities.classes.coo_matrix import Coo_matrix
 from operator import itemgetter
+
 
 ASCII = [
     "i", "j", "x", "y", "z",
@@ -55,7 +57,7 @@ def sql_einsum_values(tensors: dict):
     return query[:-2] + "\n"
 
 
-def sql_einsum_contraction(einsum_notation: str, tensor_names: list, current_removed: set):
+def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
     # get einsum-notation indices
     formula = einsum_notation.replace(" ", "")
     tensorindices, outindices = formula.replace(" ", "").split("->")
@@ -221,7 +223,7 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                          einsum_str, remaining_formula]))
 
         input_idc.append(idx_result)
-
+        
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
@@ -244,12 +246,12 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
         if c < len(cl):
             query += name + " AS (\n "
             query += sql_einsum_contraction(current_formula,
-                                            current_arrays, current_removed) + "\n), "
+                                            current_arrays) + "\n), "
         else:
 
             query = query[:-2] + " " + \
                 sql_einsum_contraction(
-                    current_formula, current_arrays, current_removed) + "\n"
+                    current_formula, current_arrays) + "\n"
 
     return query
 
@@ -271,33 +273,28 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 
 
 def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict, arrays: list):
-    tensor_shapes = []
-    for tensor in tensors.values():
-        tensor_shapes.append(tensor.shape)
-
     # Get Sesum contraction path
-    path, flops_log10, size_log2 = sr.compute_path(einsum_notation, *arrays, seed=0, minimize='size', algorithm="greedy", max_repeats=8,
-                                                   max_time=0.0, progbar=False, is_outer_optimal=False,
-                                                   threshold_optimal=12)
+    path, flops_log10, size_log2 = sr.compute_path(
+        einsum_notation, 
+        *arrays, 
+        seed=0, 
+        minimize='size', 
+        algorithm="greedy", 
+        max_repeats=8,
+        max_time=0.0, 
+        progbar=False, 
+        is_outer_optimal=False,
+        threshold_optimal=12
+    )
 
     query = sql_einsum_query(
-        einsum_notation, tensor_names, tensors, path_info=path)
+        einsum_notation, 
+        tensor_names, 
+        tensors, 
+        path_info=path
+    )
+
     return query
-
-
-def get_2d_coo_matrix(mat: np.ndarray):
-    coo_mat = [[], [], []]
-
-    for i in range(mat.shape[0]):
-        for j in range(mat.shape[1]):
-            if mat[i][j] == 0:
-                continue
-
-            coo_mat[0].append(i)
-            coo_mat[1].append(j)
-            coo_mat[2].append(mat[i][j])
-
-    return coo_mat
 
 
 def get_matrix_from_sql_response(coo_mat: np.ndarray):
@@ -326,15 +323,14 @@ def _get_sizes(einsum_notation, tensor_names, tensors):
 
 
 if __name__ == "__main__":
-    einsum_notation = "ij,kj,k->i"
+    einsum_notation = "kbi,bkj->bij"
 
-    tensor_names = ["A", "B", "v"]
+    tensor_names = ["A", "B"]
     tensors = {
-        "A": np.array([[0, 1, 0, 6], [19, 0, 0, 0], [0, 0, 5, 0], [0, 0, 0, 4]]),
-        "B": np.array([[0, 0, 5, 0], [0, 1, 0, 0], [0, 0, 18, 0], [0, 0, 0, 8]]),
-        "v": np.array([1, 0, 9, 11])
+        "A": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
+        "B": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
     }
-    arrays = [tensors["A"], tensors["B"], tensors["v"]]
+    arrays = [tensors["A"].shape, tensors["B"].shape]
 
     query = sql_einsum_query_opt(
         einsum_notation, tensor_names, tensors, arrays)
@@ -343,14 +339,17 @@ if __name__ == "__main__":
         f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
 
     # Implicitly create database if not present, run sql query and format result
-    db_connection = sql.connect("SQL/test.db")
+    db_connection = sql.connect("./test.db")
     db = db_connection.cursor()
-    res = db.execute(query)
-    mat = get_matrix_from_sql_response(res.fetchall())
+    res = db.execute(query).fetchall()
+    coo_data = np.array([list(row) for row in res])
+    coo_shape = tuple([(max(col) + 1 )for col in coo_data[:, :-1].T])
+    coo_mat = Coo_matrix(coo_data, coo_shape)
+    mat = coo_mat.coo_to_standard()
 
     # Get reference result
     np_einsum = np.einsum(
-        einsum_notation, tensors["A"], tensors["B"], tensors["v"])
+        einsum_notation, tensors["A"], tensors["B"])
 
     print(
         f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")
