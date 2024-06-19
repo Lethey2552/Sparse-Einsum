@@ -1,20 +1,10 @@
 import numpy as np
 import os
 import sesum.sr as sr
+import sys
 from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
-
-
-os.system("""g++ -std=c++17 -fopenmp -O2 -march=native -shared -fPIC \
-    -DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION \
-    -IC:/Users/Leon/AppData/Local/Programs/Python/Python312/Lib/site-packages/numpy/core/include \
-    -IC:/Users/Leon/AppData/Local/Programs/Python/Python312/include \
-    -LC:/Users/Leon/AppData/Local/Programs/Python/Python312/libs \
-    ./einsum/backends/BMM/cpp_methods/coo_methods_lib.cpp \
-    ./einsum/backends/BMM/cpp_methods/coo_methods.cpp \
-    -o ./einsum/backends/BMM/cpp_methods/coo_methods_lib.pyd \
-    -lpython312""")
 
 
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
@@ -27,14 +17,12 @@ def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
 
 
 def calculate_contractions(cl: list, arrays: np.ndarray):
-    time = 0
-
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
         for id in contraction[0]:
             arrays.pop(id)
-        
+
         # Get index lists and sets
         input_idc, output_idc = clean_einsum_notation(contraction[2])
         shape_left = current_arrays[1].shape
@@ -50,13 +38,12 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
         # Fit both input tensors to match contraction
-        current_arrays[1] = fit_tensor_to_bmm(current_arrays[1], eq_left, shape_left)
-        current_arrays[0] = fit_tensor_to_bmm(current_arrays[0], eq_right, shape_right)
+        current_arrays[1] = fit_tensor_to_bmm(
+            current_arrays[1], eq_left, shape_left)
+        current_arrays[0] = fit_tensor_to_bmm(
+            current_arrays[0], eq_right, shape_right)
 
-        tic = timer()
         arrays.append(Coo_matrix.coo_bmm(current_arrays[1], current_arrays[0]))
-        toc = timer()
-        time += toc - tic
 
         # Output reshape
         if shape_out is not None:
@@ -64,9 +51,8 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         if perm_AB is not None:
             arrays[-1].swap_cols(perm_AB)
 
-    print(f"Measured result: {time}s")
-
     return arrays[0]
+
 
 def find_contraction(positions, input_sets, output_set):
     remaining = list(input_sets)
@@ -118,7 +104,7 @@ def generate_contraction_list(in_out_idc: str, path):
         remaining_formula = tuple(["".join(i) for i in input_sets])
         cl.append(tuple([contract_idc, idc_removed,
                          einsum_str, remaining_formula]))
-        
+
         input_idc.append(idx_result)
 
     return cl
@@ -137,14 +123,14 @@ def sparse_einsum(einsum_notation: str, arrays: np.ndarray):
 
     # Get Sesum contraction path
     path, flops_log10, size_log2 = sr.compute_path(
-        einsum_notation, 
-        *arrays, 
-        seed=0, 
-        minimize='size', 
-        algorithm="greedy", 
+        einsum_notation,
+        *arrays,
+        seed=0,
+        minimize='size',
+        algorithm="greedy",
         max_repeats=8,
-        max_time=0.0, 
-        progbar=False, 
+        max_time=0.0,
+        progbar=False,
         is_outer_optimal=False,
         threshold_optimal=12
     )
