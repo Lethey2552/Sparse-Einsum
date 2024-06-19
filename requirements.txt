@@ -1,5 +1,6 @@
-numpy==1.26.4
+numpy==1.23.5
 opt_einsum==3.3.0
 sesum==0.3.2
-setuptools==70.0.0
+setuptools==65.5.0
+sparse==0.15.4
 tableauhyperapi==0.0.18825
