@@ -10,9 +10,15 @@ if __name__ == "__main__":
 
     einsum_notation = "tbacik,abcrk,bacjr->abcij"
 
-    A = sparse.random((5, 11, 40, 10, 4, 2), density=0.2, idx_dtype=int)
-    B = sparse.random((40, 11, 10, 3, 2), density=0.2, idx_dtype=int)
-    C = sparse.random((11, 40, 10, 7, 3), density=0.2, idx_dtype=int)
+    A = sparse.random((5, 20, 40, 10, 4, 2), density=0.2, idx_dtype=int)
+    B = sparse.random((40, 20, 10, 3, 2), density=0.2, idx_dtype=int)
+    C = sparse.random((20, 40, 10, 7, 3), density=0.2, idx_dtype=int)
+
+    # einsum_notation = "bik,bkr,brj->bij"
+
+    # A = sparse.random((2, 2, 2), density=1.0, idx_dtype=int)
+    # B = sparse.random((2, 2, 2), density=1.0, idx_dtype=int)
+    # C = sparse.random((2, 2, 2), density=1.0, idx_dtype=int)
 
     sparse_arrays = [A, B, C]
 
