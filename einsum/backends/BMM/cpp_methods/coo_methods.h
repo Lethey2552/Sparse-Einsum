@@ -2,10 +2,15 @@
 #define COO_MATMUL_H
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <tuple>
 #include <algorithm>
+#include <cmath>
 #include <iostream>
+#include <cassert>
+#include <time.h>
+#include <functional>
 
 // Define a custom hash function for std::pair<int, int>
 struct PairHash
@@ -29,8 +34,34 @@ struct PairEqual
     }
 };
 
+struct VectorHash
+{
+    size_t operator()(const std::vector<double> &v) const
+    {
+        std::hash<double> hasher;
+        size_t seed = 0;
+        for (const auto &d : v)
+        {
+            seed ^= hasher(d) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+};
+
+struct VectorEqual
+{
+    bool operator()(const std::vector<double> &lhs, const std::vector<double> &rhs) const
+    {
+        return lhs == rhs;
+    }
+};
+
 void coo_matmul(double *A_data, int A_rows, int A_cols,
                 double *B_data, int B_rows, int B_cols,
                 double **C_data, int *C_rows, int *C_cols);
+
+void coo_bmm(const double *A_data, int A_rows, int A_cols,
+             const double *B_data, int B_rows, int B_cols,
+             double **C_data, int *C_rows, int *C_cols);
 
 #endif // COO_MATMUL_H
