@@ -6,11 +6,8 @@
 #include <vector>
 #include <tuple>
 #include <algorithm>
-#include <cmath>
 #include <iostream>
-#include <cassert>
 #include <time.h>
-#include <functional>
 
 // Define a custom hash function for std::pair<int, int>
 struct PairHash

@@ -69,9 +69,7 @@ class Coo_matrix:
     # def coo_bmm_test(cls, A: "Coo_matrix", B: "Coo_matrix"):
     #     cols_to_consider_A = A[:, :-3]
     #     cols_to_consider_B = B[:, :-3]
-    #     unique_values = [np.unique(cols_to_consider_A[:, i])
-    #                      for i in range(cols_to_consider_A.shape[1])]
-    #     combinations = list(product(*unique_values))
+    #     combinations = np.unique(cols_to_consider_A[:, 0])
 
     #     # time = 0
     #     # tic = timer()
@@ -81,8 +79,8 @@ class Coo_matrix:
 
     #     AB_data = []
     #     for comb in combinations:
-    #         A_masked = A[np.all(cols_to_consider_A == comb, axis=1), :]
-    #         B_masked = B[np.all(cols_to_consider_B == comb, axis=1), :]
+    #         A_masked = A.data[A[:, 0] == comb]
+    #         B_masked = B.data[B[:, 0] == comb]
 
     #         A_test = Coo_matrix(A_masked[:, -3:], A.shape[-2:])
     #         B_test = Coo_matrix(B_masked[:, -3:], B.shape[-2:])
@@ -91,7 +89,7 @@ class Coo_matrix:
 
     #         # Append combination to the results
     #         comb_with_values = np.hstack(
-    #             [np.full((AB.data.shape[0], len(comb)), comb), AB.data])
+    #             [np.full((AB.data.shape[0], 1), comb), AB.data])
 
     #         AB_data.append(comb_with_values)
 
