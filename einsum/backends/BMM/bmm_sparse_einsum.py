@@ -1,11 +1,8 @@
 import numpy as np
-import os
 import sesum.sr as sr
-import sys
 from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
-
 
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
     if eq:
@@ -118,9 +115,14 @@ def clean_einsum_notation(einsum_notation: str):
     return input_idc, output_idc
 
 
-def sparse_einsum(einsum_notation: str, arrays: np.ndarray):
+def sparse_einsum(einsum_notation: str, arrays: Coo_matrix):
     in_out_idc = clean_einsum_notation(einsum_notation)
 
+    if len(arrays) == 1:
+        arrays[0].single_einsum(einsum_notation)
+
+        return arrays[0]
+    
     # Get Sesum contraction path
     path, flops_log10, size_log2 = sr.compute_path(
         einsum_notation,
@@ -134,7 +136,6 @@ def sparse_einsum(einsum_notation: str, arrays: np.ndarray):
         is_outer_optimal=False,
         threshold_optimal=12
     )
-
     cl = generate_contraction_list(in_out_idc, path)
     res = calculate_contractions(cl, arrays)
 
