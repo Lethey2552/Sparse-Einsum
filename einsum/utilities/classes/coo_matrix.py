@@ -1,11 +1,9 @@
 import numpy as np
-from itertools import product
 from timeit import default_timer as timer
 from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
-    c_coo_matmul,
-    c_coo_bmm
+    c_coo_bmm,
+    c_single_einsum,
 )
-
 
 class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
@@ -33,8 +31,8 @@ class Coo_matrix:
             C_data = np.transpose(np.array([[], [], []]))
         else:
             # Call the Cython function
-            C_data = c_coo_matmul(A.data.flatten(), A.data.shape[0], A.data.shape[1],
-                                  B.data.flatten(), B.data.shape[0], B.data.shape[1])
+            C_data = c_coo_bmm(A.data.flatten(), A.data.shape[0], A.data.shape[1],
+                                B.data.flatten(), B.data.shape[0], B.data.shape[1])
 
         AB_shape = (A.shape[0], B.shape[1])
 
@@ -138,34 +136,41 @@ class Coo_matrix:
     def __str__(self):
         return np.array2string(self.data)
 
+    # def single_einsum_test(self, notation: str):
+    #     input_notation, output_notation = notation.split('->')
+
+    #     # Ensure that the notation is for a single input tensor
+    #     assert ',' not in input_notation
+
+    #     indices = {k: i for i, k in enumerate(input_notation)}
+    #     output_indices = [indices[idx]
+    #                       for idx in output_notation if idx in indices]
+
+    #     result_dict = {}
+
+    #     for row in self.data:
+    #         key = tuple(row[idx] for idx in output_indices)
+    #         if key in result_dict:
+    #             result_dict[key] += row[-1]
+    #         else:
+    #             result_dict[key] = row[-1]
+
+    #     self.data = np.array([list(key) + [value]
+    #                          for key, value in result_dict.items() if value != 0])
+
+    #     # Adjust shape
+    #     if self.data.size == 0:
+    #         self.shape = (0,) * len(output_notation)
+    #     else:
+    #         self.shape = tuple(int(max(self.data[:, i]) + 1)
+    #                            for i in range(self.data.shape[1] - 1))
+
     def single_einsum(self, notation: str):
-        input_notation, output_notation = notation.split('->')
-
-        # Ensure that the notation is for a single input tensor
-        assert ',' not in input_notation
-
-        indices = {k: i for i, k in enumerate(input_notation)}
-        output_indices = [indices[idx]
-                          for idx in output_notation if idx in indices]
-
-        result_dict = {}
-
-        for row in self.data:
-            key = tuple(row[idx] for idx in output_indices)
-            if key in result_dict:
-                result_dict[key] += row[-1]
-            else:
-                result_dict[key] = row[-1]
-
-        self.data = np.array([list(key) + [value]
-                             for key, value in result_dict.items() if value != 0])
-
-        # Adjust shape
-        if self.data.size == 0:
-            self.shape = (0,) * len(output_notation)
-        else:
-            self.shape = tuple(int(max(self.data[:, i]) + 1)
-                               for i in range(self.data.shape[1] - 1))
+        self.data, self.shape = c_single_einsum(self.data.flatten(),
+                                 self.data.shape[0],
+                                 self.data.shape[1],
+                                 notation.encode('utf-8')
+        )
 
     def reshape(self, new_shape):
         if np.prod(self.shape) != np.prod(new_shape):

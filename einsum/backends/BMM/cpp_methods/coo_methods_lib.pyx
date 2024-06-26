@@ -5,36 +5,41 @@
 # cython: cplus = 14
 
 import numpy as np
-from timeit import default_timer as timer
 cimport numpy as np
-from libc.stdint cimport *
+from cython cimport boundscheck, wraparound
 
 cdef extern from "coo_methods.h":
-    void coo_matmul(double* A_data, int A_rows, int A_cols,
-                    double* B_data, int B_rows, int B_cols,
-                    double** C_data, int* C_rows, int* C_cols);
     void coo_bmm(const double* A_data, int A_rows, int A_cols,
-                     const double* B_data, int B_rows, int B_cols,
-                     double** C_data, int* C_rows, int* C_cols);
+                 const double* B_data, int B_rows, int B_cols,
+                 double** C_data, int* C_rows, int* C_cols);
+    void single_einsum(const double *data, int rows, int cols, const char *notation,
+                   double **result_data, int *result_rows, int *result_cols,
+                   int **shape, int *shape_size);
 
-def c_coo_matmul(double[:] A_data, int A_rows, int A_cols,
-                 double[:] B_data, int B_rows, int B_cols) -> np.ndarray:
-    cdef double* A_data_ptr = &A_data[0]
-    cdef double* B_data_ptr = &B_data[0]
-    cdef double* C_data_ptr
-    cdef int C_rows, C_cols
+@boundscheck(False)
+@wraparound(False)
+def c_single_einsum(double[:] data, int rows, int cols, bytes notation):
+    cdef const double* data_ptr = &data[0]
+    cdef double *result_data
+    cdef int result_rows, result_cols
+    cdef int *shape = NULL
+    cdef int shape_size
 
-    coo_matmul(A_data_ptr, A_rows, A_cols, B_data_ptr, B_rows, B_cols, &C_data_ptr, &C_rows, &C_cols)
+    single_einsum(data_ptr, rows, cols, notation, &result_data, &result_rows, &result_cols, &shape, &shape_size)
 
-    # Convert C_data_ptr to a numpy array
-    cdef np.ndarray[np.double_t, ndim=2] C_data = np.zeros((C_rows, C_cols), dtype=np.float64)
+    # Use the NumPy C-API to create an array from the C pointer
+    cdef np.npy_intp dims[2]
+    dims[0] = result_rows
+    dims[1] = result_cols
+    result = np.PyArray_SimpleNewFromData(2, dims, np.NPY_DOUBLE, result_data)
 
-    for i in range(C_rows):
-        for j in range(C_cols):
-            C_data[i, j] = C_data_ptr[i * C_cols + j]
+    # Convert shape array to a Python tuple
+    shape_tuple = tuple(shape[i] for i in range(shape_size))
 
-    return C_data
+    return result, shape_tuple
 
+@boundscheck(False)
+@wraparound(False)
 def c_coo_bmm(double[:] A_data, int A_rows, int A_cols,
               double[:] B_data, int B_rows, int B_cols) -> np.ndarray:
     cdef const double* A_data_ptr = &A_data[0]
@@ -42,19 +47,13 @@ def c_coo_bmm(double[:] A_data, int A_rows, int A_cols,
     cdef double* C_data_ptr
     cdef int C_rows, C_cols
 
-    time = 0
-    tic = timer()
     coo_bmm(A_data_ptr, A_rows, A_cols, B_data_ptr, B_rows, B_cols, &C_data_ptr, &C_rows, &C_cols)
-    toc = timer()
-    time += toc - tic
-    print(f"Measured result: {time}s")
 
-    # Convert C_data_ptr to a numpy array
-    cdef np.ndarray[np.double_t, ndim=2] C_data = np.zeros((C_rows, C_cols), dtype=np.float64)
+    # Use the NumPy C-API to create an array from the C pointer
+    cdef np.npy_intp dims[2]
+    dims[0] = C_rows
+    dims[1] = C_cols
+    result = np.PyArray_SimpleNewFromData(2, dims, np.NPY_DOUBLE, C_data_ptr)
 
-    for i in range(C_rows):
-        for j in range(C_cols):
-            C_data[i, j] = C_data_ptr[i * C_cols + j]
-
-    return C_data
+    return result
     
