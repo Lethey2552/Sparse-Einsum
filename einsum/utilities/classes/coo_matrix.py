@@ -169,6 +169,7 @@ class Coo_matrix:
         self.data, self.shape = c_single_einsum(self.data.flatten(),
                                  self.data.shape[0],
                                  self.data.shape[1],
+                                 np.array(self.shape),
                                  notation.encode('utf-8')
         )
 
