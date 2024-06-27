@@ -12,20 +12,21 @@ cdef extern from "coo_methods.h":
     void coo_bmm(const double* A_data, int A_rows, int A_cols,
                  const double* B_data, int B_rows, int B_cols,
                  double** C_data, int* C_rows, int* C_cols);
-    void single_einsum(const double *data, int rows, int cols, const char *notation,
+    void single_einsum(const double *data, int rows, int cols, const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
-                   int **shape, int *shape_size);
+                   int **new_shape, int *new_shape_size);
 
 @boundscheck(False)
 @wraparound(False)
-def c_single_einsum(double[:] data, int rows, int cols, bytes notation):
+def c_single_einsum(double[:] data, int rows, int cols, int[:] shape, bytes notation):
     cdef const double* data_ptr = &data[0]
+    cdef const int* shape_ptr = &shape[0]
     cdef double *result_data
     cdef int result_rows, result_cols
-    cdef int *shape = NULL
-    cdef int shape_size
+    cdef int *new_shape = NULL
+    cdef int new_shape_size
 
-    single_einsum(data_ptr, rows, cols, notation, &result_data, &result_rows, &result_cols, &shape, &shape_size)
+    single_einsum(data_ptr, rows, cols, notation, shape_ptr, &result_data, &result_rows, &result_cols, &new_shape, &new_shape_size)
 
     # Use the NumPy C-API to create an array from the C pointer
     cdef np.npy_intp dims[2]
@@ -34,7 +35,7 @@ def c_single_einsum(double[:] data, int rows, int cols, bytes notation):
     result = np.PyArray_SimpleNewFromData(2, dims, np.NPY_DOUBLE, result_data)
 
     # Convert shape array to a Python tuple
-    shape_tuple = tuple(shape[i] for i in range(shape_size))
+    shape_tuple = tuple(new_shape[i] for i in range(new_shape_size))
 
     return result, shape_tuple
 

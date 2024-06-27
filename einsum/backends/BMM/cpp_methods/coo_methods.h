@@ -54,14 +54,21 @@ struct VectorEqual {
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
              double **C_data, int *C_rows, int *C_cols);
-void single_einsum(const double *data, int rows, int cols, const char *notation,
+void single_einsum(const double *data, int rows, int cols, const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
-                   int **shape, int *shape_size);
+                   int **new_shape, int *new_shape_size);
 
-void sum_over_trivial_indices(const double *data, int rows, int cols,
-                              const std::string &input_notation, const std::string &output_notation,
-                              std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map);
-void calculate_diagonals(const std::string &input_notation, const std::vector<char> &diagonal_indices,
-                         std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map);
+std::unordered_map<char, std::vector<int>> find_positions(const std::string &str);
+void find_sum_indices(const std::string& input_notation, const std::string& output_notation,
+                      std::vector<int>& sum_indices);
+void find_diag_indices(std::string& input_notation, std::vector<int>& diag_indices);
+void find_perm_indices(const std::string& input_notation, const std::string& output_notation,
+                       std::vector<int>& perm_indices);
+void sum_over_trivial_indices(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
+                              const std::vector<int> &sum_indices);
+void remove_non_diag_indices(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
+                             const std::vector<int> &diag_indices);
+void apply_permutation(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
+                       const std::vector<int> &perm_indices);
 
 #endif // COO_MATMUL_H
