@@ -6,8 +6,8 @@ from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
 
 if __name__ == "__main__":
-    print_results = True
-    run_np = False
+    print_results = False
+    run_np = True
 
     # einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
 
@@ -21,9 +21,9 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    einsum_notation = "bjii->jii"
+    einsum_notation = "ijklmno->i"
 
-    A = sparse.random((2, 2, 2, 2), random_state=0, density=1.0, idx_dtype=int)
+    A = sparse.random((2, 3, 4, 7, 3, 8, 2), density=1.0, idx_dtype=int)
 
     sparse_arrays = [A]
     dense_arrays = []
@@ -31,8 +31,6 @@ if __name__ == "__main__":
 
     for i in sparse_arrays:
         dense_arrays.append(sparse.asnumpy(i))
-
-    print(dense_arrays[0])
 
     for i in dense_arrays:
         sparse_einsum_arrays.append(Coo_matrix.coo_from_standard(i))
