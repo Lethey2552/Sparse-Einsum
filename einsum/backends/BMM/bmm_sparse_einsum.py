@@ -4,6 +4,7 @@ from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
 
+
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
     if eq:
         mat.single_einsum(eq)
@@ -47,6 +48,9 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
             arrays[-1].reshape(shape_out)
         if perm_AB is not None:
             arrays[-1].swap_cols(perm_AB)
+
+        if type(arrays[-1].shape) != tuple:
+            arrays[-1].shape = tuple(arrays[-1].shape)
 
     return arrays[0]
 
@@ -122,7 +126,7 @@ def sparse_einsum(einsum_notation: str, arrays: Coo_matrix):
         arrays[0].single_einsum(einsum_notation)
 
         return arrays[0]
-    
+
     # Get Sesum contraction path
     path, flops_log10, size_log2 = sr.compute_path(
         einsum_notation,
