@@ -5,6 +5,7 @@ from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
     c_single_einsum,
 )
 
+
 class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
         self.data = data
@@ -32,7 +33,7 @@ class Coo_matrix:
         else:
             # Call the Cython function
             C_data = c_coo_bmm(A.data.flatten(), A.data.shape[0], A.data.shape[1],
-                                B.data.flatten(), B.data.shape[0], B.data.shape[1])
+                               B.data.flatten(), B.data.shape[0], B.data.shape[1])
 
         AB_shape = (A.shape[0], B.shape[1])
 
@@ -167,11 +168,11 @@ class Coo_matrix:
 
     def single_einsum(self, notation: str):
         self.data, self.shape = c_single_einsum(self.data.flatten(),
-                                 self.data.shape[0],
-                                 self.data.shape[1],
-                                 np.array(self.shape),
-                                 notation.encode('utf-8')
-        )
+                                                self.data.shape[0],
+                                                self.data.shape[1],
+                                                np.array(self.shape),
+                                                notation.encode('utf-8')
+                                                )
 
     def reshape(self, new_shape):
         if np.prod(self.shape) != np.prod(new_shape):
