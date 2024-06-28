@@ -7,7 +7,7 @@ from timeit import default_timer as timer
 
 if __name__ == "__main__":
     print_results = False
-    run_np = True
+    run_np = False
 
     # einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
 
@@ -21,11 +21,21 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    einsum_notation = "ijklmno->i"
+    # einsum_notation = "ijkl,ai,bj,ck,dl->abcd"
 
-    A = sparse.random((2, 3, 4, 7, 3, 8, 2), density=1.0, idx_dtype=int)
+    # A = sparse.random((2, 3, 4, 5), density=1.0, idx_dtype=int)
+    # B = sparse.random((6, 2), density=1.0, idx_dtype=int)
+    # C = sparse.random((7, 3), density=1.0, idx_dtype=int)
+    # D = sparse.random((8, 4), density=1.0, idx_dtype=int)
+    # E = sparse.random((2, 5), density=1.0, idx_dtype=int)
 
-    sparse_arrays = [A]
+    einsum_notation = "i,ij,j->"
+
+    A = sparse.random((2,), density=1.0, idx_dtype=int)
+    B = sparse.random((2, 3), density=1.0, idx_dtype=int)
+    C = sparse.random((3,), density=1.0, idx_dtype=int)
+
+    sparse_arrays = [A, B, C]
     dense_arrays = []
     sparse_einsum_arrays = []
 
@@ -58,7 +68,8 @@ if __name__ == "__main__":
 
     sparse_einsum_time = toc - tic
 
-    print(f"Shapes: Numpy - {numpy_res.shape if run_np else 'None'},    Sparse - {sparse_res.shape},    Sparse Einsum - {sparse_einsum_res.shape}")
+    print(
+        f"Shapes: Numpy - {numpy_res.shape if run_np else 'None'},    Sparse - {sparse_res.shape},    Sparse Einsum - {sparse_einsum_res.shape}")
     print(f"""Results are correct:\n    Sparse Einsum - Sparse: {compare_matrices(sparse_einsum_res, sparse.asnumpy(sparse_res))}
     Sparse Einsum - Numpy: {compare_matrices(sparse_einsum_res, numpy_res) if run_np else 'None'}""")
 
