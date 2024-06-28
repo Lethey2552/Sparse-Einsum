@@ -2,6 +2,7 @@ import numpy as np
 import math
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 
+
 def find_idc_types(input_idc, output_idc, shape_left, shape_right):
     batch_idc = []          # A, B, O
     con_idc = []            # A, B, .
@@ -65,10 +66,14 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
         perm_AB = None
 
     # Get new shapes for left, right and output
-    if batch_idc:
+    if batch_idc or keep_left or keep_right or con_idc:
         groups_left = (batch_idc, keep_left, con_idc)
         groups_right = (batch_idc, con_idc, keep_right)
         groups_out = (batch_idc, keep_left, keep_right)
+    else:
+        groups_left = None
+        groups_right = None
+        groups_out = None
 
     if any(len(group) != 1 for group in groups_left):
         shape_left = tuple(
@@ -88,6 +93,8 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
         shape_out = tuple(
             sizes[i] for i_group in groups_out for i in i_group
         )
+        if len(shape_out) == 0:
+            shape_out = (1,)
     else:
         shape_out = None
 
@@ -97,4 +104,4 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
 def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
     mat_a_standard = mat_a.coo_to_standard()
 
-    return(np.allclose(mat_a_standard, mat_b))
+    return (np.allclose(mat_a_standard, mat_b))
