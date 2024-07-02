@@ -1,6 +1,10 @@
 #include "coo_methods.h"
 
 double cpu_time_used = 0;
+double diagonal_time = 0;
+double sum_time = 0;
+double permute_time = 0;
+double sort_time = 0;
 
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
@@ -123,52 +127,54 @@ void coo_bmm(const double *A_data, int A_rows, int A_cols,
     }
 }
 
-// Helper function to find the positions of each character in a string
-std::unordered_map<char, std::vector<int>> find_positions(const std::string &str)
+// Function to find sum indices and update input_chars
+void find_sum_indices(std::vector<std::string> &input_chars, const std::vector<std::string> &output_chars,
+                      std::vector<int> &sum_indices, std::vector<int> &shape)
 {
-    std::unordered_map<char, std::vector<int>> positions;
-    for (int i = 0; i < str.size(); ++i)
-    {
-        positions[str[i]].push_back(i);
-    }
-    return positions;
-}
-
-// Function to find sum indices and update input_notation
-void find_sum_indices(std::string &input_notation, const std::string &output_notation,
-                      std::vector<int> &sum_indices)
-{
-    std::unordered_map<char, int> input_count;
-    for (char idx : input_notation)
+    std::unordered_map<std::string, int> input_count;
+    for (const auto &idx : input_chars)
     {
         input_count[idx]++;
     }
 
-    sum_indices.clear(); // Clear existing sum indices
+    std::unordered_set<std::string> output_set(output_chars.begin(), output_chars.end());
 
-    // Identify sum indices and update input_notation
-    for (int i = input_notation.size() - 1; i >= 0; --i)
+    sum_indices.clear();
+    sum_indices.reserve(input_chars.size());
+
+    std::vector<std::string> new_input_chars;
+    new_input_chars.reserve(input_chars.size());
+    std::vector<int> new_shape;
+    new_shape.reserve(shape.size());
+
+    for (int i = 0; i < input_chars.size(); ++i)
     {
-        char idx = input_notation[i];
-
-        if (input_count[idx] == 1 && output_notation.find(idx) == std::string::npos)
+        const auto &idx = input_chars[i];
+        if (input_count[idx] == 1 && output_set.find(idx) == output_set.end())
         {
             sum_indices.push_back(i);
-            input_notation.erase(i, 1); // Remove character at index i from input_notation
+        }
+        else
+        {
+            new_input_chars.push_back(idx);
+            new_shape.push_back(shape[i]);
         }
     }
+
+    input_chars = std::move(new_input_chars);
+    shape = std::move(new_shape);
 }
 
-// Function to find diagonal indices and update input_notation
-void find_diag_indices(std::string &input_notation, std::vector<int> &diag_indices)
+// Function to find diagonal indices in UTF-8 characters notation
+void find_diag_indices(std::vector<std::string> &input_chars, std::vector<int> &diag_indices, std::vector<int> &shape)
 {
-    std::unordered_map<char, std::vector<int>> positions;
-    for (int i = 0; i < input_notation.size(); ++i)
+    std::unordered_map<std::string, std::vector<int>> positions;
+    for (int i = 0; i < input_chars.size(); ++i)
     {
-        positions[input_notation[i]].push_back(i);
+        positions[input_chars[i]].push_back(i);
     }
 
-    diag_indices.clear(); // Clear diag_indices to avoid duplicate entries
+    diag_indices.clear();
 
     for (const auto &entry : positions)
     {
@@ -176,52 +182,65 @@ void find_diag_indices(std::string &input_notation, std::vector<int> &diag_indic
         {
             diag_indices.insert(diag_indices.end(), entry.second.begin(), entry.second.end());
 
-            // Remove indices from input_notation
+            // Remove indices from input_chars and update shape
             for (size_t i = entry.second.size() - 1; i > 0; --i)
             {
-                input_notation.erase(entry.second[i], 1);
+                input_chars.erase(input_chars.begin() + entry.second[i]);
+                shape.erase(shape.begin() + entry.second[i]);
             }
         }
     }
 }
 
-// Function to find permutation indices
-void find_perm_indices(const std::string &input_notation, const std::string &output_notation,
-                       std::vector<int> &perm_indices)
+// Function to find permutation indices with UTF-8 characters
+void find_perm_indices(const std::vector<std::string> &input_chars, const std::vector<std::string> &output_chars,
+                       std::vector<int> &perm_indices, std::vector<int> &shape)
 {
-    // Map to store indices of output_notation
-    std::unordered_map<char, int> output_indices;
-    for (int i = 0; i < output_notation.size(); ++i)
+    if (input_chars == output_chars)
     {
-        output_indices[output_notation[i]] = i;
+        return;
+    }
+
+    // Map to store indices of output_chars
+    std::unordered_map<std::string, int> output_indices;
+    for (int i = 0; i < output_chars.size(); ++i)
+    {
+        output_indices[output_chars[i]] = i;
     }
 
     perm_indices.clear();
-    for (int i = 0; i < input_notation.size(); ++i)
+    std::vector<int> new_shape(output_chars.size());
+
+    for (int i = 0; i < input_chars.size(); ++i)
     {
-        char idx = input_notation[i];
+        const std::string &idx = input_chars[i];
         if (output_indices.find(idx) != output_indices.end())
         {
-            perm_indices.push_back(output_indices[idx]);
+            int permuted_index = output_indices[idx];
+            perm_indices.push_back(permuted_index);
+            new_shape[permuted_index] = shape[i];
         }
     }
+
+    shape = std::move(new_shape); // Assign the permuted shape back
 }
 
-void sum_over_trivial_indices(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
+void sum_over_trivial_indices(std::unordered_map<std::vector<int>, double, ArrayHash> &result_map,
                               const std::vector<int> &sum_indices)
 {
-
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> new_result_map;
+    std::unordered_set<int> sum_indices_set(sum_indices.begin(), sum_indices.end());
+    std::unordered_map<std::vector<int>, double, ArrayHash> new_result_map;
 
     for (const auto &entry : result_map)
     {
         const std::vector<int> &key = entry.first;
         double value = entry.second;
         std::vector<int> new_key;
+        new_key.reserve(key.size() - sum_indices.size());
 
         for (size_t i = 0; i < key.size(); ++i)
         {
-            if (std::find(sum_indices.begin(), sum_indices.end(), i) == sum_indices.end())
+            if (sum_indices_set.find(i) == sum_indices_set.end())
             {
                 new_key.push_back(key[i]);
             }
@@ -230,16 +249,15 @@ void sum_over_trivial_indices(std::unordered_map<std::vector<int>, double, Vecto
         new_result_map[new_key] += value;
     }
 
-    // Assign new_result_map to result_map
     result_map = std::move(new_result_map);
 }
 
-void remove_non_diag_indices(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
+void remove_non_diag_indices(std::unordered_map<std::vector<int>, double, ArrayHash> &result_map,
                              const std::vector<int> &diag_indices)
 {
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> new_result_map;
+    std::unordered_set<int> diag_indices_set(diag_indices.begin(), diag_indices.end());
+    std::unordered_map<std::vector<int>, double, ArrayHash> new_result_map;
 
-    // Iterate over each entry in result_map
     for (const auto &entry : result_map)
     {
         const std::vector<int> &key = entry.first;
@@ -259,10 +277,12 @@ void remove_non_diag_indices(std::unordered_map<std::vector<int>, double, Vector
         if (is_valid_diagonal)
         {
             std::vector<int> new_key;
+            new_key.reserve(key.size() - 1);
+
             bool removed_last_diag = false;
             for (int i = key.size() - 1; i >= 0; --i)
             {
-                if (!removed_last_diag && std::find(diag_indices.begin(), diag_indices.end(), i) != diag_indices.end())
+                if (!removed_last_diag && diag_indices_set.find(i) != diag_indices_set.end())
                 {
                     removed_last_diag = true;
                 }
@@ -271,19 +291,18 @@ void remove_non_diag_indices(std::unordered_map<std::vector<int>, double, Vector
                     new_key.push_back(key[i]);
                 }
             }
-            std::reverse(new_key.begin(), new_key.end()); // Reverse new_key to correct order
-            new_result_map[new_key] = entry.second;
+            std::reverse(new_key.begin(), new_key.end());
+            new_result_map[std::move(new_key)] = entry.second;
         }
     }
 
-    // Assign new_result_map to result_map
     result_map = std::move(new_result_map);
 }
 
-void apply_permutation(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
+void apply_permutation(std::unordered_map<std::vector<int>, double, ArrayHash> &result_map,
                        const std::vector<int> &perm_indices)
 {
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> new_result_map;
+    std::unordered_map<std::vector<int>, double, ArrayHash> new_result_map;
 
     for (const auto &entry : result_map)
     {
@@ -302,45 +321,202 @@ void apply_permutation(std::unordered_map<std::vector<int>, double, VectorHash, 
     result_map = std::move(new_result_map);
 }
 
-void result_map_to_data(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
-                        std::string &output_notation,
-                        double **result_data, int *result_rows, int *result_cols,
-                        int **new_shape, int *new_shape_size)
+// Function to iterate through UTF-8 encoded string
+std::vector<std::string> split_utf8(const std::string &utf8_str)
 {
-    // Convert for sorting
-    std::vector<std::tuple<std::vector<int>, double>> sorted_results;
-    sorted_results.reserve(result_map.size());
-    for (auto &entry : result_map)
+    std::vector<std::string> utf8_chars;
+    size_t i = 0;
+
+    while (i < utf8_str.size())
     {
-        sorted_results.emplace_back(std::move(entry.first), entry.second);
+        unsigned char c = utf8_str[i];
+        size_t char_len = 1;
+
+        if ((c & 0x80) == 0x00)
+        {
+            char_len = 1;
+        }
+        else if ((c & 0xE0) == 0xC0)
+        {
+            char_len = 2;
+        }
+        else if ((c & 0xF0) == 0xE0)
+        {
+            char_len = 3;
+        }
+        else if ((c & 0xF8) == 0xF0)
+        {
+            char_len = 4;
+        }
+
+        utf8_chars.push_back(utf8_str.substr(i, char_len));
+        i += char_len;
     }
 
-    std::sort(sorted_results.begin(), sorted_results.end());
+    return utf8_chars;
+}
 
-    // Prepare the output data
-    *result_rows = sorted_results.size();
-    *result_cols = output_notation.size() + 1; // +1 for the value column
-    *result_data = new double[*result_rows * *result_cols];
+void fill_dimensions_and_entries(const double *data, int rows, int cols,
+                                 std::vector<int> &dimensions, std::vector<Entry> &entries)
+{
+    dimensions.reserve(rows * (cols - 1));
 
-    // Initialize shape array
-    *new_shape_size = output_notation.size();
-    *new_shape = new int[*new_shape_size]();
-
-    int r = 0;
-    for (const auto &entry : sorted_results)
+    for (int i = 0; i < rows; ++i)
     {
-        for (size_t c = 0; c < std::get<0>(entry).size(); ++c)
+        Entry entry;
+        entry.offset = dimensions.size(); // Offset before adding new elements
+        entry.num_idx = cols - 1;
+
+        // Fill dimensions vector
+        for (int j = 0; j < cols - 1; ++j)
         {
-            int value = std::get<0>(entry)[c] + 1;
-            (*result_data)[r * *result_cols + c] = value - 1;
-            if (value > (*new_shape)[c])
+            dimensions.push_back(static_cast<int>(data[i * cols + j]));
+        }
+
+        entry.value = data[i * cols + cols - 1];
+        entries.push_back(entry);
+    }
+}
+
+void remove_non_diag_indices_test(std::vector<int> &dimensions, std::vector<Entry> &entries,
+                                  const std::vector<int> &diag_indices, int cols)
+{
+    std::unordered_set<int> diag_indices_set(diag_indices.begin(), diag_indices.end());
+    std::vector<Entry> new_entries;
+    std::vector<int> new_dimensions;
+    new_dimensions.reserve(dimensions.size()); // Reserve space based on the original dimensions
+
+    // Iterate over existing entries
+    for (const auto &entry : entries)
+    {
+        int offset = entry.offset;
+        int num_idx = entry.num_idx;
+        bool is_valid_diagonal = true;
+
+        // Check if all indices in diag_indices have the same value in the dimensions vector
+        for (size_t i = 1; i < diag_indices.size(); ++i)
+        {
+            if (dimensions[offset + diag_indices[i]] != dimensions[offset + diag_indices[0]])
             {
-                (*new_shape)[c] = value;
+                is_valid_diagonal = false;
+                break;
             }
         }
-        (*result_data)[r * *result_cols + output_notation.size()] = std::get<1>(entry);
-        ++r;
+
+        if (is_valid_diagonal)
+        {
+            Entry new_entry;
+            new_entry.offset = new_dimensions.size();
+            new_entry.num_idx = num_idx - 1;
+            new_entry.value = entry.value;
+
+            // Copy the dimensions except the last diag_index
+            for (int i = 0; i < num_idx; ++i)
+            {
+                if (i != diag_indices.back())
+                {
+                    new_dimensions.push_back(dimensions[offset + i]);
+                }
+            }
+
+            new_entries.push_back(new_entry);
+        }
     }
+
+    // Update the original dimensions and entries with new data
+    dimensions = std::move(new_dimensions);
+    entries = std::move(new_entries);
+}
+
+void apply_permutation_test(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &perm_indices)
+{
+    // Iterate through entries and apply permutation
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+        int offset = entries[i].offset;
+        int num_idx = entries[i].num_idx;
+
+        std::vector<int> new_dimensions(num_idx);
+
+        // Apply permutation to create new_dimensions
+        for (size_t j = 0; j < perm_indices.size(); ++j)
+        {
+            new_dimensions[perm_indices[j]] = dimensions[offset + j];
+        }
+
+        // Update dimensions with new_dimensions
+        for (size_t j = 0; j < perm_indices.size(); ++j)
+        {
+            dimensions[offset + j] = new_dimensions[j];
+        }
+    }
+}
+
+void sum_over_trivial_indices_test(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &sum_indices, int cols)
+{
+    std::unordered_set<int> sum_indices_set(sum_indices.begin(), sum_indices.end());
+    std::vector<Entry> new_entries;
+    std::vector<int> new_dimensions;
+    std::vector<int> temp_key;
+
+    // Hash map to quickly find existing keys
+    std::unordered_map<std::vector<int>, int, ArrayHash> key_to_entry_index;
+
+    // Reserve space to avoid repeated reallocations
+    new_dimensions.reserve(dimensions.size());
+
+    // Iterate over entries
+    for (const auto &entry : entries)
+    {
+        int offset = entry.offset;
+        int num_idx = entry.num_idx;
+        double value = entry.value;
+
+        // Construct new key excluding sum indices
+        temp_key.clear();
+        for (int i = 0; i < num_idx; ++i)
+        {
+            if (sum_indices_set.find(i) == sum_indices_set.end())
+            {
+                temp_key.push_back(dimensions[offset + i]);
+            }
+        }
+
+        // Check if the new key already exists
+        auto it = key_to_entry_index.find(temp_key);
+        if (it != key_to_entry_index.end())
+        {
+            // Key found, update the value
+            new_entries[it->second].value += value;
+        }
+        else
+        {
+            // Key not found, create new entry
+            Entry new_entry;
+            new_entry.offset = new_dimensions.size();
+            new_entry.num_idx = temp_key.size();
+            new_entry.value = value;
+
+            // Insert the new key into the hash map
+            key_to_entry_index[temp_key] = new_entries.size();
+
+            // Insert new dimensions and entry
+            new_dimensions.insert(new_dimensions.end(), temp_key.begin(), temp_key.end());
+            new_entries.push_back(new_entry);
+        }
+    }
+
+    // Update original entries and dimensions with new data
+    entries = std::move(new_entries);
+    dimensions = std::move(new_dimensions);
+}
+
+// Helper function to compare entries for sorting
+bool compare_entries(const Entry &a, const Entry &b, const std::vector<int> &dimensions)
+{
+    return std::lexicographical_compare(
+        dimensions.begin() + a.offset, dimensions.begin() + a.offset + a.num_idx,
+        dimensions.begin() + b.offset, dimensions.begin() + b.offset + b.num_idx);
 }
 
 void single_einsum(const double *data, int rows, int cols,
@@ -348,17 +524,12 @@ void single_einsum(const double *data, int rows, int cols,
                    double **result_data, int *result_rows, int *result_cols,
                    int **new_shape, int *new_shape_size)
 {
-
     bool debug = false;
 
     std::string notation_str(notation);
     auto arrow_pos = notation_str.find("->");
     std::string input_notation = notation_str.substr(0, arrow_pos);
     std::string output_notation = notation_str.substr(arrow_pos + 2);
-
-    assert(input_notation.find(',') == std::string::npos);
-
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> result_map;
 
     // Handle equal input and output
     if (input_notation == output_notation)
@@ -378,24 +549,40 @@ void single_einsum(const double *data, int rows, int cols,
         return;
     }
 
-    for (int i = 0; i < rows; ++i)
+    // Split the input and output notation into UTF-8 characters
+    std::vector<std::string> input_chars = split_utf8(input_notation);
+    std::vector<std::string> output_chars = split_utf8(output_notation);
+
+    // Convert shape array to vector for easier manipulation
+    std::vector<int> shape_vec(shape, shape + input_chars.size());
+
+    if (debug)
     {
-        std::vector<int> key;
-        for (int j = 0; j < cols - 1; ++j)
-        {
-            key.push_back(static_cast<int>(data[i * cols + j]));
-        }
-        double value = data[i * cols + cols - 1];
-        result_map[key] += value;
+        std::cout << "UTF-8 STRINGS:" << std::endl;
+        std::cout << "Input Notation: ";
+        for (const auto &ch : input_chars)
+            std::cout << ch << ", ";
+        std::cout << std::endl;
+        std::cout << "Output Notation: ";
+        for (const auto &ch : output_chars)
+            std::cout << ch << ", ";
+        std::cout << std::endl;
     }
 
+    assert(input_notation.find(',') == std::string::npos);
+
+    std::vector<int> dimensions;
+    std::vector<Entry> entries;
     std::vector<int> sum_indices;
     std::vector<int> diag_indices;
     std::vector<int> perm_indices;
 
     // Handle diagonal indices
-    find_diag_indices(input_notation, diag_indices);
+    find_diag_indices(input_chars, diag_indices, shape_vec);
+    find_sum_indices(input_chars, output_chars, sum_indices, shape_vec);
+    find_perm_indices(input_chars, output_chars, perm_indices, shape_vec);
 
+    // Debug notation changes
     if (debug)
     {
         std::cout << "diag_indices: " << std::endl;
@@ -407,30 +594,6 @@ void single_einsum(const double *data, int rows, int cols,
         std::cout << "New notation: " << input_notation << "\n"
                   << std::endl;
     }
-
-    remove_non_diag_indices(result_map, diag_indices);
-
-    if (debug)
-    {
-        // Print the altered result_map
-        std::cout << "Altered result_map:" << std::endl;
-        for (const auto &entry : result_map)
-        {
-            std::cout << "{";
-            for (size_t i = 0; i < entry.first.size(); ++i)
-            {
-                std::cout << entry.first[i];
-                if (i != entry.first.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "} => " << entry.second << std::endl;
-        }
-    }
-
-    find_sum_indices(input_notation, output_notation, sum_indices);
-
     if (debug)
     {
         std::cout << "Sum indices: " << std::endl;
@@ -442,30 +605,6 @@ void single_einsum(const double *data, int rows, int cols,
         std::cout << "New notation: " << input_notation << "\n"
                   << std::endl;
     }
-
-    sum_over_trivial_indices(result_map, sum_indices);
-
-    if (debug)
-    {
-        // Print the altered result_map
-        std::cout << "Altered result_map:" << std::endl;
-        for (const auto &entry : result_map)
-        {
-            std::cout << "{";
-            for (size_t i = 0; i < entry.first.size(); ++i)
-            {
-                std::cout << entry.first[i];
-                if (i != entry.first.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "} => " << entry.second << std::endl;
-        }
-    }
-
-    find_perm_indices(input_notation, output_notation, perm_indices);
-
     if (debug)
     {
         std::cout << "perm_indices: " << std::endl;
@@ -476,59 +615,78 @@ void single_einsum(const double *data, int rows, int cols,
         std::cout << std::endl;
     }
 
-    apply_permutation(result_map, perm_indices);
+    clock_t start, end;
 
-    if (debug)
+    fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
+
+    start = clock();
+    if (diag_indices.size() != 0)
     {
-        // Print the altered result_map
-        std::cout << "Altered result_map:" << std::endl;
-        for (const auto &entry : result_map)
-        {
-            std::cout << "{";
-            for (size_t i = 0; i < entry.first.size(); ++i)
-            {
-                std::cout << entry.first[i];
-                if (i != entry.first.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "} => " << entry.second << std::endl;
-        }
+        remove_non_diag_indices_test(dimensions, entries, diag_indices, cols);
     }
+    end = clock();
+    diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "diagonal_time: " << diagonal_time << "s" << std::endl;
 
-    // Convert for sorting
-    std::vector<std::tuple<std::vector<int>, double>> sorted_results;
-    sorted_results.reserve(result_map.size());
-    for (auto &entry : result_map)
+    start = clock();
+    if (sum_indices.size() != 0)
     {
-        sorted_results.emplace_back(std::move(entry.first), entry.second);
+        sum_over_trivial_indices_test(dimensions, entries, sum_indices, cols);
     }
+    end = clock();
+    sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "sum_time: " << sum_time << "s" << std::endl;
 
-    std::sort(sorted_results.begin(), sorted_results.end());
+    start = clock();
+    if (perm_indices.size() != 0)
+    {
+        apply_permutation_test(dimensions, entries, perm_indices);
+    }
+    end = clock();
+    permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "permute_time: " << permute_time << "s" << std::endl;
+
+    start = clock();
+    // Sort entries
+    std::sort(entries.begin(), entries.end(),
+              [&dimensions](const Entry &a, const Entry &b)
+              { return compare_entries(a, b, dimensions); });
+    end = clock();
+    sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "sort_time: " << sort_time << "s" << std::endl;
+
+    // std::cout << "Dimensions after removing indices:" << std::endl;
+    // for (Entry entry : entries)
+    // {
+    //     for (int i = 0; i < entry.num_idx; ++i)
+    //     {
+    //         std::cout << dimensions[entry.offset + i] << ", ";
+    //     }
+    //     std::cout << entry.value << std::endl;
+    // }
+    // std::cout << std::endl;
 
     // Prepare the output data
-    *result_rows = sorted_results.size();
-    *result_cols = output_notation.size() + 1; // +1 for the value column
+    *result_rows = entries.size();
+    *result_cols = output_chars.size() + 1;
     *result_data = new double[*result_rows * *result_cols];
 
-    // Initialize shape array
-    *new_shape_size = output_notation.size();
-    *new_shape = new int[*new_shape_size]();
+    *new_shape_size = shape_vec.size();
+    *new_shape = new int[*new_shape_size];
+    for (int i = 0; i < *new_shape_size; ++i)
+    {
+        (*new_shape)[i] = shape_vec[i];
+    }
 
     int r = 0;
-    for (const auto &entry : sorted_results)
+    for (const auto &entry : entries)
     {
-        for (size_t c = 0; c < std::get<0>(entry).size(); ++c)
+        for (size_t c = 0; c < entry.num_idx; ++c)
         {
-            int value = std::get<0>(entry)[c] + 1;
+            int value = dimensions[entry.offset + c] + 1;
             (*result_data)[r * *result_cols + c] = value - 1;
-            if (value > (*new_shape)[c])
-            {
-                (*new_shape)[c] = value;
-            }
         }
-        (*result_data)[r * *result_cols + output_notation.size()] = std::get<1>(entry);
+        (*result_data)[r * *result_cols + output_chars.size()] = entry.value;
         ++r;
     }
 }
