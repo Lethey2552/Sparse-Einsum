@@ -5,6 +5,9 @@ from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
     c_single_einsum,
 )
 
+time = 0
+time_bmm = 0
+
 
 class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
@@ -24,7 +27,7 @@ class Coo_matrix:
 
             coo_mat[-1].append(value)
 
-        return cls(np.transpose(np.array(coo_mat)), mat.shape)
+        return cls(np.transpose(np.array(coo_mat, dtype=np.float64)), mat.shape)
 
     @classmethod
     def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix"):
@@ -101,6 +104,9 @@ class Coo_matrix:
 
     @classmethod
     def coo_bmm(cls, A: "Coo_matrix", B: "Coo_matrix"):
+        global time_bmm
+        tic = timer()
+
         # Ensure the input matrices have compatible dimensions
         if A.shape[-1] != B.shape[-2]:
             raise ValueError(
@@ -113,6 +119,11 @@ class Coo_matrix:
                            B.data.flatten(), B_rows, B_cols)
 
         new_shape = tuple(list(A.shape[:-1]) + list(B.shape[-1:]))
+
+        toc = timer()
+        time_bmm += toc - tic
+        print("BMM TIME: ")
+        print(time_bmm)
 
         return cls(C_data, new_shape)
 
@@ -167,12 +178,19 @@ class Coo_matrix:
     #                            for i in range(self.data.shape[1] - 1))
 
     def single_einsum(self, notation: str):
+        global time
+        tic = timer()
+
         self.data, self.shape = c_single_einsum(self.data.flatten(),
                                                 self.data.shape[0],
                                                 self.data.shape[1],
                                                 np.array(self.shape),
                                                 notation.encode('utf-8')
                                                 )
+        toc = timer()
+        time += toc - tic
+        print("EINSUM TIME: ")
+        print(time)
 
     def reshape(self, new_shape):
         if np.prod(self.shape) != np.prod(new_shape):
