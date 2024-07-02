@@ -1,5 +1,6 @@
 import numpy as np
 import sparse
+import torch
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.utilities.helper_functions import compare_matrices
 from einsum.utilities.classes.coo_matrix import Coo_matrix
@@ -9,11 +10,11 @@ if __name__ == "__main__":
     print_results = False
     run_np = False
 
-    # einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
+    einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
 
-    # A = sparse.random((25, 20, 60, 10, 4, 2), density=0.1, idx_dtype=int)
-    # B = sparse.random((30, 60, 20, 10, 3, 2), density=0.1, idx_dtype=int)
-    # C = sparse.random((40, 20, 60, 10, 7, 3), density=0.1, idx_dtype=int)
+    A = sparse.random((25, 60, 20, 10, 4, 2), density=0.001, idx_dtype=int)
+    B = sparse.random((30, 20, 60, 10, 3, 2), density=0.001, idx_dtype=int)
+    C = sparse.random((40, 60, 20, 10, 7, 3), density=0.001, idx_dtype=int)
 
     # einsum_notation = "abcik,abckr,abcrj->abcij"
 
@@ -21,19 +22,9 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    # einsum_notation = "ijkl,ai,bj,ck,dl->abcd"
+    # einsum_notation = "ii->i"
 
-    # A = sparse.random((2, 3, 4, 5), density=1.0, idx_dtype=int)
-    # B = sparse.random((6, 2), density=1.0, idx_dtype=int)
-    # C = sparse.random((7, 3), density=1.0, idx_dtype=int)
-    # D = sparse.random((8, 4), density=1.0, idx_dtype=int)
-    # E = sparse.random((2, 5), density=1.0, idx_dtype=int)
-
-    einsum_notation = "i,ij,j->"
-
-    A = sparse.random((2,), density=1.0, idx_dtype=int)
-    B = sparse.random((2, 3), density=1.0, idx_dtype=int)
-    C = sparse.random((3,), density=1.0, idx_dtype=int)
+    # A = sparse.random((2, 2), density=1.0, idx_dtype=int)
 
     sparse_arrays = [A, B, C]
     dense_arrays = []
@@ -81,3 +72,13 @@ if __name__ == "__main__":
         print(f"Numpy result:\n{numpy_res if run_np else 'None'}")
         print(f"Sparse result:\n{sparse.asnumpy(sparse_res)}\n")
         print(f"Sparse Einsum result:\n{sparse_einsum_res.coo_to_standard()}")
+
+    torch_array = [torch.from_numpy(i) for i in dense_arrays]
+
+    tic = timer()
+    torch_res = torch.einsum(einsum_notation, *torch_array)
+    toc = timer()
+
+    torch_time = toc - tic
+
+    print(f"Torch time: {torch_time}s")
