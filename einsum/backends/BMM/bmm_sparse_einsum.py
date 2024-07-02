@@ -119,7 +119,26 @@ def clean_einsum_notation(einsum_notation: str):
     return input_idc, output_idc
 
 
-def sparse_einsum(einsum_notation: str, arrays: Coo_matrix):
+def arrays_to_coo(arrays):
+    all_coo = True
+    for array in arrays:
+        if not isinstance(array, Coo_matrix):
+            all_coo = False
+            break
+
+    if not all_coo:
+        tmp = []
+        for array in arrays:
+            if not isinstance(array, Coo_matrix):
+                tmp.append(Coo_matrix.coo_from_standard(array))
+
+        arrays = tmp
+
+    return arrays
+
+
+def sparse_einsum(einsum_notation: str, arrays: list[Coo_matrix], path=None):
+    arrays = arrays_to_coo(arrays)
     in_out_idc = clean_einsum_notation(einsum_notation)
 
     if len(arrays) == 1:
@@ -127,19 +146,21 @@ def sparse_einsum(einsum_notation: str, arrays: Coo_matrix):
 
         return arrays[0]
 
-    # Get Sesum contraction path
-    path, flops_log10, size_log2 = sr.compute_path(
-        einsum_notation,
-        *arrays,
-        seed=0,
-        minimize='size',
-        algorithm="greedy",
-        max_repeats=8,
-        max_time=0.0,
-        progbar=False,
-        is_outer_optimal=False,
-        threshold_optimal=12
-    )
+    if path is None:
+        # Get Sesum contraction path
+        path, flops_log10, size_log2 = sr.compute_path(
+            einsum_notation,
+            *arrays,
+            seed=0,
+            minimize='size',
+            algorithm="greedy",
+            max_repeats=8,
+            max_time=0.0,
+            progbar=False,
+            is_outer_optimal=False,
+            threshold_optimal=12
+        )
+
     cl = generate_contraction_list(in_out_idc, path)
     res = calculate_contractions(cl, arrays)
 
