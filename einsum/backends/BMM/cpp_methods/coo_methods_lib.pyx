@@ -1,8 +1,6 @@
 # windows version (compiler directives for cython compiler)
 # cython: language_level = 3
 # distutils: language = c++
-# distutils: extra_compile_args = /openmp:experimental /O2 /arch:AVX2 /std:c++17
-# cython: cplus = 14
 
 import numpy as np
 cimport numpy as np
