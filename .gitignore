@@ -8,12 +8,16 @@
 *.json
 
 # Latex
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+*.toc
 *.aux
 *.fls
 *.gz
 *.*latexmk
 *.eps
-
 
 # DB
 *.hyper
