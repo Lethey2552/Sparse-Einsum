@@ -12,9 +12,12 @@ if __name__ == "__main__":
 
     einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
 
-    A = sparse.random((25, 60, 20, 10, 4, 2), density=0.001, idx_dtype=int)
-    B = sparse.random((30, 20, 60, 10, 3, 2), density=0.001, idx_dtype=int)
-    C = sparse.random((40, 60, 20, 10, 7, 3), density=0.001, idx_dtype=int)
+    A = sparse.random((25, 20, 20, 10, 4, 2), random_state=0,
+                      density=0.001, idx_dtype=int)
+    B = sparse.random((30, 20, 20, 10, 3, 2), random_state=0,
+                      density=0.001, idx_dtype=int)
+    C = sparse.random((40, 20, 20, 10, 7, 3), random_state=0,
+                      density=0.001, idx_dtype=int)
 
     # einsum_notation = "abcik,abckr,abcrj->abcij"
 
@@ -22,9 +25,9 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    # einsum_notation = "ii->i"
+    # einsum_notation = "abcij->abcij"
 
-    # A = sparse.random((2, 2), density=1.0, idx_dtype=int)
+    # A = sparse.random((2, 2, 2, 2, 2), density=1.0, idx_dtype=int)
 
     sparse_arrays = [A, B, C]
     dense_arrays = []
