@@ -13,6 +13,8 @@ cdef extern from "coo_methods.h":
     void single_einsum(const double *data, int rows, int cols, const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
                    int **new_shape, int *new_shape_size);
+    void reshape(const double* data, int data_rows, int data_cols, const int* shape, const int* new_shape,
+                 double** result_data, int* result_rows, int* result_cols);
 
 @boundscheck(False)
 @wraparound(False)
@@ -30,6 +32,7 @@ def c_single_einsum(double[:] data, int rows, int cols, int[:] shape, bytes nota
     cdef np.npy_intp dims[2]
     dims[0] = result_rows
     dims[1] = result_cols
+
     result = np.PyArray_SimpleNewFromData(2, dims, np.NPY_DOUBLE, result_data)
 
     # Convert shape array to a Python tuple
@@ -56,3 +59,23 @@ def c_coo_bmm(double[:] A_data, int A_rows, int A_cols,
 
     return result
     
+@boundscheck(False)
+@wraparound(False)
+def c_reshape(double[:] data, int data_rows, int data_cols, int[:] shape, int[:] new_shape) -> np.ndarray:
+    # Cast pointers to the beginning of each array
+    cdef double* data_ptr = &data[0]
+    cdef int* shape_ptr = &shape[0]
+    cdef int* new_shape_ptr = &new_shape[0]
+    cdef double *result_data
+    cdef int result_rows, result_cols
+
+    # Call the C++ reshape function
+    reshape(data_ptr, data_rows, data_cols, shape_ptr, new_shape_ptr, &result_data, &result_rows, &result_cols)
+
+    # Use the NumPy C-API to create an array from the C pointer
+    cdef np.npy_intp dims[2]
+    dims[0] = result_rows
+    dims[1] = result_cols
+    result = np.PyArray_SimpleNewFromData(2, dims, np.NPY_DOUBLE, data_ptr)
+
+    return result

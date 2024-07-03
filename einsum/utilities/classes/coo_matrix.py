@@ -3,6 +3,7 @@ from timeit import default_timer as timer
 from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
     c_coo_bmm,
     c_single_einsum,
+    c_reshape,
 )
 
 time = 0
@@ -104,8 +105,8 @@ class Coo_matrix:
 
     @classmethod
     def coo_bmm(cls, A: "Coo_matrix", B: "Coo_matrix"):
-        global time_bmm
-        tic = timer()
+        # global time_bmm
+        # tic = timer()
 
         # Ensure the input matrices have compatible dimensions
         if A.shape[-1] != B.shape[-2]:
@@ -120,10 +121,10 @@ class Coo_matrix:
 
         new_shape = tuple(list(A.shape[:-1]) + list(B.shape[-1:]))
 
-        toc = timer()
-        time_bmm += toc - tic
-        print("BMM TIME: ")
-        print(time_bmm)
+        # toc = timer()
+        # time_bmm += toc - tic
+        # print("BMM TIME: ")
+        # print(time_bmm)
 
         return cls(C_data, new_shape)
 
@@ -178,19 +179,12 @@ class Coo_matrix:
     #                            for i in range(self.data.shape[1] - 1))
 
     def single_einsum(self, notation: str):
-        global time
-        tic = timer()
-
         self.data, self.shape = c_single_einsum(self.data.flatten(),
                                                 self.data.shape[0],
                                                 self.data.shape[1],
                                                 np.array(self.shape),
                                                 notation.encode('utf-8')
                                                 )
-        toc = timer()
-        time += toc - tic
-        print("EINSUM TIME: ")
-        print(time)
 
     def reshape(self, new_shape):
         if np.prod(self.shape) != np.prod(new_shape):
@@ -204,12 +198,19 @@ class Coo_matrix:
         original_flat_indices = np.ravel_multi_index(
             integer_indices.T, self.shape)
         new_indices = np.unravel_index(original_flat_indices, new_shape)
-        new_data = np.hstack(
-            [np.array(new_indices).T, float_values.reshape(-1, 1)])
 
-        # Update the data and shape
-        self.data = new_data
+        self.data = np.column_stack(
+            [np.array(new_indices).T, float_values.reshape(-1, 1)])
         self.shape = new_shape
+
+    # TODO: Finalize reshape function in C++
+    # def reshape(self, new_shape):
+    #     self.data = c_reshape(self.data.flatten(),
+    #                           self.data.shape[0],
+    #                           self.data.shape[1],
+    #                           np.array(self.shape),
+    #                           np.array(new_shape)
+    #                           )
 
     def swap_cols(self, idc: tuple | list):
         if type(idc) == tuple:

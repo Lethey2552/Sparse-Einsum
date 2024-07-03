@@ -519,6 +519,46 @@ bool compare_entries(const Entry &a, const Entry &b, const std::vector<int> &dim
         dimensions.begin() + b.offset, dimensions.begin() + b.offset + b.num_idx);
 }
 
+void parallel_sort(std::vector<Entry> &entries, const std::vector<int> &dimensions)
+{
+    int num_threads = omp_get_max_threads();
+    size_t n = entries.size();
+    size_t chunk_size = (n + num_threads - 1) / num_threads;
+
+// Sort chunks in parallel
+#pragma omp parallel
+    {
+        int tid = omp_get_thread_num();
+        int64_t start = tid * chunk_size;
+        int64_t end = std::min(start + chunk_size, n);
+
+        if (start < end)
+        {
+            std::sort(entries.begin() + start, entries.begin() + end,
+                      [&dimensions](const Entry &a, const Entry &b)
+                      {
+                          return compare_entries(a, b, dimensions);
+                      });
+        }
+    }
+
+    // Merge sorted chunks
+    for (size_t step = chunk_size; step < n; step *= 2)
+    {
+#pragma omp parallel for
+        for (int64_t start = 0; start < n; start += 2 * step)
+        {
+            int64_t mid = std::min(start + step, n);
+            int64_t end = std::min(start + 2 * step, n);
+            std::inplace_merge(entries.begin() + start, entries.begin() + mid, entries.begin() + end,
+                               [&dimensions](const Entry &a, const Entry &b)
+                               {
+                                   return compare_entries(a, b, dimensions);
+                               });
+        }
+    }
+}
+
 void single_einsum(const double *data, int rows, int cols,
                    const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
@@ -615,45 +655,49 @@ void single_einsum(const double *data, int rows, int cols,
         std::cout << std::endl;
     }
 
-    clock_t start, end;
+    // clock_t start, end;
 
     fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
 
-    start = clock();
+    // start = clock();
     if (diag_indices.size() != 0)
     {
         remove_non_diag_indices_test(dimensions, entries, diag_indices, cols);
     }
-    end = clock();
-    diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "diagonal_time: " << diagonal_time << "s" << std::endl;
+    // end = clock();
+    // diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "diagonal_time: " << diagonal_time << "s" << std::endl;
 
-    start = clock();
+    // start = clock();
     if (sum_indices.size() != 0)
     {
         sum_over_trivial_indices_test(dimensions, entries, sum_indices, cols);
     }
-    end = clock();
-    sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "sum_time: " << sum_time << "s" << std::endl;
+    // end = clock();
+    // sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "sum_time: " << sum_time << "s" << std::endl;
 
-    start = clock();
+    // start = clock();
     if (perm_indices.size() != 0)
     {
         apply_permutation_test(dimensions, entries, perm_indices);
     }
-    end = clock();
-    permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "permute_time: " << permute_time << "s" << std::endl;
+    // end = clock();
+    // permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "permute_time: " << permute_time << "s" << std::endl;
 
-    start = clock();
-    // Sort entries
-    std::sort(entries.begin(), entries.end(),
-              [&dimensions](const Entry &a, const Entry &b)
-              { return compare_entries(a, b, dimensions); });
-    end = clock();
-    sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "sort_time: " << sort_time << "s" << std::endl;
+    // start = clock();
+    // // Sort entries
+    // std::sort(entries.begin(), entries.end(),
+    //           [&dimensions](const Entry &a, const Entry &b)
+    //           { return compare_entries(a, b, dimensions); });
+    // // Sort entries in parallel using TBB
+    // tbb::parallel_sort(entries.begin(), entries.end(),
+    //                    [&dimensions](const Entry &a, const Entry &b)
+    //                    { return compare_entries(a, b, dimensions); });
+    // end = clock();
+    // sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "sort_time: " << sort_time << "s" << std::endl;
 
     // std::cout << "Dimensions after removing indices:" << std::endl;
     // for (Entry entry : entries)
@@ -688,5 +732,69 @@ void single_einsum(const double *data, int rows, int cols,
         }
         (*result_data)[r * *result_cols + output_chars.size()] = entry.value;
         ++r;
+    }
+}
+
+// TODO: FINALIZE RESHAPE FUNCTION
+void reshape(const double *data, int data_rows, int data_cols, const int *shape, const int *new_shape,
+             double **result_data, int *result_rows, int *result_cols)
+{
+    // Check if the total number of elements is the same
+    if (std::accumulate(shape, shape + 2, 1, std::multiplies<int>()) !=
+        std::accumulate(new_shape, new_shape + 2, 1, std::multiplies<int>()))
+    {
+        throw std::invalid_argument("The total number of elements must remain the same for reshaping.");
+    }
+
+    // Convert shape and new_shape to vectors
+    std::vector<int> shape_vec(shape, shape + 2);
+    std::vector<int> new_shape_vec(new_shape, new_shape + 2);
+
+    // Initialize COO matrix
+    std::vector<std::vector<int>> coo_indices(data_rows, std::vector<int>(data_cols - 1));
+    std::vector<double> coo_values(data_rows);
+
+    for (int i = 0; i < data_rows; ++i)
+    {
+        for (int j = 0; j < data_cols - 1; ++j)
+        {
+            coo_indices[i][j] = static_cast<int>(data[i * data_cols + j]);
+        }
+        coo_values[i] = data[i * data_cols + data_cols - 1];
+    }
+
+    COOMatrix coo_matrix(coo_indices, coo_values, shape_vec);
+
+    // Flatten, calculate new indices and create new data array
+    std::vector<int> original_flat_indices;
+    original_flat_indices.reserve(coo_matrix.data.size());
+    for (const auto &indices : coo_matrix.data)
+    {
+        original_flat_indices.push_back(indices[0] * coo_matrix.shape[1] + indices[1]); // Assuming 2D matrix
+    }
+
+    std::vector<std::vector<int>> new_indices(coo_matrix.data.size(), std::vector<int>(2));
+    for (size_t i = 0; i < original_flat_indices.size(); ++i)
+    {
+        new_indices[i][0] = original_flat_indices[i] / new_shape_vec[1];
+        new_indices[i][1] = original_flat_indices[i] % new_shape_vec[1];
+    }
+
+    // Update COO matrix data and shape
+    coo_matrix.data = new_indices;
+    coo_matrix.shape = new_shape_vec;
+
+    // Prepare result data to return
+    *result_rows = coo_matrix.data.size();
+    *result_cols = coo_matrix.data[0].size() + 1; // Include one extra column for values
+
+    *result_data = new double[*result_rows * *result_cols];
+    for (size_t i = 0; i < coo_matrix.data.size(); ++i)
+    {
+        for (size_t j = 0; j < coo_matrix.data[i].size(); ++j)
+        {
+            (*result_data)[i * *result_cols + j] = coo_matrix.data[i][j];
+        }
+        (*result_data)[i * *result_cols + coo_matrix.data[i].size()] = coo_matrix.values[i];
     }
 }
