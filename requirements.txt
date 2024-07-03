@@ -1,6 +1,8 @@
+Cython==0.29.33
 numpy==1.23.5
 opt_einsum==3.3.0
 sesum==0.3.2
 setuptools==65.5.0
 sparse==0.15.4
 tableauhyperapi==0.0.18825
+torch==2.0.1+cu118

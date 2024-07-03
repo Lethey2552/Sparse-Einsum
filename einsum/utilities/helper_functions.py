@@ -2,6 +2,7 @@ import numpy as np
 import math
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 
+
 def find_idc_types(input_idc, output_idc, shape_left, shape_right):
     batch_idc = []          # A, B, O
     con_idc = []            # A, B, .
@@ -65,10 +66,14 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
         perm_AB = None
 
     # Get new shapes for left, right and output
-    if batch_idc:
+    if batch_idc or keep_left or keep_right or con_idc:
         groups_left = (batch_idc, keep_left, con_idc)
         groups_right = (batch_idc, con_idc, keep_right)
         groups_out = (batch_idc, keep_left, keep_right)
+    else:
+        groups_left = None
+        groups_right = None
+        groups_out = None
 
     if any(len(group) != 1 for group in groups_left):
         shape_left = tuple(
@@ -88,50 +93,15 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
         shape_out = tuple(
             sizes[i] for i_group in groups_out for i in i_group
         )
+        if len(shape_out) == 0:
+            shape_out = (1,)
     else:
         shape_out = None
 
     return eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB
 
-def coo_to_standard(coo_mat: np.ndarray) -> np.ndarray:
-    """
-    Converts a sparse matrix in COO (Coordinate) format to a dense standard NumPy array.
-
-    The input `coo_mat` is expected to be an ndarray where each row represents a non-zero 
-    entry in the sparse matrix. The last element of each row is the value, and the preceding 
-    elements are the coordinates of the value.
-
-    Parameters:
-    coo_mat (np.ndarray): A 2D NumPy array of shape (n, m+1), where `n` is the number of 
-                          non-zero entries and `m` is the number of dimensions of the 
-                          resulting dense matrix. Each row gives the coordinates for the
-                          dimensions and the corresponding value.
-
-    Returns:
-    np.ndarray: A dense NumPy array with the same dimensionality as the coordinate 
-                representation, populated with the values from `coo_mat` and zeros elsewhere.
-
-    Example:
-    >>> coo_mat = np.array([[0, 0, 1],
-                            [1, 2, 3],
-                            [2, 1, 4]])
-    >>> coo_to_standard(coo_mat)
-    array([[1, 0, 0],
-           [0, 0, 3],
-           [0, 4, 0]])
-    """
-
-    max_dim = tuple(max(coo_mat[:, i]) + 1 for i in range(coo_mat.shape[1] - 1))
-        
-    mat = np.zeros(max_dim, dtype=int)
-
-    for entry in coo_mat:
-        mat[tuple(entry[:-1])] = entry[-1]
-
-    return mat
-
 
 def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
     mat_a_standard = mat_a.coo_to_standard()
 
-    return(np.allclose(mat_a_standard, mat_b))
+    return (np.allclose(mat_a_standard, mat_b))
