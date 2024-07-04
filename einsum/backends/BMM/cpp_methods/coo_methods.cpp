@@ -681,6 +681,9 @@ void reshape(const double *data, int data_rows, int data_cols,
     std::vector<double> coo_values(data_rows);
     std::vector<int> original_flat_indices;
 
+    // TODO: tbb sorting works on this vector!!!!!!
+    // tbb::parallel_sort(original_flat_indices.begin(), original_flat_indices.end());
+
     original_flat_indices.reserve(data_cols - 1);
     for (int i = 0; i < data_rows; ++i)
     {
