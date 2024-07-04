@@ -11,7 +11,6 @@ op_name = platform.system()
 
 # Determine the absolute path to ips4o/include dynamically
 ips4o_include_dir = os.path.join(os.getcwd(), "libs", "ips4o", "include")
-print(ips4o_include_dir)
 
 intel_tbb_include = "C:\\Program Files (x86)\\Intel\\oneAPI\\tbb\\2021.13\\include"
 intel_tbb_lib = "C:\\Program Files (x86)\\Intel\\oneAPI\\tbb\\2021.13\\lib"

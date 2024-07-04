@@ -51,8 +51,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
         tic = timer()
-        print(shape_left)
-        print(shape_right)
+
         # Fit both input tensors to match contraction
         current_arrays[1] = fit_tensor_to_bmm(
             current_arrays[1], eq_left, shape_left)
@@ -67,8 +66,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         bmm_time += toc - tic
 
         tic = timer()
-        print(shape_out)
-        print()
+
         # Output reshape
         if shape_out is not None:
             arrays[-1].reshape(shape_out)

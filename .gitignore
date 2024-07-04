@@ -1,3 +1,6 @@
+# CUDA
+coo_bmm_cuda/
+
 # Pickle
 *.pkl
 
