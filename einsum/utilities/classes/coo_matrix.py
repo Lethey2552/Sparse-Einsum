@@ -186,31 +186,34 @@ class Coo_matrix:
                                                 notation.encode('utf-8')
                                                 )
 
-    def reshape(self, new_shape):
-        if np.prod(self.shape) != np.prod(new_shape):
-            raise ValueError(
-                "The total number of elements must remain the same for reshaping.")
-
-        integer_indices = self.data[:, :-1].astype(int)
-        float_values = self.data[:, -1]
-
-        # Flatten, calculate new indices and create new data array
-        original_flat_indices = np.ravel_multi_index(
-            integer_indices.T, self.shape)
-        new_indices = np.unravel_index(original_flat_indices, new_shape)
-
-        self.data = np.column_stack(
-            [np.array(new_indices).T, float_values.reshape(-1, 1)])
-        self.shape = new_shape
-
-    # TODO: Finalize reshape function in C++
     # def reshape(self, new_shape):
-    #     self.data = c_reshape(self.data.flatten(),
-    #                           self.data.shape[0],
-    #                           self.data.shape[1],
-    #                           np.array(self.shape),
-    #                           np.array(new_shape)
-    #                           )
+    #     if np.prod(self.shape) != np.prod(new_shape):
+    #         raise ValueError(
+    #             "The total number of elements must remain the same for reshaping.")
+
+    #     integer_indices = self.data[:, :-1].astype(int)
+    #     float_values = self.data[:, -1]
+
+    #     # Flatten, calculate new indices and create new data array
+    #     original_flat_indices = np.ravel_multi_index(
+    #         integer_indices.T, self.shape)
+
+    #     new_indices = np.unravel_index(original_flat_indices, new_shape)
+
+    #     self.data = np.column_stack(
+    #         [np.array(new_indices).T, float_values.reshape(-1, 1)])
+    #     self.shape = new_shape
+
+    def reshape(self, new_shape):
+        self.data = c_reshape(self.data.flatten(),
+                              self.data.shape[0],
+                              self.data.shape[1],
+                              np.array(self.shape),
+                              len(self.shape),
+                              np.array(new_shape),
+                              len(new_shape)
+                              )
+        self.shape = new_shape
 
     def swap_cols(self, idc: tuple | list):
         if type(idc) == tuple:

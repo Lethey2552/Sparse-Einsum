@@ -5,12 +5,13 @@ double diagonal_time = 0;
 double sum_time = 0;
 double permute_time = 0;
 double sort_time = 0;
+double bmm_sort_time = 0;
 
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
              double **C_data, int *C_rows, int *C_cols)
 {
-    // clock_t start, end;
+    clock_t start, end;
     // double cpu_time_used = 0;
     // start = clock();
     // end = clock();
@@ -103,7 +104,11 @@ void coo_bmm(const double *A_data, int A_rows, int A_cols,
         }
     }
 
+    start = clock();
     std::sort(result_data.begin(), result_data.end());
+    end = clock();
+    bmm_sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "bmm_sort_time: " << bmm_sort_time << "s" << std::endl;
 
     *C_rows = result_data.size();
     *C_cols = is_batched ? 4 : 3; // 4 columns if batched (batch, row, col, value); otherwise 3 (row, col, value)
@@ -225,102 +230,6 @@ void find_perm_indices(const std::vector<std::string> &input_chars, const std::v
     shape = std::move(new_shape); // Assign the permuted shape back
 }
 
-void sum_over_trivial_indices(std::unordered_map<std::vector<int>, double, ArrayHash> &result_map,
-                              const std::vector<int> &sum_indices)
-{
-    std::unordered_set<int> sum_indices_set(sum_indices.begin(), sum_indices.end());
-    std::unordered_map<std::vector<int>, double, ArrayHash> new_result_map;
-
-    for (const auto &entry : result_map)
-    {
-        const std::vector<int> &key = entry.first;
-        double value = entry.second;
-        std::vector<int> new_key;
-        new_key.reserve(key.size() - sum_indices.size());
-
-        for (size_t i = 0; i < key.size(); ++i)
-        {
-            if (sum_indices_set.find(i) == sum_indices_set.end())
-            {
-                new_key.push_back(key[i]);
-            }
-        }
-
-        new_result_map[new_key] += value;
-    }
-
-    result_map = std::move(new_result_map);
-}
-
-void remove_non_diag_indices(std::unordered_map<std::vector<int>, double, ArrayHash> &result_map,
-                             const std::vector<int> &diag_indices)
-{
-    std::unordered_set<int> diag_indices_set(diag_indices.begin(), diag_indices.end());
-    std::unordered_map<std::vector<int>, double, ArrayHash> new_result_map;
-
-    for (const auto &entry : result_map)
-    {
-        const std::vector<int> &key = entry.first;
-        bool is_valid_diagonal = true;
-
-        // Check if all indices in diag_indices have the same value in the key
-        for (size_t i = 1; i < diag_indices.size(); ++i)
-        {
-            if (key[diag_indices[i]] != key[diag_indices[0]])
-            {
-                is_valid_diagonal = false;
-                break;
-            }
-        }
-
-        // If valid diagonal entry, construct new_key with only the last diag_index removed
-        if (is_valid_diagonal)
-        {
-            std::vector<int> new_key;
-            new_key.reserve(key.size() - 1);
-
-            bool removed_last_diag = false;
-            for (int i = key.size() - 1; i >= 0; --i)
-            {
-                if (!removed_last_diag && diag_indices_set.find(i) != diag_indices_set.end())
-                {
-                    removed_last_diag = true;
-                }
-                else
-                {
-                    new_key.push_back(key[i]);
-                }
-            }
-            std::reverse(new_key.begin(), new_key.end());
-            new_result_map[std::move(new_key)] = entry.second;
-        }
-    }
-
-    result_map = std::move(new_result_map);
-}
-
-void apply_permutation(std::unordered_map<std::vector<int>, double, ArrayHash> &result_map,
-                       const std::vector<int> &perm_indices)
-{
-    std::unordered_map<std::vector<int>, double, ArrayHash> new_result_map;
-
-    for (const auto &entry : result_map)
-    {
-        const std::vector<int> &key = entry.first;
-        std::vector<int> new_key(key.size());
-
-        // Apply permutation to create new_key
-        for (size_t i = 0; i < perm_indices.size(); ++i)
-        {
-            new_key[perm_indices[i]] = key[i];
-        }
-
-        new_result_map[new_key] = entry.second;
-    }
-
-    result_map = std::move(new_result_map);
-}
-
 // Function to iterate through UTF-8 encoded string
 std::vector<std::string> split_utf8(const std::string &utf8_str)
 {
@@ -378,8 +287,8 @@ void fill_dimensions_and_entries(const double *data, int rows, int cols,
     }
 }
 
-void remove_non_diag_indices_test(std::vector<int> &dimensions, std::vector<Entry> &entries,
-                                  const std::vector<int> &diag_indices, int cols)
+void remove_non_diag_indices(std::vector<int> &dimensions, std::vector<Entry> &entries,
+                             const std::vector<int> &diag_indices, int cols)
 {
     std::unordered_set<int> diag_indices_set(diag_indices.begin(), diag_indices.end());
     std::vector<Entry> new_entries;
@@ -428,10 +337,11 @@ void remove_non_diag_indices_test(std::vector<int> &dimensions, std::vector<Entr
     entries = std::move(new_entries);
 }
 
-void apply_permutation_test(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &perm_indices)
+void apply_permutation(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &perm_indices)
 {
-    // Iterate through entries and apply permutation
-    for (size_t i = 0; i < entries.size(); ++i)
+// Parallelize the loop over entries using OpenMP
+#pragma omp parallel for
+    for (int i = 0; i < entries.size(); ++i)
     {
         int offset = entries[i].offset;
         int num_idx = entries[i].num_idx;
@@ -452,7 +362,7 @@ void apply_permutation_test(std::vector<int> &dimensions, std::vector<Entry> &en
     }
 }
 
-void sum_over_trivial_indices_test(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &sum_indices, int cols)
+void sum_over_trivial_indices(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &sum_indices, int cols)
 {
     std::unordered_set<int> sum_indices_set(sum_indices.begin(), sum_indices.end());
     std::vector<Entry> new_entries;
@@ -662,7 +572,7 @@ void single_einsum(const double *data, int rows, int cols,
     // start = clock();
     if (diag_indices.size() != 0)
     {
-        remove_non_diag_indices_test(dimensions, entries, diag_indices, cols);
+        remove_non_diag_indices(dimensions, entries, diag_indices, cols);
     }
     // end = clock();
     // diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
@@ -671,7 +581,7 @@ void single_einsum(const double *data, int rows, int cols,
     // start = clock();
     if (sum_indices.size() != 0)
     {
-        sum_over_trivial_indices_test(dimensions, entries, sum_indices, cols);
+        sum_over_trivial_indices(dimensions, entries, sum_indices, cols);
     }
     // end = clock();
     // sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
@@ -680,7 +590,7 @@ void single_einsum(const double *data, int rows, int cols,
     // start = clock();
     if (perm_indices.size() != 0)
     {
-        apply_permutation_test(dimensions, entries, perm_indices);
+        apply_permutation(dimensions, entries, perm_indices);
     }
     // end = clock();
     // permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
@@ -735,66 +645,66 @@ void single_einsum(const double *data, int rows, int cols,
     }
 }
 
-// TODO: FINALIZE RESHAPE FUNCTION
-void reshape(const double *data, int data_rows, int data_cols, const int *shape, const int *new_shape,
+// Function to calculate flat index for a single set of indices
+int ravel_single_index(const std::vector<int> &indices, const std::vector<int> &shape)
+{
+    if (indices.size() != shape.size())
+    {
+        throw std::invalid_argument("Indices and shape must have the same length");
+    }
+    int flat_index = 0;
+    int stride = 1;
+    // Iterate over the dimensions in reverse order
+    for (int i = shape.size() - 1; i >= 0; --i)
+    {
+        flat_index += indices[i] * stride;
+        stride *= shape[i];
+    }
+    return flat_index;
+}
+
+void reshape(const double *data, int data_rows, int data_cols,
+             const int *shape, const int shape_length,
+             const int *new_shape, const int new_shape_length,
              double **result_data, int *result_rows, int *result_cols)
 {
     // Check if the total number of elements is the same
-    if (std::accumulate(shape, shape + 2, 1, std::multiplies<int>()) !=
-        std::accumulate(new_shape, new_shape + 2, 1, std::multiplies<int>()))
+    if (std::accumulate(shape, shape + shape_length, 1, std::multiplies<int>()) !=
+        std::accumulate(new_shape, new_shape + new_shape_length, 1, std::multiplies<int>()))
     {
         throw std::invalid_argument("The total number of elements must remain the same for reshaping.");
     }
 
     // Convert shape and new_shape to vectors
-    std::vector<int> shape_vec(shape, shape + 2);
-    std::vector<int> new_shape_vec(new_shape, new_shape + 2);
-
-    // Initialize COO matrix
-    std::vector<std::vector<int>> coo_indices(data_rows, std::vector<int>(data_cols - 1));
+    std::vector<int> shape_vec(shape, shape + shape_length);
+    std::vector<int> new_shape_vec(new_shape, new_shape + new_shape_length);
     std::vector<double> coo_values(data_rows);
+    std::vector<int> original_flat_indices;
 
+    original_flat_indices.reserve(data_cols - 1);
     for (int i = 0; i < data_rows; ++i)
     {
+        std::vector<int> indices(data_cols - 1);
         for (int j = 0; j < data_cols - 1; ++j)
         {
-            coo_indices[i][j] = static_cast<int>(data[i * data_cols + j]);
+            indices[j] = data[i * data_cols + j];
         }
-        coo_values[i] = data[i * data_cols + data_cols - 1];
+        original_flat_indices.push_back(ravel_single_index(indices, shape_vec));
     }
 
-    COOMatrix coo_matrix(coo_indices, coo_values, shape_vec);
-
-    // Flatten, calculate new indices and create new data array
-    std::vector<int> original_flat_indices;
-    original_flat_indices.reserve(coo_matrix.data.size());
-    for (const auto &indices : coo_matrix.data)
-    {
-        original_flat_indices.push_back(indices[0] * coo_matrix.shape[1] + indices[1]); // Assuming 2D matrix
-    }
-
-    std::vector<std::vector<int>> new_indices(coo_matrix.data.size(), std::vector<int>(2));
-    for (size_t i = 0; i < original_flat_indices.size(); ++i)
-    {
-        new_indices[i][0] = original_flat_indices[i] / new_shape_vec[1];
-        new_indices[i][1] = original_flat_indices[i] % new_shape_vec[1];
-    }
-
-    // Update COO matrix data and shape
-    coo_matrix.data = new_indices;
-    coo_matrix.shape = new_shape_vec;
-
-    // Prepare result data to return
-    *result_rows = coo_matrix.data.size();
-    *result_cols = coo_matrix.data[0].size() + 1; // Include one extra column for values
-
+    *result_rows = original_flat_indices.size();
+    *result_cols = new_shape_length + 1;
     *result_data = new double[*result_rows * *result_cols];
-    for (size_t i = 0; i < coo_matrix.data.size(); ++i)
+
+    // Unravel and write directly to result_data
+    for (int i = 0; i < *result_rows; ++i)
     {
-        for (size_t j = 0; j < coo_matrix.data[i].size(); ++j)
+        int flat_index = original_flat_indices[i];
+        for (int j = new_shape_vec.size() - 1; j >= 0; --j)
         {
-            (*result_data)[i * *result_cols + j] = coo_matrix.data[i][j];
+            (*result_data)[i * *result_cols + j] = flat_index % new_shape_vec[j];
+            flat_index /= new_shape_vec[j];
         }
-        (*result_data)[i * *result_cols + coo_matrix.data[i].size()] = coo_matrix.values[i];
+        (*result_data)[i * *result_cols + (*result_cols - 1)] = data[i * data_cols + (data_cols - 1)];
     }
 }
