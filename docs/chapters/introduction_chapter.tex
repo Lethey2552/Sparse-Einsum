@@ -2,53 +2,56 @@ Einstein summation notation is a powerful and compact notation used in mathemati
 and physics to represent sums over tensor indices. It was introduced by Albert
 Einstein in the early 20th century as a means to simplify expressions in the
 theory of relativity. \cite{einstein1916} The notation is both elegant and efficient,
-making it an essential tool in various fields such as theoretical physics, computational
+making it a valuable tool in various fields such as theoretical physics, computational
 mathematics, and data science.
 \\\\
 The fundamental operation in Einstein summation notation, often referred to simply
-as "einsum," is the Einstein summation. This operation allows for the concise expression
+as "Einsum," is the Einstein summation. This operation allows for the concise expression
 of various tensor operations, including element-wise multiplication, dot products,
 outer products, and matrix multiplications. The computational efficiency and
-expressiveness of einsum have led to its adoption in numerous applications,
+expressiveness of Einsum have led to its adoption in numerous applications,
 ranging from machine learning to scientific computing.
 \\\\
 In many practical applications, especially in machine learning and scientific computing,
 the data involved is often sparse. Sparse matrices are matrices in which most of
 the elements are zero. Handling sparse matrices efficiently requires specialized
 algorithms and data structures to avoid unnecessary computations and to save memory.
-Traditional libraries like NumPy \cite{numpy} and other machine learning frameworks typically % CITE OTHER MACHIEN LEARNING FRAMEWORKS
-support Einstein summation (einsum) for dense matrices, but not for sparse matrices.
-The only known library that aims to support einsum operations on sparse tensors is
-Sparse \cite{sparse}. However, Sparse only allows the same symbols as indices for
-the einsum notation that NumPy supports which limits the number of dimensions a tensor
-can have by only allowing for the latin alphabet in capital and small letters. Furthermore,
-real Einstein summation problems often inculde expressions with hundreds or even
-thousand of higher order tensors. In order to express those kind of operations we
-require a large set of symbols. This is why our approaches is capable of handling
-all symbols in the UTF-8 encoding.
+Traditional libraries like NumPy \cite{numpy} and other major artificial intelligence
+frameworks \cite{tensorflow, pytorch} typically support Einstein summation
+for dense matrices, but not for sparse matrices. The only known library that aims to
+support Einsum operations on sparse tensors is Sparse \cite{sparse}. However, like NumPy,
+Sparse only allows for the use of capital and small letters of the Latin alphabet as
+indices, which limits the number of dimensions tensors can have. Furthermore,
+real Einstein summation problems often inculde expressions with hundreds or even thousands
+of higher order tensors. In order to express the aforementioned operations we require a
+large set of unique symbols. Thus, our approaches are capable of handling all
+symbols in the UTF-8 encoding.
 \\\\
 This thesis explores the implementation and performance of Einstein summation
 across different computing paradigms, with a particular focus on sparse tensors.
 Specifically, it focuses on comparing two distinct implementations to multiple libraries:
-
+%
 \begin{itemize}
-    \item SQL-based Implementation: This implementation constructs SQL queries dynamically
-          using Python and executes them via SQLite. While SQL is traditionally used for
-          database operations, this approach demonstrates the versatility of SQL in
-          performing tensor operations.
-    \item C++ Implementation: The final implementation is written in C++, with multiple
-          versions ranging from naive to optimized approaches. The C++ implementations
-          aim to explore the performance trade-offs between simplicity and optimization,
-          offering insights into how different coding strategies affect computational efficiency.
+      \item SQL-based Implementation:
+            This implementation is based on the algorithm presented in "Efficient and
+            Portable Einstein Summation in SQL" by Blacher et al \cite{sql_einsum}.
+            It constructs SQL queries dynamically using Python. While SQL is
+            traditionally used for database operations, this approach demonstrates
+            the versatility of SQL in performing tensor operations.
+      \item C++ Implementation: The second implementation is written in C++, with multiple
+            versions ranging from naive to optimized approaches. The C++ implementations
+            aim to explore the performance trade-offs between simplicity and optimization,
+            offering insights into how different coding strategies affect computational efficiency.
 \end{itemize}
-
+%
 By comparing these implementations, this thesis aims to provide a comprehensive
-analysis of the performance and scalability of Einstein summation in various
+analysis of the performance and scalability of sparse Einstein summation in various
 computing environments. The SQL-based implementation serves as a baseline,
 showcasing the potential of database query languages for tensor operations.
-The Sparse library implementation highlights the advantages of using specialized
-libraries for sparse data structures. Finally, the C++ implementations demonstrate
-the impact of low-level optimizations on computational performance.
+Furthermore, the C++ implementations demonstrate the impact of low-level optimizations
+on computational performance. Comparing these against the sparse library Sparse and
+highly performance-tuned dense libraries like PyTorch provides insights into different
+use cases helps identify the optimal tool for various tasks.
 \\
 Through this comparative study, we seek to identify the strengths and weaknesses
 of each approach, providing valuable guidelines for selecting the appropriate

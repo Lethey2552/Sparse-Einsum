@@ -1,13 +1,16 @@
 \documentclass[12pt]{report}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage[backend=biber,style=numeric,]{biblatex}
 \usepackage{graphicx}
 \usepackage{setspace}
 \usepackage[top=3.0cm, bottom=3.0cm]{geometry}
 \usepackage[pagestyles]{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{positioning, quotes}
 
-\titleformat{\chapter}[hang]{\normalfont\Large\bfseries}{\thechapter}{1em}{\Large}
+\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter}{1em}{\huge}
 \graphicspath{ {images/} }
 \addbibresource{literature.bib}
 
@@ -78,6 +81,9 @@
 
 \chapter{Introduction}
 \input{chapters/introduction_chapter.tex}
+
+\chapter{Background}
+\input{chapters/background_chapter.tex}
 
 \printbibliography
 
