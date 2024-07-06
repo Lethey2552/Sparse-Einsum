@@ -12,70 +12,85 @@ $i \in \{1,2\},\ j \in \{1,2,3,4,5,6\}$ and $k \in \{1,2,3,4\}$. The size of
 tensor $T$ is calculated as follows: $2 \cdot 6 \cdot 4 = 48$. This means tensor
 $T$ has a total of $48$ elements.
 
-\begin{tikzpicture}[
-        node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
-        node_inv/.style={circle, draw=white, fill=white, minimum size=7mm},
-    ]
-    %Nodes
-    \node[node_inv]  (I_1_1)                      {};
-    \node[node]      (A_1)       [right=of I_1_1] {A};
-    \node[node_inv]  (I_1_2)     [above=of A_1]   {};
+\begin{figure}[H]
+    \label{fig_matrix_tensor_network}
+    \centering
+    \begin{tikzpicture}[
+            node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
+            node_inv/.style={circle, draw=white, fill=white, minimum size=7mm},
+        ]
+        %Nodes
+        \node[node_inv]  (I_1_1)                      {};
+        \node[node]      (A_1)       [right=of I_1_1] {A};
+        \node[node_inv]  (I_1_2)     [above=of A_1]   {};
 
-    \node[node_inv]  (I_2_1)     [right=of A_1]   {};
-    \node[node]      (A_2)       [right=of I_2_1] {A};
-    \node[node_inv]  (I_2_2)     [above=of A_2]   {};
+        \node[node_inv]  (I_2_1)     [right=of A_1]   {};
+        \node[node]      (A_2)       [right=of I_2_1] {A};
+        \node[node_inv]  (I_2_2)     [above=of A_2]   {};
 
-    \node[node_inv]  (I_3_1)     [right=of A_2]   {};
-    \node[node]      (A_3)       [right=of I_3_1] {A};
-    \node[node_inv]  (I_3_2)     [above=of A_3]   {};
-    \node[node]      (B_3)       [right=of A_3]   {B};
-    \node[node_inv]  (I_3_3)     [above=of B_3]   {};
-    \node[node_inv]  (I_3_4)     [right=of B_3]   {};
+        \node[node_inv]  (I_3_1)     [right=of A_2]   {};
+        \node[node]      (A_3)       [right=of I_3_1] {A};
+        \node[node_inv]  (I_3_2)     [above=of A_3]   {};
+        \node[node]      (B_3)       [right=of A_3]   {B};
+        \node[node_inv]  (I_3_3)     [above=of B_3]   {};
+        \node[node_inv]  (I_3_4)     [right=of B_3]   {};
 
-    %Lines
-    \draw[-] (A_1.west) -- (I_1_1.east) node [above, fill=white] {i};
-    \draw[-] (A_1.north) -- (I_1_2.south) node [right, fill=white] {j};
+        %Lines
+        \draw[-] (A_1.west) -- (I_1_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A_1.north) -- (I_1_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
 
-    \draw[-] (A_2.west) -- (I_2_1.east) node [above, fill=white] {i};
-    \draw[-] (A_2.north) -- (I_2_2.south) node [right, fill=white] {j};
-    \draw[-] (A_2.east) -- (I_3_1.west) node [above, fill=white] {k};
+        \draw[-] (A_2.west) -- (I_2_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A_2.north) -- (I_2_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+        \draw[-] (A_2.east) -- (I_3_1.west) node [above, fill=white, opacity=.0, text opacity=1] {k};
 
-    \draw[-] (A_3.west) -- (I_3_1.east) node [above, fill=white] {i};
-    \draw[-] (A_3.north) -- (I_3_2.south) node [right, fill=white] {j};
-    \draw[-] (A_3.east) -- (B_3.west) node [midway, fill=white] {k};
-    \draw[-] (B_3.north) -- (I_3_3.south) node [right, fill=white] {m};
-    \draw[-] (B_3.east) -- (I_3_4.west) node [above, fill=white] {n};
-\end{tikzpicture}
+        \draw[-] (A_3.west) -- (I_3_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A_3.north) -- (I_3_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+        \draw[-] (A_3.east) -- (B_3.west) node [midway, above, fill=white, opacity=.0, text opacity=1] {k};
+        \draw[-] (B_3.north) -- (I_3_3.south) node [right, fill=white, opacity=.0, text opacity=1] {m};
+        \draw[-] (B_3.east) -- (I_3_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
+    \end{tikzpicture}
+    \caption{A matrix, a tensor and a tensor network visualized as a graph. Each index is represented
+        by an edge, shared indices in a tensor network are edges between nodes.}
+\end{figure}
 
 \section{Einstein Notation}
 In 1916, Albert Einstein introduced the so called Einstein notation, also known as
 Einstein summation convention or Einstein summation notation, for the sake of
 representing tensor expressions in a concise manner. As an example, the contraction of tensors
-$A \in \mathbb{R}^{I \times J \times K}$ and $B \in \mathbb{R}^{K \times M \times N}$,
+$A \in \mathbb{R}^{I \times J \times K}$ and $B \in \mathbb{R}^{K \times M \times N}$
+in figure \ref{fig_matrix_tensor_network},
 
 \[C_{ijmn} = \sum_{k}A_{ijk} \cdot B_{kmn}\]
-%
+\noindent
+\\
 can be simplified by making the assumption that pairs of repeated indices in the expression
-are to be summed over. Consequently, the contraction can be rewritten as:
+are to be summed over.
+\newpage
+\noindent
+Consequently, the contraction can be rewritten as:
 
 \[C_{ijmn} = A_{ijk} \cdot B_{kmn}\]
-%
+\noindent
+\\
 To expant upon the expressive power of the original Einstein notation, modern Einstein
 notation was introduced. This notation is used by most linear algebra and machine
 learning libraries that provide Einstein summation notation. Modern Einstein notation
 explicitly states the indices for the output tensor, enabling further operations like
-transposition and traces.\\
+transpositions and traces.\\
 In modern Einstein notation, the expression from our previous example would
 be written as:
 
 \[A_{ijk}B_{kmn} \rightarrow C_{ijmn}\]
-%
+\noindent
+\\
 When using common Einstein summation APIs, tensor operations are encoded by using the
 indices of the tensors in a format string and the data itself. The format string for the
 above operation would come down to:
-%
+
 \[ijk,kmn \rightarrow ijmn\]
-%
+\noindent
+\\
 In Modern Einstein notation, indices that are not mentioned in the output are to be
-summed over. From now on, we refer to Einstein summation as Einsum and we will use
-both the original and the modern notation, depending on the context.
+summed over. For the sake of simplicity, we will from now on refer to Einstein summation
+as Einsum, and we will use the original, the modern notation or just the format
+string, depending on the context.
