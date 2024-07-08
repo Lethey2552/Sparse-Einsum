@@ -105,3 +105,16 @@ def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
     mat_a_standard = mat_a.coo_to_standard()
 
     return (np.allclose(mat_a_standard, mat_b))
+
+
+def get_sizes(input_idc, shapes):
+    index_sizes = {}
+    for einsum_index, shape in zip(input_idc, shapes):
+        shape = list(shape)
+        for index, dimension in zip(list(einsum_index), shape):
+            if not index in index_sizes:
+                index_sizes[index] = dimension
+            else:
+                if index_sizes[index] != dimension:
+                    raise Exception(f"Dimension error for index '{index}'.")
+    return index_sizes

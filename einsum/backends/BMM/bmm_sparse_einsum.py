@@ -176,14 +176,24 @@ def arrays_to_coo(arrays):
     return arrays
 
 
-def sparse_einsum(einsum_notation: str, arrays: list[Coo_matrix], path=None):
-    arrays = arrays_to_coo(arrays)
+def is_dim_size_two(list: list):
+    for t in list:
+        if not all(element == 2 for element in t.shape):
+            return False
+    return True
+
+
+def sparse_einsum(einsum_notation: str, arrays: list, path=None):
+    dim_size_two = is_dim_size_two(arrays)
     in_out_idc = clean_einsum_notation(einsum_notation)
 
-    if len(arrays) == 1:
-        arrays[0].single_einsum(einsum_notation)
+    if not dim_size_two:
+        arrays = arrays_to_coo(arrays)
 
-        return arrays[0]
+        if len(arrays) == 1:
+            arrays[0].single_einsum(einsum_notation)
+
+            return arrays[0]
 
     if path is None:
         # Get Sesum contraction path
@@ -199,6 +209,11 @@ def sparse_einsum(einsum_notation: str, arrays: list[Coo_matrix], path=None):
             is_outer_optimal=False,
             threshold_optimal=12
         )
+
+    # Run specialized einsum for dim size 2 problems
+    if dim_size_two:
+        res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
+        return res
 
     cl = generate_contraction_list(in_out_idc, path)
     res = calculate_contractions(cl, arrays)

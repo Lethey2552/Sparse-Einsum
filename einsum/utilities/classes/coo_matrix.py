@@ -1,9 +1,11 @@
 import numpy as np
 from timeit import default_timer as timer
+import einsum.utilities.helper_functions as helper_functions
 from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
     c_coo_bmm,
     c_single_einsum,
     c_reshape,
+    c_einsum_dim_2,
 )
 
 time = 0
@@ -127,6 +129,49 @@ class Coo_matrix:
         # print(time_bmm)
 
         return cls(C_data, new_shape)
+
+    @classmethod
+    def coo_einsum_dim_2(cls, arrays: list, in_out_idc: tuple, path: list):
+        input_idc, output_idc = in_out_idc
+        shapes = [array.shape for array in arrays]
+        sizes = helper_functions.get_sizes(input_idc, shapes)
+        out_shape = [sizes[i] for i in output_idc]
+        arrays.append(np.empty(shape=out_shape, order='C'))
+
+        l_flat = [ord(char) for s in input_idc for char in s]
+        l_flat += [ord(char) for s in output_idc for char in s]
+        l_sizes = [len(s) for s in input_idc]
+        l_sizes.append(len(output_idc))
+
+        in_out_flat = np.array(l_flat, dtype=np.uint32)
+        in_out_sizes = np.array(l_sizes, dtype=np.int32)
+        n_tensors = len(in_out_sizes)
+        n_map_items = len(sizes)
+        keys_sizes = np.array(
+            [ord(k) for k in sizes.keys()], dtype=np.uint32, order='C')
+        values_sizes = np.array(list(sizes.values()),
+                                dtype=np.uint64, order='C')
+        path_flat = np.array(
+            [i for tuple in path for i in tuple], dtype=np.int32)
+
+        print(in_out_flat)
+        print(in_out_sizes)
+        print(keys_sizes)
+        print(values_sizes)
+        print(path_flat)
+        print()
+
+        c_einsum_dim_2(
+            in_out_flat,
+            in_out_sizes,
+            n_tensors,
+            n_map_items,
+            keys_sizes,
+            values_sizes,
+            path_flat,
+            arrays
+        )
+        return cls(arrays[-1], arrays[-1].shape)
 
     def __getitem__(self, items):
         return self.data[tuple(items)]

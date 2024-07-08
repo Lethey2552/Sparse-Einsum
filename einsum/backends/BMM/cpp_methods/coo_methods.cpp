@@ -104,11 +104,11 @@ void coo_bmm(const double *A_data, int A_rows, int A_cols,
         }
     }
 
-    start = clock();
+    // start = clock();
     std::sort(result_data.begin(), result_data.end());
-    end = clock();
-    bmm_sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "bmm_sort_time: " << bmm_sort_time << "s" << std::endl;
+    // end = clock();
+    // bmm_sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "bmm_sort_time: " << bmm_sort_time << "s" << std::endl;
 
     *C_rows = result_data.size();
     *C_cols = is_batched ? 4 : 3; // 4 columns if batched (batch, row, col, value); otherwise 3 (row, col, value)
@@ -709,5 +709,133 @@ void reshape(const double *data, int data_rows, int data_cols,
             flat_index /= new_shape_vec[j];
         }
         (*result_data)[i * *result_cols + (*result_cols - 1)] = data[i * data_cols + (data_cols - 1)];
+    }
+}
+
+void einsum_dim_2(
+    uint32_t *in_out_flat,
+    int32_t *in_out_sizes,
+    int n_tensors,
+    int n_map_items,
+    uint32_t *keys_sizes,
+    uint64_t *values_sizes,
+    int32_t *path,
+    void **arrays)
+{
+    std::cout << "WORKS!" << std::endl;
+
+    int32_t n_idx = std::accumulate(in_out_sizes, in_out_sizes + n_tensors, 0, std::plus<int32_t>());
+    for (int i = 0; i < n_idx; ++i)
+    {
+        std::cout << in_out_flat[i] << ", ";
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < n_tensors; ++i)
+    {
+        std::cout << in_out_sizes[i] << ", ";
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < n_map_items; ++i)
+    {
+        std::cout << keys_sizes[i] << ", ";
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < n_map_items; ++i)
+    {
+        std::cout << values_sizes[i] << ", ";
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < (n_tensors - 2) * 2; i += 2)
+    {
+        std::cout << "(" << path[i] << ", " << path[i + 1] << "), ";
+    }
+    std::cout << std::endl;
+
+    for (int i = 0; i < (n_tensors - 2) * 2; i += 2)
+    {
+        int32_t t_1 = path[i];
+        int32_t t_2 = path[i + 1];
+
+        int32_t t_1_size = in_out_sizes[t_1];
+        int32_t t_2_size = in_out_sizes[t_2];
+        int32_t t_out_size = in_out_sizes[n_tensors - 1];
+
+        int32_t in_out_offset_1 = std::accumulate(in_out_sizes, in_out_sizes + t_1, 0, std::plus<int32_t>());
+        int32_t in_out_offset_2 = std::accumulate(in_out_sizes, in_out_sizes + t_2, 0, std::plus<int32_t>());
+        int32_t in_out_offset_out = std::accumulate(in_out_sizes, in_out_sizes + n_tensors - 1, 0, std::plus<int32_t>());
+
+        uint32_t *t_2_begin = in_out_flat + in_out_offset_2;
+        uint32_t *t_2_end = in_out_flat + in_out_offset_2 + t_2_size;
+        uint32_t *t_out_begin = in_out_flat + in_out_offset_out;
+        uint32_t *t_out_end = in_out_flat + in_out_offset_out + t_out_size;
+
+        std::unordered_set<uint32_t> seen;
+        std::vector<uint32_t> batch_idx;
+        std::vector<uint32_t> keep_idx;
+        std::vector<uint32_t> sum_idx;
+        std::vector<uint32_t> contract_idx;
+
+        for (int x = 0; x < t_1_size; ++x)
+        {
+            uint32_t id_1 = in_out_flat[in_out_offset_1 + x];
+            uint32_t id_2 = in_out_flat[in_out_offset_2 + x];
+
+            if (seen.find(id_1) != seen.end())
+                continue;
+            seen.emplace(id_1);
+
+            if (t_2_end != std::find(t_2_begin, t_2_end, id_1))
+            {
+                if (t_out_end != std::find(t_out_begin, t_out_end, id_1))
+                {
+                    batch_idx.emplace_back(id_1);
+                }
+                else
+                {
+                    contract_idx.emplace_back(id_1);
+                }
+            }
+            else if (t_out_end != std::find(t_out_begin, t_out_end, id_1))
+            {
+                keep_idx.emplace_back(id_1);
+            }
+            else
+            {
+                sum_idx.emplace_back(id_1);
+            }
+        }
+
+        std::cout << "BATCH: ";
+        for (auto i : batch_idx)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "CON: ";
+        for (auto i : contract_idx)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "KEEP: ";
+        for (auto i : keep_idx)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "SUM: ";
+        for (auto i : sum_idx)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+
+        // TODO: Find indices indicating a diagonal computation.
+        // Afterwards perform diagonal computation, trivial sum, and batch/con
+        // solving. Finally adjust to the new shape
     }
 }

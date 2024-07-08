@@ -223,7 +223,7 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                          einsum_str, remaining_formula]))
 
         input_idc.append(idx_result)
-        
+
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
@@ -275,22 +275,22 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict, arrays: list):
     # Get Sesum contraction path
     path, flops_log10, size_log2 = sr.compute_path(
-        einsum_notation, 
-        *arrays, 
-        seed=0, 
-        minimize='size', 
-        algorithm="greedy", 
+        einsum_notation,
+        *arrays,
+        seed=0,
+        minimize='size',
+        algorithm="greedy",
         max_repeats=8,
-        max_time=0.0, 
-        progbar=False, 
+        max_time=0.0,
+        progbar=False,
         is_outer_optimal=False,
         threshold_optimal=12
     )
 
     query = sql_einsum_query(
-        einsum_notation, 
-        tensor_names, 
-        tensors, 
+        einsum_notation,
+        tensor_names,
+        tensors,
         path_info=path
     )
 
@@ -308,18 +308,6 @@ def get_matrix_from_sql_response(coo_mat: np.ndarray):
         mat[entry[:-1]] = entry[-1]
 
     return mat
-
-
-def _get_sizes(einsum_notation, tensor_names, tensors):
-    index_sizes = {}
-    for einsum_index, tensor_name in zip(einsum_notation.split("->")[0].split(","), tensor_names):
-        for index, dimension in zip(list(einsum_index), list(np.array(tensors[tensor_name]).shape)):
-            if not index in index_sizes:
-                index_sizes[index] = dimension
-            else:
-                if index_sizes[index] != dimension:
-                    raise Exception(f"Dimension error for index '{index}'.")
-    return index_sizes
 
 
 if __name__ == "__main__":
@@ -343,7 +331,7 @@ if __name__ == "__main__":
     db = db_connection.cursor()
     res = db.execute(query).fetchall()
     coo_data = np.array([list(row) for row in res])
-    coo_shape = tuple([(max(col) + 1 )for col in coo_data[:, :-1].T])
+    coo_shape = tuple([(max(col) + 1)for col in coo_data[:, :-1].T])
     coo_mat = Coo_matrix(coo_data, coo_shape)
     mat = coo_mat.coo_to_standard()
 

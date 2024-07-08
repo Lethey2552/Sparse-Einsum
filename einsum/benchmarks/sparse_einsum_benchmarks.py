@@ -10,14 +10,14 @@ if __name__ == "__main__":
     print_results = False
     run_np = False
 
-    einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
+    # einsum_notation = "tbacik,sabcrk,ubacjr->abcij"
 
-    A = sparse.random((25, 80, 70, 10, 4, 2),
-                      density=0.001, idx_dtype=int)
-    B = sparse.random((30, 70, 80, 10, 3, 2),
-                      density=0.001, idx_dtype=int)
-    C = sparse.random((40, 80, 70, 10, 7, 3),
-                      density=0.001, idx_dtype=int)
+    # A = sparse.random((25, 80, 70, 10, 4, 2),
+    #                   density=0.01, idx_dtype=int)
+    # B = sparse.random((30, 70, 80, 10, 3, 2),
+    #                   density=0.01, idx_dtype=int)
+    # C = sparse.random((40, 80, 70, 10, 7, 3),
+    #                   density=0.01, idx_dtype=int)
 
     # einsum_notation = "abcik,abckr,abcrj->abcij"
 
@@ -25,20 +25,16 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    # einsum_notation = "abcd,acbd->abd"
+    einsum_notation = "tabcd,acbd->abd"
 
-    # A = sparse.random((2, 2, 2, 2), density=1.0, idx_dtype=int)
-    # B = sparse.random((2, 2, 2, 2), density=1.0, idx_dtype=int)
+    A = sparse.random((2, 2, 2, 2, 2), density=1.0, idx_dtype=int)
+    B = sparse.random((2, 2, 2, 2), density=1.0, idx_dtype=int)
 
-    sparse_arrays = [A, B, C]
+    sparse_arrays = [A, B]
     dense_arrays = []
-    sparse_einsum_arrays = []
 
     for i in sparse_arrays:
         dense_arrays.append(sparse.asnumpy(i))
-
-    for i in dense_arrays:
-        sparse_einsum_arrays.append(Coo_matrix.coo_from_standard(i))
 
     if run_np:
         # Numpy Dense
@@ -58,7 +54,7 @@ if __name__ == "__main__":
 
     # Sparse Einsum
     tic = timer()
-    sparse_einsum_res = sparse_einsum(einsum_notation, sparse_einsum_arrays)
+    sparse_einsum_res = sparse_einsum(einsum_notation, dense_arrays)
     toc = timer()
 
     sparse_einsum_time = toc - tic

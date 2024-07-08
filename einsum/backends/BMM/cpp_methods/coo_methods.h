@@ -67,5 +67,14 @@ void reshape(const double *data, int data_rows, int data_cols,
              const int *shape, const int shape_length,
              const int *new_shape, const int new_shape_length,
              double **result_data, int *result_rows, int *result_cols);
+void einsum_dim_2(
+    uint32_t *in_out_flat,
+    int32_t *in_out_sizes,
+    int n_tensors,
+    int n_map_items,
+    uint32_t *keys_sizes,
+    uint64_t *values_sizes,
+    int32_t *path,
+    void **arrays);
 
 #endif // COO_MATMUL_H
