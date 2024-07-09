@@ -25,16 +25,19 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    einsum_notation = "tabcd,acbd->abd"
+    einsum_notation = "ab,bc->ac"
 
-    A = sparse.random((2, 2, 2, 2, 2), density=1.0, idx_dtype=int)
-    B = sparse.random((2, 2, 2, 2), density=1.0, idx_dtype=int)
+    A = sparse.random((2, 2), density=1.0, idx_dtype=int)
+    B = sparse.random((2, 2), density=1.0, idx_dtype=int)
 
     sparse_arrays = [A, B]
     dense_arrays = []
 
     for i in sparse_arrays:
         dense_arrays.append(sparse.asnumpy(i))
+        print("INPUT:")
+        print(dense_arrays[-1])
+        print()
 
     if run_np:
         # Numpy Dense

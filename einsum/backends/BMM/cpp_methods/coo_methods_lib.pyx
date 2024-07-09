@@ -5,8 +5,9 @@
 import numpy as np
 cimport numpy as np
 from cython cimport boundscheck, wraparound
-from libc.stdint cimport uint32_t, int32_t, uint64_t
+from libc.stdint cimport uint32_t, int32_t, uint64_t, int64_t
 from libc.stdlib cimport malloc, free
+import ctypes
 
 cdef extern from "coo_methods.h":
     void coo_bmm(const double* A_data, int A_rows, int A_cols,
@@ -27,7 +28,7 @@ cdef extern from "coo_methods.h":
         uint32_t* keys_sizes,
         uint64_t* values_sizes,
         int32_t* path,
-        void** arrays
+        double* arrays
     );
 
 @boundscheck(False)
@@ -105,7 +106,7 @@ def c_einsum_dim_2(np.ndarray[np.uint32_t, ndim=1] in_out_flat,
                    np.ndarray[np.uint32_t, ndim=1] keys_sizes,
                    np.ndarray[np.uint64_t, ndim=1] values_sizes,
                    np.ndarray[np.int32_t, ndim=1] path,
-                   list arrays):
+                   double[:] arrays):
     cdef uint32_t *in_out_flat_ptr = <uint32_t*>&in_out_flat[0]
     cdef int32_t *in_out_sizes_ptr = <int32_t*>&in_out_sizes[0]
     cdef int num_tensors = n_tensors
@@ -113,22 +114,15 @@ def c_einsum_dim_2(np.ndarray[np.uint32_t, ndim=1] in_out_flat,
     cdef uint32_t *keys_sizes_ptr = <uint32_t*>&keys_sizes[0]
     cdef uint64_t *values_sizes_ptr = <uint64_t*>&values_sizes[0]
     cdef int32_t *path_ptr = <int32_t*>&path[0]
-    cdef void** array_ptrs = <void**>malloc(len(arrays) * sizeof(void*))
-    cdef int i
+    cdef double *data_ptr = &arrays[0]
 
-    try:
-        for i in range(len(arrays)):
-            array_ptrs[i] = <void*>arrays[i].data
-        
-        einsum_dim_2(
-            in_out_flat_ptr,
-            in_out_sizes_ptr,
-            num_tensors,
-            num_map_items,
-            keys_sizes_ptr,
-            values_sizes_ptr,
-            path_ptr,
-            array_ptrs
-        )
-    finally:
-        free(array_ptrs)
+    einsum_dim_2(
+        in_out_flat_ptr,
+        in_out_sizes_ptr,
+        num_tensors,
+        num_map_items,
+        keys_sizes_ptr,
+        values_sizes_ptr,
+        path_ptr,
+        data_ptr
+    )

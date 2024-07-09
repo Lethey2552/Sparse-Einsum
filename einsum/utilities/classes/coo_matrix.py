@@ -136,7 +136,8 @@ class Coo_matrix:
         shapes = [array.shape for array in arrays]
         sizes = helper_functions.get_sizes(input_idc, shapes)
         out_shape = [sizes[i] for i in output_idc]
-        arrays.append(np.empty(shape=out_shape, order='C'))
+        arrays.append(np.empty(shape=out_shape, dtype=np.double, order='C'))
+        arrays = np.concatenate(arrays).ravel()
 
         l_flat = [ord(char) for s in input_idc for char in s]
         l_flat += [ord(char) for s in output_idc for char in s]
@@ -153,13 +154,6 @@ class Coo_matrix:
                                 dtype=np.uint64, order='C')
         path_flat = np.array(
             [i for tuple in path for i in tuple], dtype=np.int32)
-
-        print(in_out_flat)
-        print(in_out_sizes)
-        print(keys_sizes)
-        print(values_sizes)
-        print(path_flat)
-        print()
 
         c_einsum_dim_2(
             in_out_flat,

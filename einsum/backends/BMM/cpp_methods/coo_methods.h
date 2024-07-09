@@ -75,6 +75,6 @@ void einsum_dim_2(
     uint32_t *keys_sizes,
     uint64_t *values_sizes,
     int32_t *path,
-    void **arrays);
+    double *arrays);
 
 #endif // COO_MATMUL_H

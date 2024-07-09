@@ -712,6 +712,42 @@ void reshape(const double *data, int data_rows, int data_cols,
     }
 }
 
+// Function to encode multi-dimensional indices into a single 64-bit integer
+uint64_t encode_indices(const std::vector<int> &indices)
+{
+    uint64_t encoded_index = 0;
+    int n = indices.size();
+    for (int k = 0; k < n; ++k)
+    {
+        encoded_index |= (static_cast<uint64_t>(indices[k]) << k);
+    }
+    return encoded_index;
+}
+
+// Function to convert dense tensor data to encoded COO format for N-dimensional tensors with binary dimensions
+void dense_to_encoded_coo(double *data, const int data_size, std::vector<uint64_t> &encoded_indices, std::vector<double> &coo_values)
+{
+    int total_elements = 1 << data_size; // 2^n where n is the number of dimensions
+
+    for (int i = 0; i < total_elements; ++i)
+    {
+        double value = data[i];
+        if (value != 0.0)
+        {
+            std::vector<int> indices(data_size);
+            int idx = i;
+            for (int j = data_size - 1; j >= 0; --j)
+            {
+                indices[j] = idx % 2; // Each dimension is binary (0 or 1)
+                idx /= 2;
+            }
+            uint64_t encoded_index = encode_indices(indices);
+            encoded_indices.push_back(encoded_index);
+            coo_values.push_back(value);
+        }
+    }
+}
+
 void einsum_dim_2(
     uint32_t *in_out_flat,
     int32_t *in_out_sizes,
@@ -720,11 +756,46 @@ void einsum_dim_2(
     uint32_t *keys_sizes,
     uint64_t *values_sizes,
     int32_t *path,
-    void **arrays)
+    double *data)
 {
-    std::cout << "WORKS!" << std::endl;
-
     int32_t n_idx = std::accumulate(in_out_sizes, in_out_sizes + n_tensors, 0, std::plus<int32_t>());
+    std::unordered_map<int, int> sizes;
+    std::vector<double *> data_ptr;
+
+    for (int i = 0; i < n_map_items; ++i)
+    {
+        sizes[keys_sizes[i]] = values_sizes[i];
+    }
+
+    // Get pointers to tensors in data
+    double *tmp = data;
+    for (int i = 0; i < n_tensors; ++i)
+    {
+        data_ptr.emplace_back(tmp);
+        tmp += (1 << in_out_sizes[i]);
+    }
+
+    for (int i = 0; i < n_tensors - 1; ++i)
+    {
+        int idx_size = in_out_sizes[i];
+        int data_size = (1 << idx_size);
+
+        std::vector<uint64_t> encoded_indices;
+        std::vector<double> coo_values;
+
+        dense_to_encoded_coo(data_ptr[i], data_size, encoded_indices, coo_values);
+
+        // TODO: Adjust pointers to point to the encoded data and use them for
+        // further computations
+
+        // Print the encoded COO format
+        std::cout << "Tensor " << i << " in encoded COO format:" << std::endl;
+        for (size_t j = 0; j < coo_values.size(); ++j)
+        {
+            std::cout << "Index: " << encoded_indices[j] << ", Value: " << coo_values[j] << std::endl;
+        }
+    }
+
     for (int i = 0; i < n_idx; ++i)
     {
         std::cout << in_out_flat[i] << ", ";
@@ -759,6 +830,19 @@ void einsum_dim_2(
     {
         int32_t t_1 = path[i];
         int32_t t_2 = path[i + 1];
+        std::cout << t_1 << ", " << t_2 << ", " << n_tensors << std::endl;
+        // Tensor data
+        double *data_1 = data_ptr[t_1];
+        double *data_2 = data_ptr[t_2];
+        double *data_out = data_ptr[n_tensors - 1];
+        std::cout << "Tensors:" << std::endl;
+        std::cout << data_1[0] << ", " << data_1[1] << std::endl;
+        std::cout << data_1[2] << ", " << data_1[3] << std::endl;
+        std::cout << data_2[0] << ", " << data_2[1] << std::endl;
+        std::cout << data_2[2] << ", " << data_2[3] << std::endl;
+        std::cout << data_out[0] << ", " << data_out[1] << std::endl;
+        std::cout << data_out[2] << ", " << data_out[3] << std::endl
+                  << std::endl;
 
         int32_t t_1_size = in_out_sizes[t_1];
         int32_t t_2_size = in_out_sizes[t_2];
