@@ -1,3 +1,10 @@
+The following chapter serves to introduce the necessary background for tensors, 
+Einstein notation and Einstein summation. We will also explain tensor hypernetworks
+and various operations that can be expressed using Einstein notation. Due to
+a considerable overlap of topics we will use the background section of 
+"Optimizing Tensor Contraction Paths: A Greedy Algorithm Approach With Improved Cost 
+Functions"~\cite{cgreedy} as a guideline and extended it for our uses.
+
 \section{Tensors}
 Tensors are algebraic objects and a fundamental concept in mathematics, physics
 and computer science. They extend the idea of scalars, vectors and matrices to
@@ -50,10 +57,41 @@ $T$ has a total of $48$ elements.
         \draw[-] (B_3.east) -- (I_3_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
     \end{tikzpicture}
     \caption{A matrix, a tensor and a tensor network visualized as a graph. Each index is represented
-        by an edge, shared indices in a tensor network are edges between nodes.}
+        by an edge. Shared indices in a tensor network are edges between nodes.}
 \end{figure}
 
-\section{Einstein Notation}
+\subsection{Sparse Tensors}
+In Sparse tensors most values are zero. They can greatly profit from specialized
+formats. For our tensor $T \in \mathbb{R}^{I \times J \times K}$ in dense format
+we need to save $I \cdot J \cdot K$ values no matter whether they are zero or not.
+Now consider that, if the vast majority of $T$s values are zero, we could only save
+the coordinate of the value for each dimensions and the value itself. This is what
+we call the coordinate (COO) format. A sparse tensor could be reduced to the COO
+format as follows:
+
+\begin{equation*}
+    \begin{bmatrix}
+    0 & 1 & 0 & 0 \\
+    0 & 0 & 4 & 0 \\
+    5 & 0 & 0 & 10 \\
+    0 & 0 & 0 & 0
+    \end{bmatrix}
+    \quad
+    \Rightarrow
+    \quad
+    \begin{bmatrix}
+    0 & 1 & 1 \\
+    1 & 2 & 4 \\
+    2 & 0 & 5 \\
+    2 & 3 & 10
+    \end{bmatrix}
+\end{equation*}
+%
+Each row of the COO representation encodes a single value of the matrix with each
+column giving the position of the value in each dimension and the last column giving
+the actual value.
+
+\section{Einstein Notation and Summation}
 In 1916, Albert Einstein introduced the so called Einstein notation, also known as
 Einstein summation convention or Einstein summation notation, for the sake of
 representing tensor expressions in a concise manner. As an example, the contraction of tensors
@@ -64,15 +102,12 @@ in figure \ref{fig_matrix_tensor_network},
 \noindent
 \\
 can be simplified by making the assumption that pairs of repeated indices in the expression
-are to be summed over.
-\newpage
-\noindent
-Consequently, the contraction can be rewritten as:
+are to be summed over. Consequently, the contraction can be rewritten as:
 
 \[C_{ijmn} = A_{ijk} \cdot B_{kmn}\]
 \noindent
 \\
-To expant upon the expressive power of the original Einstein notation, modern Einstein
+To expand upon the expressive power of the original Einstein notation, modern Einstein
 notation was introduced. This notation is used by most linear algebra and machine
 learning libraries that provide Einstein summation notation. Modern Einstein notation
 explicitly states the indices for the output tensor, enabling further operations like
@@ -84,8 +119,10 @@ be written as:
 \noindent
 \\
 When using common Einstein summation APIs, tensor operations are encoded by using the
-indices of the tensors in a format string and the data itself. The format string for the
-above operation would come down to:
+indices of the tensors in a format string and the data itself. 
+\newpage
+\noindent
+The format string for the above operation would come down to:
 
 \[ijk,kmn \rightarrow ijmn\]
 \noindent
@@ -94,5 +131,7 @@ In Modern Einstein notation, indices that are not mentioned in the output are to
 summed over. For the sake of simplicity, we will from now on refer to Einstein summation
 as Einsum, and we will use the original, the modern notation or just the format
 string, depending on the context.
+
+\section{Tensor Hypernetworks}
 
 % Mention jcmgrays version of mapping everything to bmm https://github.com/jcmgray/einsum_bmm/tree/main
