@@ -13,9 +13,17 @@ permute_time = 0
 
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
     if eq:
+        print(mat.data.shape)
+        print(mat.data)
+        print(eq)
         mat.single_einsum(eq)
+        print(mat.data.shape)
+        print(mat.data)
     if shape:
+        print("HERE")
+        print(mat.data.shape)
         mat.reshape(shape)
+        print()
 
     return mat
 
@@ -38,6 +46,8 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         input_idc, output_idc = clean_einsum_notation(contraction[2])
         shape_left = current_arrays[1].shape
         shape_right = current_arrays[0].shape
+        scalar_mul = True if len(shape_left) == 1 and len(
+            shape_right) == 1 and shape_left[0] == 1 and shape_right[0] == 1 else False
 
         results = find_idc_types(
             input_idc,
@@ -52,6 +62,16 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
 
         tic = timer()
 
+        print("Python: ")
+        print(current_arrays[1])
+        print(current_arrays[0])
+        print(input_idc)
+        print(output_idc)
+        print(shape_left)
+        print(shape_right)
+        print(shape_out)
+        print()
+
         # Fit both input tensors to match contraction
         current_arrays[1] = fit_tensor_to_bmm(
             current_arrays[1], eq_left, shape_left)
@@ -61,7 +81,13 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         fit_tensor_time += toc - tic
 
         tic = timer()
-        arrays.append(Coo_matrix.coo_bmm(current_arrays[1], current_arrays[0]))
+        if scalar_mul:
+            AB = np.array([[0.0, current_arrays[1].data[0][1]
+                          * current_arrays[0].data[0][1]]])
+            arrays.append(Coo_matrix(AB, current_arrays[1].shape))
+        else:
+            arrays.append(Coo_matrix.coo_bmm(
+                current_arrays[1], current_arrays[0]))
         toc = timer()
         bmm_time += toc - tic
 
@@ -184,7 +210,7 @@ def is_dim_size_two(list: list):
 
 
 def sparse_einsum(einsum_notation: str, arrays: list, path=None):
-    dim_size_two = is_dim_size_two(arrays)
+    dim_size_two = False
     in_out_idc = clean_einsum_notation(einsum_notation)
 
     if not dim_size_two:

@@ -625,11 +625,30 @@ void single_einsum(const double *data, int rows, int cols,
     *result_cols = output_chars.size() + 1;
     *result_data = new double[*result_rows * *result_cols];
 
-    *new_shape_size = shape_vec.size();
-    *new_shape = new int[*new_shape_size];
-    for (int i = 0; i < *new_shape_size; ++i)
+    size_t shape_vec_size = shape_vec.size();
+
+    std::cout << "SHAPE VEC" << std::endl;
+    for (int i : shape_vec)
     {
-        (*new_shape)[i] = shape_vec[i];
+        std::cout << i << ", " << std::endl;
+    }
+
+    if (shape_vec_size != 0)
+    {
+        *new_shape_size = shape_vec_size;
+        *new_shape = new int[*new_shape_size];
+        for (int i = 0; i < *new_shape_size; ++i)
+        {
+            (*new_shape)[i] = shape_vec[i];
+        }
+    }
+    else
+    {
+        // TODO: Handle shaping of "b->"
+        // Data is not correct
+        *new_shape_size = 1;
+        *new_shape = new int[*new_shape_size];
+        (*new_shape)[0] = 1;
     }
 
     int r = 0;
@@ -642,6 +661,18 @@ void single_einsum(const double *data, int rows, int cols,
         }
         (*result_data)[r * *result_cols + output_chars.size()] = entry.value;
         ++r;
+    }
+
+    if (shape_vec_size == 0)
+    {
+        for (size_t r = 0; r < *result_rows; ++r)
+        {
+            for (size_t c = 0; c < *result_cols; ++c)
+            {
+                std::cout << (*result_data)[r * *result_cols + c] << " ";
+            }
+            std::cout << std::endl;
+        }
     }
 }
 

@@ -9,7 +9,7 @@ from timeit import default_timer as timer
 if __name__ == "__main__":
 
     with open(
-        "./einsum/benchmarks/instances/mc_2022_029.pkl", "rb"
+        "./einsum/benchmarks/instances/mc_2022_079.pkl", "rb"
     ) as file:
         format_string, tensors, path_meta, sum_output = pickle.load(file)
 
@@ -26,11 +26,12 @@ if __name__ == "__main__":
     # print("log10[FLOPS]:", round(flops_log10, 2))
     # print("log2[SIZE]:", round(size_log2, 2))
     # path, size_log2, flops_log10, min_density, avg_density = path_meta[1]
-    # tic = timer()
-    # result = oe.contract(format_string, *tensors, optimize=path)
-    # toc = timer()
-    # print("sum[OUTPUT]:", np.sum(result), sum_output)
-    # print(f"opt_einsum time: {toc - tic}s")
+    tic = timer()
+    result = oe.contract(format_string, *tensors,
+                         optimize=path, backend='sparse')
+    toc = timer()
+    print("sum[OUTPUT]:", np.sum(result), sum_output)
+    print(f"opt_einsum time: {toc - tic}s")
 
     tic = timer()
     result = sr.sesum(format_string, *tensors, path=path, dtype=None, debug=False, safe_convert=False,

@@ -71,9 +71,9 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
         groups_right = (batch_idc, con_idc, keep_right)
         groups_out = (batch_idc, keep_left, keep_right)
     else:
-        groups_left = None
-        groups_right = None
-        groups_out = None
+        groups_left = ()
+        groups_right = ()
+        groups_out = ()
 
     if any(len(group) != 1 for group in groups_left):
         shape_left = tuple(
