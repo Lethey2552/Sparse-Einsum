@@ -139,91 +139,20 @@ string, depending on the context.
 Einsum is a powerful tool for performing various tensor operations concisely and 
 efficiently. Here are some common operations that can be performed using Einsum:
 
-\subsection{Matrix Multiplication}
-
-Matrix multiplication between two matrices $A$ and $B$ can be performed using Einsum:
-
-\[
-C_{ij} = \sum_{k} A_{ik} B_{kj}
-\]
-
-In Einsum notation:
-
-\[
-ik,kj \rightarrow ij
-\]
-
-\subsection{Dot Product}
-
-The dot product between two vectors $a$ and $b$ can be expressed as:
-
-\[
-c = \sum_{i} a_{i} b_{i}
-\]
-
-In Einsum notation:
-
-\[
-i,i \rightarrow
-\]
-
-\subsection{Outer Product}
-
-The outer product of two vectors $a$ and $b$ results in a matrix $C$:
-
-\[
-C_{ij} = a_{i} b_{j}
-\]
-
-In Einsum notation:
-
-\[
-i,j \rightarrow ij
-\]
-
-\subsection{Tensor Contraction}
-
-Tensor contraction between higher-dimensional tensors can also be performed.
-For example, contracting over indices $i$ and $j$ in tensors $A$ and $B$:
-
-\[
-C_{kl} = \sum_{ij} A_{kij} B_{ijl}
-\]
-
-In Einsum notation:
-
-\[
-kij,ijl \rightarrow kl
-\]
-
-\subsection{Transpose}
-
-Transposing a matrix $A$ can be done by swapping its indices:
-
-\[
-B_{ji} = A_{ij}
-\]
-
-In Einsum notation:
-
-\[
-ij \rightarrow ji
-\]
-
-\subsection{Sum Over Axes}
-
-Summing over specific axes of a tensor can be specified directly. For example,
-summing over the first axis of a matrix $A$:
-
-\[
-b_{j} = \sum_{i} A_{ij}
-\]
-
-In Einsum notation:
-
-\[
-ij \rightarrow j
-\]
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{| c | c | c |}
+    \hline
+    \textbf{Operation} & \textbf{Formula} & \textbf{Einsum Notation} \\ \hline
+    Matrix Multiplication & $C_{ij} = \sum_{k} A_{ik} B_{kj}$ & ik,kj $\rightarrow$ ij \\ \hline
+    Dot Product & $c = \sum_{i} a_{i} b_{i}$ & i,i $\rightarrow$ \\ \hline
+    Outer Product & $C_{ij} = a_{i} b_{j}$ & i,j $\rightarrow$ ij \\ \hline
+    Tensor Contraction & $C_{kl} = \sum_{ij} A_{kij} B_{ijl}$ & kij,ijl $\rightarrow$ kl \\ \hline
+    Transpose & $B_{ji} = A_{ij}$ & ij $\rightarrow$ ji \\ \hline
+    Sum Over Axes & $b_{j} = \sum_{i} A_{ij}$ & ij $\rightarrow$ j \\ \hline
+    \end{tabular}
+    \caption{Common Operations with Einsum}
+\end{table}
 
 \noindent
 These examples illustrate the versatility and power of the Einsum function
