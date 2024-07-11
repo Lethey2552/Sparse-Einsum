@@ -8,7 +8,7 @@ Functions"~\cite{cgreedy} as a guideline and extended it for our uses.
 \section{Tensors}
 Tensors are algebraic objects and a fundamental concept in mathematics, physics
 and computer science. They extend the idea of scalars, vectors and matrices to
-higher dimensions. In essence, a tensor is a multi-dimensional array with an abitrary
+higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary
 number of dimensions.\\
 Each dimension of a tensor is represented by an index with its own range.
 The number of indices is commonly referred to as the tensor's "rank" or "order."
@@ -88,8 +88,9 @@ format as follows:
 \end{equation*}
 %
 Each row of the COO representation encodes a single value of the matrix with each
-column giving the position of the value in each dimension and the last column giving
-the actual value.
+column holding the position of the value for the corresponding dimension and the last
+column giving the actual value. This can be done for an arbitrary number of dimensions
+by simply adding more columns for their respective coordinates.
 
 \section{Einstein Notation and Summation}
 In 1916, Albert Einstein introduced the so called Einstein notation, also known as
