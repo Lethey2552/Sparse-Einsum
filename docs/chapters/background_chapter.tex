@@ -1,8 +1,8 @@
-The following chapter serves to introduce the necessary background for tensors, 
-Einstein notation and Einstein summation. We will also explain tensor hypernetworks
-and various operations that can be expressed using Einstein notation. Due to
-a considerable overlap of topics we will use the background section of 
-"Optimizing Tensor Contraction Paths: A Greedy Algorithm Approach With Improved Cost 
+The following chapter serves to introduce the necessary background for tensors,
+Einstein notation and Einstein summation. We will give various examples for
+operations that can be expressed using Einstein notation. Due to
+a considerable overlap of topics we will use the background section of
+"Optimizing Tensor Contraction Paths: A Greedy Algorithm Approach With Improved Cost
 Functions"~\cite{cgreedy} as a guideline and extended it for our uses.
 
 \section{Tensors}
@@ -71,19 +71,19 @@ format as follows:
 
 \begin{equation*}
     \begin{bmatrix}
-    0 & 1 & 0 & 0 \\
-    0 & 0 & 4 & 0 \\
-    5 & 0 & 0 & 10 \\
-    0 & 0 & 0 & 0
+        0 & 1 & 0 & 0  \\
+        0 & 0 & 4 & 0  \\
+        5 & 0 & 0 & 10 \\
+        0 & 0 & 0 & 0
     \end{bmatrix}
     \quad
     \Rightarrow
     \quad
     \begin{bmatrix}
-    0 & 1 & 1 \\
-    1 & 2 & 4 \\
-    2 & 0 & 5 \\
-    2 & 3 & 10
+        0 & 1 & 1  \\
+        1 & 2 & 4  \\
+        2 & 0 & 5  \\
+        2 & 3 & 10
     \end{bmatrix}
 \end{equation*}
 %
@@ -119,7 +119,7 @@ be written as:
 \noindent
 \\
 When using common Einstein summation APIs, tensor operations are encoded by using the
-indices of the tensors in a format string and the data itself. 
+indices of the tensors in a format string and the data itself.
 \newpage
 \noindent
 The format string for the above operation would come down to:
@@ -132,26 +132,24 @@ summed over. For the sake of simplicity, we will from now on refer to Einstein s
 as Einsum, and we will use the original, the modern notation or just the format
 string, depending on the context.
 
-\section{Tensor Hypernetworks}
-
 \section{Operations with Einsum}
-
-Einsum is a powerful tool for performing various tensor operations concisely and 
-efficiently. Here are some common operations that can be performed using Einsum:
+Einsum is a powerful tool for performing various tensor operations. Here are some
+common operations that can be performed using Einsum:
 
 \begin{table}[h!]
     \centering
-    \begin{tabular}{| c | c | c |}
-    \hline
-    \textbf{Operation} & \textbf{Formula} & \textbf{Einsum Notation} \\ \hline
-    Matrix Multiplication & $C_{ij} = \sum_{k} A_{ik} B_{kj}$ & ik,kj $\rightarrow$ ij \\ \hline
-    Dot Product & $c = \sum_{i} a_{i} b_{i}$ & i,i $\rightarrow$ \\ \hline
-    Outer Product & $C_{ij} = a_{i} b_{j}$ & i,j $\rightarrow$ ij \\ \hline
-    Tensor Contraction & $C_{kl} = \sum_{ij} A_{kij} B_{ijl}$ & kij,ijl $\rightarrow$ kl \\ \hline
-    Transpose & $B_{ji} = A_{ij}$ & ij $\rightarrow$ ji \\ \hline
-    Sum Over Axes & $b_{j} = \sum_{i} A_{ij}$ & ij $\rightarrow$ j \\ \hline
+    \def\arraystretch{1.5}
+    \begin{tabular}{ c  c  c }
+        \hline
+        \textbf{Operation}                 & \textbf{Formula}                                    & \textbf{Format String}         \\ \hline
+        Dot Product                        & $c = \sum_{i} a_{i} b_{i}$                          & i,i $\rightarrow$              \\ \hline
+        Sum Over Axes                      & $b_{j} = \sum_{i} A_{ij}$                           & ij $\rightarrow$ j             \\ \hline
+        Outer Product                      & $C_{ij} = a_{i} b_{j}$                              & i,j $\rightarrow$ ij           \\ \hline
+        Matrix Multiplication              & $C_{ij} = \sum_{k} A_{ik} B_{kj}$                   & ik,kj $\rightarrow$ ij         \\ \hline
+        Batch Matrix Multiplication        & $C_{bij} = \sum_{k} A_{bik} B_{bkj}$                & bik,bkj $\rightarrow$ bij      \\ \hline
+        Tucker Decomposition \cite{tucker} & $T_{ijk} = \sum_{pqr} D_{pqr} A_{ip} B_{jq} C_{kr}$ & pqr,ip,jq,kr $\rightarrow$ ijk \\ \hline
     \end{tabular}
-    \caption{Common Operations with Einsum}
+    \caption{Example Operations with Einsum}
 \end{table}
 
 \noindent
