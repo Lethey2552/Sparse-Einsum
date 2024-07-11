@@ -1,5 +1,7 @@
 import numpy as np
 import sesum.sr as sr
+import sys
+from cgreedy import compute_path
 from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
@@ -13,29 +15,29 @@ permute_time = 0
 
 def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
     if eq:
-        print(mat.data.shape)
-        print(mat.data)
-        print(eq)
         mat.single_einsum(eq)
-        print(mat.data.shape)
-        print(mat.data)
     if shape:
-        print("HERE")
-        print(mat.data.shape)
         mat.reshape(shape)
-        print()
 
     return mat
 
 
-def calculate_contractions(cl: list, arrays: np.ndarray):
+def calculate_contractions(cl: list, arrays: np.ndarray, show_progress: bool):
     global handle_idx_time
     global fit_tensor_time
     global bmm_time
     global shape_out_time
     global permute_time
 
-    for contraction in cl:
+    num_contractions_tenth = len(cl) // 10
+    progress = 0
+
+    for i, contraction in enumerate(cl):
+        if show_progress and num_contractions_tenth != 0 and i % num_contractions_tenth == 0:
+            sys.stdout.write(f"\rProgress: {progress}% done!")
+            sys.stdout.flush()
+            progress += 10
+
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
         for id in contraction[0]:
@@ -46,8 +48,6 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         input_idc, output_idc = clean_einsum_notation(contraction[2])
         shape_left = current_arrays[1].shape
         shape_right = current_arrays[0].shape
-        scalar_mul = True if len(shape_left) == 1 and len(
-            shape_right) == 1 and shape_left[0] == 1 and shape_right[0] == 1 else False
 
         results = find_idc_types(
             input_idc,
@@ -61,17 +61,6 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
         tic = timer()
-
-        print("Python: ")
-        print(current_arrays[1])
-        print(current_arrays[0])
-        print(input_idc)
-        print(output_idc)
-        print(shape_left)
-        print(shape_right)
-        print(shape_out)
-        print()
-
         # Fit both input tensors to match contraction
         current_arrays[1] = fit_tensor_to_bmm(
             current_arrays[1], eq_left, shape_left)
@@ -79,6 +68,9 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
             current_arrays[0], eq_right, shape_right)
         toc = timer()
         fit_tensor_time += toc - tic
+
+        scalar_mul = True if len(current_arrays[1].shape) == 1 and len(
+            current_arrays[0].shape) == 1 and current_arrays[1].shape[0] == 1 and current_arrays[0].shape[0] == 1 else False
 
         tic = timer()
         if scalar_mul:
@@ -108,7 +100,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray):
         if type(arrays[-1].shape) != tuple:
             arrays[-1].shape = tuple(arrays[-1].shape)
 
-    print("handle_idx_time TIME:", handle_idx_time)
+    print("\nhandle_idx_time TIME:", handle_idx_time)
     print("fit_tensor_time TIME:", fit_tensor_time)
     print("bmm_time TIME:", bmm_time)
     print("shape_out_time TIME:", shape_out_time)
@@ -209,7 +201,7 @@ def is_dim_size_two(list: list):
     return True
 
 
-def sparse_einsum(einsum_notation: str, arrays: list, path=None):
+def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=True):
     dim_size_two = False
     in_out_idc = clean_einsum_notation(einsum_notation)
 
@@ -223,14 +215,13 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None):
 
     if path is None:
         # Get Sesum contraction path
-        path, flops_log10, size_log2 = sr.compute_path(
+        path, flops_log10, size_log2 = compute_path(
             einsum_notation,
             *arrays,
             seed=0,
             minimize='size',
-            algorithm="greedy",
-            max_repeats=8,
-            max_time=0.0,
+            max_repeats=1024,
+            max_time=1.0,
             progbar=False,
             is_outer_optimal=False,
             threshold_optimal=12
@@ -241,7 +232,12 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None):
         res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
         return res
 
+    tic = timer()
     cl = generate_contraction_list(in_out_idc, path)
-    res = calculate_contractions(cl, arrays)
+    toc = timer()
+    res = calculate_contractions(cl, arrays, show_progress)
+
+    print(f"GENERATE CONTRACTION LIST TIME: {toc - tic}s")
+    print()
 
     return res

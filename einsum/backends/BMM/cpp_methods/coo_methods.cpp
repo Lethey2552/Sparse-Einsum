@@ -616,22 +616,14 @@ void single_einsum(const double *data, int rows, int cols,
     //     {
     //         std::cout << dimensions[entry.offset + i] << ", ";
     //     }
-    //     std::cout << entry.value << std::endl;
+    //     std::cout << "VALUE: " << entry.value << std::endl;
     // }
     // std::cout << std::endl;
 
     // Prepare the output data
     *result_rows = entries.size();
     *result_cols = output_chars.size() + 1;
-    *result_data = new double[*result_rows * *result_cols];
-
     size_t shape_vec_size = shape_vec.size();
-
-    std::cout << "SHAPE VEC" << std::endl;
-    for (int i : shape_vec)
-    {
-        std::cout << i << ", " << std::endl;
-    }
 
     if (shape_vec_size != 0)
     {
@@ -644,12 +636,15 @@ void single_einsum(const double *data, int rows, int cols,
     }
     else
     {
-        // TODO: Handle shaping of "b->"
-        // Data is not correct
+        *result_cols = 2;
+        dimensions.emplace_back(0);
+        entries[0].num_idx = 1;
         *new_shape_size = 1;
         *new_shape = new int[*new_shape_size];
         (*new_shape)[0] = 1;
     }
+
+    *result_data = new double[*result_rows * *result_cols];
 
     int r = 0;
     for (const auto &entry : entries)
@@ -659,20 +654,8 @@ void single_einsum(const double *data, int rows, int cols,
             int value = dimensions[entry.offset + c] + 1;
             (*result_data)[r * *result_cols + c] = value - 1;
         }
-        (*result_data)[r * *result_cols + output_chars.size()] = entry.value;
+        (*result_data)[r * *result_cols + (*result_cols - 1)] = entry.value;
         ++r;
-    }
-
-    if (shape_vec_size == 0)
-    {
-        for (size_t r = 0; r < *result_rows; ++r)
-        {
-            for (size_t c = 0; c < *result_cols; ++c)
-            {
-                std::cout << (*result_data)[r * *result_cols + c] << " ";
-            }
-            std::cout << std::endl;
-        }
     }
 }
 

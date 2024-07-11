@@ -35,9 +35,6 @@ if __name__ == "__main__":
 
     for i in sparse_arrays:
         dense_arrays.append(sparse.asnumpy(i))
-        print("INPUT:")
-        print(dense_arrays[-1])
-        print()
 
     if run_np:
         # Numpy Dense
