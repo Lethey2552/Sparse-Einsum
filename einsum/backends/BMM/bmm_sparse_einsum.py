@@ -45,7 +45,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray, show_progress: bool):
 
         tic = timer()
         # Get index lists and sets
-        input_idc, output_idc = clean_einsum_notation(contraction[2])
+        input_idc, output_idc = clean_einsum_notation(contraction[1])
         shape_left = current_arrays[1].shape
         shape_right = current_arrays[0].shape
 
@@ -119,10 +119,9 @@ def find_contraction(positions, input_sets, output_set):
     idc_remain = output_set.union(*remaining)
 
     new_result = idc_remain & idc_contract
-    idc_removed = idc_contract - new_result
     remaining.append(new_result)
 
-    return new_result, remaining, idc_removed, idc_contract
+    return new_result, remaining
 
 
 def generate_contraction_list(in_out_idc: str, path):
@@ -133,18 +132,13 @@ def generate_contraction_list(in_out_idc: str, path):
     output_set = set(output_idc)
 
     ##### INFO ######
-
-    #   2           GEMM                k,kj->j                               ij,j->i
-    #   2           GEMM                j,ij->i                                  i->i
-    # [((2, 1), {'k'}, 'k,kj->j', ('ij', 'j'), 'GEMM'), ((1, 0), {'j'}, 'j,ij->i', ('i',), 'GEMM')]
-
+    # [((2, 1), 'k,kj->j'), ((1, 0), 'j,ij->i')]
     ##### INFO END #####
 
-    # Create contraction list with (contract_idc, idc_removed, current_formula, remaining_formula)
+    # Create contraction list with (contract_idc, current_formula)
     for cnum, contract_idc in enumerate(path):
         contract_idc = tuple(sorted(list(contract_idc), reverse=True))
-
-        out_idc, input_sets, idc_removed, idc_contract = find_contraction(
+        out_idc, input_sets = find_contraction(
             contract_idc, input_sets, output_set)
 
         tmp_inputs = [input_idc.pop(x) for x in contract_idc]
@@ -158,10 +152,7 @@ def generate_contraction_list(in_out_idc: str, path):
             idx_result = "".join(sorted(out_idc, key=all_input_inds.find))
 
         einsum_str = ",".join(reversed(tmp_inputs)) + "->" + idx_result
-
-        remaining_formula = tuple(["".join(i) for i in input_sets])
-        cl.append(tuple([contract_idc, idc_removed,
-                         einsum_str, remaining_formula]))
+        cl.append(tuple([contract_idc, einsum_str]))
 
         input_idc.append(idx_result)
 

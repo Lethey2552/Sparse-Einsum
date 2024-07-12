@@ -9,7 +9,7 @@ from timeit import default_timer as timer
 if __name__ == "__main__":
 
     with open(
-        "./einsum/benchmarks/instances/mc_2022_087.pkl", "rb"
+        "./einsum/benchmarks/instances/mc_2022_079.pkl", "rb"
     ) as file:
         format_string, tensors, path_meta, sum_output = pickle.load(file)
 
