@@ -1,22 +1,43 @@
-\documentclass[12pt]{report}
+\documentclass[12pt]{scrbook}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage[backend=biber,style=numeric,]{biblatex}
+\usepackage{booktabs}
 \usepackage{float}
 \usepackage[top=3.0cm, bottom=3.0cm]{geometry}
 \usepackage{graphicx}
+\usepackage{scrhack}
+\usepackage[automark,ilines]{scrlayer-scrpage}
 \usepackage{setspace}
 \usepackage{tikz}
-\usepackage[pagestyles]{titlesec}
 \usetikzlibrary{positioning, quotes}
 
-\titleformat{\chapter}[hang]{\normalfont\huge\bfseries}{\thechapter}{1em}{\huge}
+% Define the abstract name
+\newcommand{\abstractname}{Abstract}
+
+% Define the abstract environment
+\newenvironment{abstract}{
+    \begin{center}
+    \bfseries \abstractname
+    \end{center}
+    \begin{quote}
+}{
+    \end{quote}
+}
+
+% Set the page style and center the page number
+\pagestyle{scrplain}
+\cfoot[\pagemark]{\pagemark} % Center the page number in the footer
+\ofoot[]{} % Clear the default outer footer
+\ifoot[]{} % Clear the default inner footer
+
 \graphicspath{ {images/} }
 \addbibresource{literature.bib}
 
 \begin{document}
 
+\newgeometry{top=3.0cm, bottom=3.0cm, left=4cm, right=2cm}
 \begin{titlepage}
     \begin{center}
 
@@ -38,7 +59,7 @@
         \vspace*{\fill}
 
         \begin{spacing}{1.15}
-            \textbf{FRIEDRICH-SCHILLER-UNIVERSITY\\JENA\\}
+            \textbf{FRIEDRICH-SCHILLER-UNIVERSITY JENA\\}
             Faculty for Mathematics and Informatics
 
             \vspace*{\fill}
@@ -51,6 +72,7 @@
         \end{spacing}
     \end{center}
 \end{titlepage}
+\cleardoublepage
 
 \begin{abstract}
     Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce eleifend orci
@@ -72,8 +94,8 @@
     convallis sagittis erat. Sed justo elit, vulputate vel accumsan non, porta eget
     turpis. Proin eget ultrices sem. Nunc eu velit.
 \end{abstract}
-
-\setcounter{page}{3}
+\thispagestyle{empty}
+% \cleardoublepage
 
 \tableofcontents
 
@@ -84,6 +106,9 @@
 
 \chapter{Background}
 \input{chapters/background_chapter.tex}
+
+\chapter{Related Work}
+\input{chapters/related_work_chapter.tex}
 
 \printbibliography
 

@@ -1,20 +1,18 @@
 The following chapter serves to introduce the necessary background for tensors,
 Einstein notation and Einstein summation. We will give various examples for
-operations that can be expressed using Einstein notation. Due to
-a considerable overlap of topics we will use the background section of
-"Optimizing Tensor Contraction Paths: A Greedy Algorithm Approach With Improved Cost
-Functions"~\cite{cgreedy} as a guideline and extended it for our uses.
+operations that can be expressed using Einstein notation. Given the considerable
+overlap in topics, we will build on related literature [5], adapting and expanding
+it to meet our specific research requirements.
 
 \section{Tensors}
 Tensors are algebraic objects and a fundamental concept in mathematics, physics
 and computer science. They extend the idea of scalars, vectors and matrices to
 higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary
-number of dimensions.\\
-Each dimension of a tensor is represented by an index with its own range.
-The number of indices is commonly referred to as the tensor's "rank" or "order."
-The size of a tensor is determined by the product of the maximum values of each
-index's range.\\
-For example, consider a tensor $T$ with indices $i,j,k$ and corresponding ranges\\
+number of dimensions. Each dimension of a tensor is represented by an index with
+its own range. The number of indices is commonly referred to as the tensor's ``rank"
+or ``order." The size of a tensor is determined by the product of the maximum values
+of each index's range.\\
+For example, consider a tensor $T$ with indices $i,j,k$ and corresponding ranges
 $i \in \{1,2\},\ j \in \{1,2,3,4,5,6\}$ and $k \in \{1,2,3,4\}$. The size of
 tensor $T$ is calculated as follows: $2 \cdot 6 \cdot 4 = 48$. This means tensor
 $T$ has a total of $48$ elements.
@@ -60,14 +58,22 @@ $T$ has a total of $48$ elements.
         by an edge. Shared indices in a tensor network are edges between nodes.}
 \end{figure}
 
-\subsection{Sparse Tensors}
+\noindent
+In this work, a tensor is simply a multidimensional array containing data of a
+primitive type. We differentiate between dense and sparse tensors.
+
+\paragraph{Dense Tensors.}
+Dense tensors have a significant number of non-zero entries. However, there is no
+exact threshold which determines whether a tensor is dense or sparse.
+
+\paragraph{Sparse Tensors.}
 In Sparse tensors most values are zero. They can greatly profit from specialized
 formats. For our tensor $T \in \mathbb{R}^{I \times J \times K}$ in dense format
 we need to save $I \cdot J \cdot K$ values no matter whether they are zero or not.
-Now consider that, if the vast majority of $T$s values are zero, we could only save
-the coordinate of the value for each dimensions and the value itself. This is what
-we call the coordinate (COO) format. A sparse tensor could be reduced to the COO
-format as follows:
+Now consider that, if the vast majority of $T$'s values are zero, we could only save
+the coordinates of the non-zero values, that is the index of the value for each
+dimension. This is what we call the coordinate (COO) format. A sparse tensor could
+be reduced to the COO format as follows:
 
 \begin{equation*}
     \begin{bmatrix}
@@ -87,12 +93,12 @@ format as follows:
     \end{bmatrix}
 \end{equation*}
 %
-Each row of the COO representation encodes a single value of the matrix with each
+Each row of the COO representation encodes a single value of the tensor with each
 column holding the position of the value for the corresponding dimension and the last
 column giving the actual value. This can be done for an arbitrary number of dimensions
 by simply adding more columns for their respective coordinates.
 
-\section{Einstein Notation and Summation}
+\section{Einstein Notation and Einstein Summation}
 In 1916, Albert Einstein introduced the so called Einstein notation, also known as
 Einstein summation convention or Einstein summation notation, for the sake of
 representing tensor expressions in a concise manner. As an example, the contraction of tensors
@@ -110,11 +116,11 @@ are to be summed over. Consequently, the contraction can be rewritten as:
 \\
 To expand upon the expressive power of the original Einstein notation, modern Einstein
 notation was introduced. This notation is used by most linear algebra and machine
-learning libraries that provide Einstein summation notation. Modern Einstein notation
-explicitly states the indices for the output tensor, enabling further operations like
-transpositions and traces.\\
-In modern Einstein notation, the expression from our previous example would
-be written as:
+learning libraries supporting Einstein summation, that is the evaluation of the actual
+tensor expressions. Modern Einstein notation explicitly states the indices for the
+output tensor, enabling further operations like transpositions, traces or summation
+over non shared indices. In modern Einstein notation, the expression from the previous
+example would be written as:
 
 \[A_{ijk}B_{kmn} \rightarrow C_{ijmn}\]
 \noindent
@@ -137,24 +143,26 @@ string, depending on the context.
 Einsum is a powerful tool for performing various tensor operations. Here are some
 common operations that can be performed using Einsum:
 
-\begin{table}[h!]
+\begin{table}[hbp]
+    \caption{Example Operations with Einsum.}
+    \label{tab:einsum:ops}
     \centering
-    \def\arraystretch{1.5}
-    \begin{tabular}{ c  c  c }
-        \hline
-        \textbf{Operation}                 & \textbf{Formula}                                    & \textbf{Format String}         \\ \hline
-        Dot Product                        & $c = \sum_{i} a_{i} b_{i}$                          & i,i $\rightarrow$              \\ \hline
-        Sum Over Axes                      & $b_{j} = \sum_{i} A_{ij}$                           & ij $\rightarrow$ j             \\ \hline
-        Outer Product                      & $C_{ij} = a_{i} b_{j}$                              & i,j $\rightarrow$ ij           \\ \hline
-        Matrix Multiplication              & $C_{ij} = \sum_{k} A_{ik} B_{kj}$                   & ik,kj $\rightarrow$ ij         \\ \hline
-        Batch Matrix Multiplication        & $C_{bij} = \sum_{k} A_{bik} B_{bkj}$                & bik,bkj $\rightarrow$ bij      \\ \hline
-        Tucker Decomposition \cite{tucker} & $T_{ijk} = \sum_{pqr} D_{pqr} A_{ip} B_{jq} C_{kr}$ & pqr,ip,jq,kr $\rightarrow$ ijk \\ \hline
+    \def\arraystretch{1.1}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Operation}                 & \textbf{Formula}                                    & \textbf{Format string}         \\
+        \midrule
+        Dot Product                        & $c = \sum_{i} a_{i} b_{i}$                          & i,i $\rightarrow$              \\
+        Sum Over Axes                      & $b_{j} = \sum_{i} A_{ij}$                           & ij $\rightarrow$ j             \\
+        Outer Product                      & $C_{ij} = a_{i} b_{j}$                              & i,j $\rightarrow$ ij           \\
+        Matrix Multiplication              & $C_{ij} = \sum_{k} A_{ik} B_{kj}$                   & ik,kj $\rightarrow$ ij         \\
+        Batch Matrix Multiplication        & $C_{bij} = \sum_{k} A_{bik} B_{bkj}$                & bik,bkj $\rightarrow$ bij      \\
+        Tucker Decomposition \cite{tucker} & $T_{ijk} = \sum_{pqr} D_{pqr} A_{ip} B_{jq} C_{kr}$ & pqr,ip,jq,kr $\rightarrow$ ijk \\
+        \bottomrule
     \end{tabular}
-    \caption{Example Operations with Einsum}
+    %}
 \end{table}
 
 \noindent
 These examples illustrate the versatility and power of the Einsum function
 in performing a wide range of tensor operations with concise and readable notation.
-
-% Mention jcmgrays version of mapping everything to bmm https://github.com/jcmgray/einsum_bmm/tree/main
