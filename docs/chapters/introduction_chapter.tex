@@ -1,8 +1,9 @@
 Einstein notation is a powerful and compact notation for representing
 tensor expressions. It was introduced by Albert Einstein in the early 20th century
-as a means to simplify tensor expressions in the theory of relativity~\cite{einstein1916}.
-The notation is both elegant and efficient, making it a valuable tool in various
-fields such as theoretical physics, computational mathematics, and data science.
+in order to simplify tensor expressions in ``The Foundation of the General Theory of 
+Relativity"~\cite{einstein1916}. The notation is both elegant and efficient, 
+thus making it a valuable tool in countless fields such as theoretical physics, 
+mathematics, and computer science.
 \\\\
 The fundamental operation in Einstein notation is the Einstein summation,
 often referred to simply as ``Einsum". This operation allows for the calculation of
@@ -18,11 +19,11 @@ unnecessary computations and to save memory. Traditional libraries like NumPy~\c
 and other major artificial intelligence frameworks~\cite{tensorflow, pytorch} typically
 support Einstein summation for dense tensors, but not for sparse tensors. The only known
 library that aims to support Einsum operations on sparse tensors is Sparse~\cite{sparse}.
-However, like NumPy, Sparse only allows for a limited number of symobls as to be used as
-indices, which is why we use the package opt\_einsum~\cite{opt_einsum}. opt\_einsum is a
-package for optimizing the contraction order of Einsum expressions. More importantly for us
-though, opt\_einsum can handle UTF-8 symbols and use Sparse and other libraries like Torch
-as a backend. Real Einstein summation problems often inculde expressions with hundreds or
+However, like NumPy, Sparse only allows for a limited number of symbols to be used as
+indices, which is why we use opt\_einsum~\cite{opt_einsum}. opt\_einsum is a package for 
+optimizing the contraction order of Einsum expressions. More importantly for us though, 
+opt\_einsum can handle UTF-8 symbols and use Sparse and other libraries like Torch
+as a backend. Real Einstein summation problems often include expressions with hundreds or
 even thousands of higher order tensors. In order to express the aforementioned operations
 we require a large set of unique symbols. Thus, our approaches, just like opt\_einsum, are
 capable of handling all symbols in the UTF-8 encoding.
@@ -38,7 +39,7 @@ to multiple libraries:
             Portable Einstein Summation in SQL" by Blacher et al~\cite{sql_einsum}.
             It constructs SQL queries dynamically using Python. While SQL is
             traditionally used for database operations, this approach demonstrates
-            the versatility of SQL in performing tensor operations.
+            the ability of SQL in performing tensor operations.
       \item C++ Implementation: The second implementation is written in C++, with multiple
             versions ranging from naive to optimized approaches. The different versions
             aim to explore the performance trade-offs between simplicity and optimization,
@@ -58,9 +59,9 @@ on computational performance. The code for our implementations is available on
 GitHub at: https://github.com/Lethey2552/Sparse-Einsum.
 \\
 By comparing our implementations against the sparse library Sparse and highly
-performance-tuned dense tensor libraries like PyTorch, we seek to identify the
+performance-tuned dense tensor libraries like Torch, we seek to identify the
 strengths and weaknesses of each approach, providing guidelines for selecting the
 appropriate method based on specific use cases and computational requirements.
 This work contributes to the broader understanding of tensor operations and their
-efficient implementation, offering practical insights for researchers and
+efficient implementation, aiming to offer practical insights for researchers and
 practitioners in fields that rely heavily on tensor computations.
