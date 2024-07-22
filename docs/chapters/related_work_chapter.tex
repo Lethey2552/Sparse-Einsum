@@ -1,2 +1,30 @@
 % Mention jcmgrays version of mapping everything to bmm https://github.com/jcmgray/einsum_bmm/tree/main
 Previous works
+
+- SQL sparse format idea and query idea~\cite{OJBD_2019v5i1n01_Marten}\\
+- Einsum to SQL compiling of query by Mark~\cite{sql_einsum}\\
+- Taco compiler\\
+- jcmgrays mapping to batch matrix multiplications\\
+- Sparse library using NUMBA to run einsum\\
+
+
+% IMPORTANT: Try using a array based approach for tensor BMM instead of
+% an unordered map. The array should be sorted and then contracted based
+% on the indices. The unordered map is slow for large quantities of data
+% because of the hasing that has to take place.
+
+Compared to Einsum with dense tensors, Einsum with sparse tensors has received
+little attention in the scientific community. Due to the fact that Einsum can
+be used to compute various expressions the underlying algorithms need to handle
+many different computations. Here we introduce multiple approaches and ideas,
+contributing to the field of sparse Einsum.\\
+The incorporation of linear algebra routines into SQL has received more attention
+recently. (CITE HERE)
+An approach mapping Einsum problems to SQL queries showed a good performance 
+ 
+Suprisingly, one of the simplest algorithms to compute sparse Einsum problems
+can be 
+
+- many operations not well researched and fine-tuned
+- recently SQL has gained in popularity in linear algebra operations
+- 
