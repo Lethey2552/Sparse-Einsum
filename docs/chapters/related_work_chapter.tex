@@ -1,33 +1,22 @@
-% Mention jcmgrays version of mapping everything to bmm https://github.com/jcmgray/einsum_bmm/tree/main
-Previous works
-
-- SQL sparse format idea and query idea~\cite{OJBD_2019v5i1n01_Marten}\\
-- jcmgrays mapping to batch matrix multiplications\\
-- Sparse library using NUMBA to run einsum\\
-
-
 % IMPORTANT: Try using a array based approach for tensor BMM instead of
 % an unordered map. The array should be sorted and then contracted based
 % on the indices. The unordered map is slow for large quantities of data
 % because of the hasing that has to take place.
 
 \noindent
-Compared to Einsum with dense tensors, Einsum with sparse tensors has received
-little attention in the scientific community. Due to the fact that Einsum can
-be used to compute various expressions the underlying algorithms need to handle
-many different computations. Here we introduce multiple approaches and ideas,
-contributing to the field of sparse Einsum.\\
-The incorporation of machine learning and therefore linear algebra routines into
-databases has received more attention recently
+Compared to the well-established methods for Einsum with dense tensors, Einstein Summation with 
+sparse tensors has received relatively little attention in the scientific community. 
+Due to various tensor operations that can be expressed using Einsum notation, the 
+underlying algorithms need to be able to handle many distinct computations. Here we 
+introduce multiple approaches and ideas, contributing to the field of sparse Einsum.\\
+Recent developments in integrating machine learning and linear algebra routines into 
+databases have gained significant attention
 ~\cite{Machine_Learning_LinA_and_More, du2020inmachinelearningdatabasereimaginingdeep,
     deepdive, data_management_in_machine_learning}.
-One such approach, capable of executing various tensor operations, is the mapping
-of sparse Einsum problems to SQL queries \cite{sql_einsum}. ``Efficient and Portable Einstein
-Summation in SQL" introduces four mapping rules and a decomposition scheme in which
-each large Einsum operation is split into multiple smaller Einsum operations.
-We use their work to implement our first algorithm, setting a baseline for other
-implementations to beat.
-While the earlier algorithm focused on generating SQL queries, the TACO compiler
-can compile previously known, sparse linear algebra operations into code directly
-\cite{taco}. While this produces optimized code for specific problems, it can, however,
-not handle dynamic problems due to them not being known at compile time.
+One such approach is the translation of sparse Einsum problems into SQL queries 
+\cite{sql_einsum}. The authors introduce four mapping rules and a decomposition scheme 
+in which large Einsum operations are split into multiple smaller Einsum operations.
+In contrast to SQL-based approaches, the TACO compiler can translate known sparse linear 
+algebra operations into optimized code directly~\cite{taco}. While this produces 
+optimized code for predefined problems, it faces limitations in handling dynamic problems
+that are not known at compile time.
