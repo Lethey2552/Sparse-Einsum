@@ -1,8 +1,8 @@
 The following chapter serves to introduce the necessary background for tensors,
-Einstein notation and Einstein summation. We will give various examples for
-operations that can be expressed using Einstein notation. Given the considerable
-overlap in topics, we will build on related literature [5], adapting and expanding
-it to meet our specific research requirements.
+Einstein notation and Einstein summation. Furthermore, we will provide various 
+examples for operations that can be expressed using Einstein notation. Given the 
+considerable overlap in topics, we will build on related literature [5], adapting 
+and expanding it to meet our specific research requirements.
 
 \section{Tensors}
 Tensors are algebraic objects and a fundamental concept in mathematics, physics
@@ -103,7 +103,7 @@ In 1916, Albert Einstein introduced the so called Einstein notation, also known 
 Einstein summation convention or Einstein summation notation, for the sake of
 representing tensor expressions in a concise manner. As an example, the contraction of tensors
 $A \in \mathbb{R}^{I \times J \times K}$ and $B \in \mathbb{R}^{K \times M \times N}$
-in figure \ref{fig_matrix_tensor_network},
+in Figure \ref{fig_matrix_tensor_network},
 
 \[C_{ijmn} = \sum_{k}A_{ijk} \cdot B_{kmn}\]
 \noindent
@@ -140,8 +140,8 @@ as Einsum, and we will use the original, the modern notation or just the format
 string, depending on the context.
 
 \section{Operations with Einsum}
-Einsum is a powerful tool for performing various tensor operations. Here are some
-common operations that can be performed using Einsum:
+Einsum is a powerful tool for performing various tensor operations. Table 2.1 shows 
+some common operations that can be performed using Einsum.
 
 \begin{table}[hbp]
     \caption{Example Operations with Einsum.}
@@ -165,4 +165,6 @@ common operations that can be performed using Einsum:
 
 \noindent
 These examples illustrate the versatility of Einsum in performing a wide range of 
-tensor operations with concise and readable notation.
+tensor operations using a concise and readable notation, expressed as a format string.
+Note that while the examples provided are relatively simple, real-world Einstein
+summation problems may include thousands of tensors.
