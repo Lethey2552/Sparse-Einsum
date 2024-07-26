@@ -1,0 +1,9 @@
+In this chapter we present two algorithms for performing Einstein summation. First,
+we introduce our implementation of the four mapping rules developed in ``Efficient and Portable
+Einstein Summation in SQL"~\cite{sql_einsum}, to generate SQL queries for solving Einsum problems.
+This will serve as a baseline to compare other algorithms against. Second, we explain our C++
+implementations with multiple levels of optimization. The underlying algorithm of the C++ 
+implementations builds on Torch's strategy of mapping Einsum operations to a batch matrix 
+multiplication kernel. Both algorithms, namely the algorithm for the SQL implementation and 
+the algorithm used for the C++ versions, decompose large Einstein summation operations
+into smaller, pairwise operations to exploit efficient contraction paths.

@@ -7,15 +7,16 @@ and expanding it to meet our specific research requirements.
 \section{Tensors}
 Tensors are algebraic objects and a fundamental concept in mathematics, physics
 and computer science. They extend the idea of scalars, vectors and matrices to
-higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary
-number of dimensions. Each dimension of a tensor is represented by an index with
-its own range. The number of indices is commonly referred to as the tensor's ``rank"
-or ``order." The size of a tensor is determined by the product of the maximum values
-of each index's range.\\
+higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary 
+number of dimensions. Each dimension of a tensor is represented by an index with its 
+own range. The number of indices is commonly referred to as the tensor's ``rank" or 
+``order." The size of a tensor is determined by the product of the maximum values of 
+each index's range.\\
 For example, consider a tensor $T$ with indices $i,j,k$ and corresponding ranges
 $i \in \{1,2\},\ j \in \{1,2,3,4,5,6\}$ and $k \in \{1,2,3,4\}$. The size of
 tensor $T$ is calculated as follows: $2 \cdot 6 \cdot 4 = 48$. This means tensor
-$T$ has a total of $48$ elements.
+$T$ has a total of $48$ elements. An example of a matrix A with indices i, j and a tensor 
+A with indices i, j, k, both represented as a graph, can be seen in Figure 2.1.
 
 \begin{figure}[H]
     \label{fig_matrix_tensor_network}
@@ -168,3 +169,63 @@ These examples illustrate the versatility of Einsum in performing a wide range o
 tensor operations using a concise and readable notation, expressed as a format string.
 Note that while the examples provided are relatively simple, real-world Einstein
 summation problems may include thousands of tensors.
+
+\section{Tensor Contractions}
+Tensor contraction is the process of reducing one or multiple tensor's orders by summing 
+over pairs of matching indices. Tensor networks where more than two tensors share an index
+are called tensor hypernetworks.
+
+\begin{figure}
+    \label{fig_tensor_hypernetwork}
+    \centering
+    \begin{tikzpicture}[
+            node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
+            node_inv/.style={circle, draw=white, fill=white, minimum size=7mm},
+        ]
+        %Nodes
+
+        \node[node_inv]  (I_1)                      {};
+        \node[node]      (A)       [right=of I_1] {A};
+        \node[node_inv]  (I_2)     [above=of A]   {};
+        \node[node]      (B)       [right=of A]   {B};
+        \node[node_inv]  (I_3)     [above=of B]   {};
+        \node[node_inv]  (I_4)     [right=of B]   {};
+        
+        % Add a coordinate for the T-junction
+        \coordinate (T) at ($(A)!0.5!(B)$);
+        \node[node] (C) [below=of T] {C};
+        \node[node_inv] (I_5) [below=of C] {};
+
+        % Draw the T-junction edge
+        \draw[-] (T) -- (C);
+
+        %Lines
+        \draw[-] (A.west) -- (I_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A.north) -- (I_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+        \draw[-] (A.east) -- (B.west) node [midway, above, fill=white, opacity=.0, text opacity=1] {k};
+        \draw[-] (B.north) -- (I_3.south) node [right, fill=white, opacity=.0, text opacity=1] {m};
+        \draw[-] (B.east) -- (I_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
+        \draw[-] (C.south) -- (I_5.north) node [right, fill=white, opacity=.0, text opacity=1] {l};
+    \end{tikzpicture}
+    \caption{A tensor hypernetwork.}
+\end{figure}
+
+\noindent
+The contraction of the tensor hypernetwork $A \in \mathbb{R}^{I \times J \times K}, B \in 
+\mathbb{R}^{K \times M \times N}$ and $C \in \mathbb{R}^{K \times L}$ in Figure 2.2,
+
+\[T_{ijmnl} = \sum_{k}A_{ijk} \cdot B_{kmn} \cdot C_{kl}\]
+\noindent
+\\
+in modern Einstein notation written as
+
+\[ijk,kmn,kl \rightarrow ijmnl\]
+\noindent
+\\
+can be calculated in different orders. Either way, it is possible to get the same result by 
+contracting $A$ and $B$ first, followed by $(AB) \cdot C$, by contracting $B$ and $C$ 
+and then $A \cdot (BC)$ or by contracting $A$ and $C$, followed by $(AC) \cdot B$.
+While the result of the contraction orders will be the same, the underlying number of 
+operations may differ vastly. As a result, the order in which tensors are contracted
+can drastically change the performance of an algorithm. We call this order the contraction
+path.
