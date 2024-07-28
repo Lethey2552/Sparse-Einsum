@@ -7,3 +7,12 @@ implementations builds on Torch's strategy of mapping Einsum operations to a bat
 multiplication kernel. Both algorithms, namely the algorithm for the SQL implementation and 
 the algorithm used for the C++ versions, decompose large Einstein summation operations
 into smaller, pairwise operations to exploit efficient contraction paths.
+
+\section{SQL Algorithm}
+In this section, we present Blacher et al.'s algorithm for mapping format strings and the 
+corresponding tensors to SQL, enabling Einstein summation in databases. First, we introduce
+the portable schema for representing tensors, specifically sparse tensors, in SQL, that is, 
+a design for relations and data types for encoding tensors across various database management
+systems (DBMS). We then show their four mapping rules to generate non-nested Einsum queries
+from arbitrary format strings. Finally, we explain how Blacher et al. exploit efficient 
+contraction paths by decomposing large Einsum queries into smaller parts.
