@@ -8,29 +8,68 @@ multiplication kernel. Both algorithms, namely the algorithm for the SQL impleme
 the algorithm used for the C++ versions, decompose large Einstein summation operations
 into smaller, pairwise operations to exploit efficient contraction paths.
 
-\section{SQL Algorithm}
-In this section, we present Blacher et al.'s~\cite{sql_einsum} algorithm and our implementation 
-of it, for mapping format strings and the corresponding tensors to SQL, enabling Einstein 
-summation in databases. First, we introduce the portable schema for representing tensors, 
-specifically sparse tensors, in SQL, that is, a design for relations and data types for 
-encoding tensors across various database management systems (DBMS). We then show their four 
-mapping rules to generate non-nested Einsum queries from arbitrary format strings. Finally, 
-we explain how we exploit efficient contraction paths by decomposing large Einsum queries 
-into smaller parts.
+\section{The SQL Algorithm}
+In this section, we present Blacher et al.'s~\cite{sql_einsum} algorithm for mapping format 
+% and our implementation(?)
+strings and the corresponding tensors to SQL, enabling Einstein summation in databases. 
+First, we introduce the portable schema for representing tensors, specifically sparse tensors, 
+in SQL. We then show their four mapping rules to generate non-nested Einsum queries from 
+arbitrary format strings. Finally, we explain how we exploit efficient contraction paths 
+by decomposing large Einsum queries into smaller parts.
 
 \subsection{Portable Schema for Tensors}
-Blacher et al. choose the COO format to represent tensors as it only uses integers and 
-floating point numbers, which results in a vendor independent schema. For example, a 3D 
-tensor $A \in \mathbb{R}^{I \times J \times K}$ has the following schema:
+Blacher et al. chose the COO format to represent tensors as it only uses integers and 
+floating point numbers, which results in a vendor independent schema for encoding tensors 
+across various database management systems (DBMS). For example, a 3D tensor $A \in 
+\mathbb{R}^{I \times J \times K}$ has the following schema:
 
 \[
     A(i\ \ INT,\ \ j\ \ INT,\ \ k\ \ INT,\ \ val\ \ DOUBLE)
 \]
 %
-Each tensor is stored in a separate table. Table A stores a 3D tensor, where, as common for 
-the COO format, each value ($val$) can be addressed by specifying the corresponding indices 
-($i$, $j$, $k$).
+Each tensor is stored in a separate table. In the example, table A stores a 3D tensor, 
+where each value ($val$) can be addressed by specifying the corresponding indices 
+($i$,~$j$,~$k$).
 
 \subsection{Mapping Einstein Summation to SQL}
+``Efficient and Portable Einstein Summation in SQL" introduces four rules for mapping 
+any tensor expression in Einstein notation to SQL.
+
+\begin{description}
+    \item \textbf{R1} All input tensors are enumerated in the FROM clause.
+    \item \textbf{R2} The indices of the output tensor are enumerated in the SELECT clause 
+    and the GROUP BY clause.
+    \item \textbf{R3} The new value is the SUM of all values multiplied together.
+    \item \textbf{R4} Indices that are the same among input tensors are transitively equated 
+    in the WHERE clause.
+\end{description}
+%
+While all four rules are needed to ensure every possible Einstein summation problem 
+can be translated to SQL, for some tensor expressions the conditions to apply the rules
+R2 and/or R4 are not fulfilled. If there are no indices after the arrow in the format 
+string, the output is scalar and does not require R2. Furthermore, if there are no common
+indices among the input tensors, there is no summation in the tensor expression and R4
+can be omitted.
+
+\begin{lstlisting}
+    int main() {
+        constexpr int biggest_possible_number = 10000;
+        atomic<bool> solution_found(false); // true if solution is found
+        atomic<int> final_solution(INT32_MAX);
+        const double start = omp_get_wtime();
+
+    #pragma omp parallel for schedule(dynamic) // start parallel region
+        for (int i = 0; i < biggest_possible_number; ++i) {
+            if (solution_found) // solution found, continue iterating
+                continue;
+            if (is_solution(i)) { // find solution
+                solution_found = true;
+                final_solution = i;
+            }
+        } // end parallel region
+        cout << "The solution is: " << final_solution << endl;
+        cout << omp_get_wtime() - start << " seconds" << endl;
+    }
+\end{lstlisting}
 
 \subsection{Optimizing Contraction Order}
