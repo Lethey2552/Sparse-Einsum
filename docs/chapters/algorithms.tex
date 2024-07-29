@@ -9,10 +9,28 @@ the algorithm used for the C++ versions, decompose large Einstein summation oper
 into smaller, pairwise operations to exploit efficient contraction paths.
 
 \section{SQL Algorithm}
-In this section, we present Blacher et al.'s algorithm for mapping format strings and the 
-corresponding tensors to SQL, enabling Einstein summation in databases. First, we introduce
-the portable schema for representing tensors, specifically sparse tensors, in SQL, that is, 
-a design for relations and data types for encoding tensors across various database management
-systems (DBMS). We then show their four mapping rules to generate non-nested Einsum queries
-from arbitrary format strings. Finally, we explain how Blacher et al. exploit efficient 
-contraction paths by decomposing large Einsum queries into smaller parts.
+In this section, we present Blacher et al.'s~\cite{sql_einsum} algorithm and our implementation 
+of it, for mapping format strings and the corresponding tensors to SQL, enabling Einstein 
+summation in databases. First, we introduce the portable schema for representing tensors, 
+specifically sparse tensors, in SQL, that is, a design for relations and data types for 
+encoding tensors across various database management systems (DBMS). We then show their four 
+mapping rules to generate non-nested Einsum queries from arbitrary format strings. Finally, 
+we explain how we exploit efficient contraction paths by decomposing large Einsum queries 
+into smaller parts.
+
+\subsection{Portable Schema for Tensors}
+Blacher et al. choose the COO format to represent tensors as it only uses integers and 
+floating point numbers, which results in a vendor independent schema. For example, a 3D 
+tensor $A \in \mathbb{R}^{I \times J \times K}$ has the following schema:
+
+\[
+    A(i\ \ INT,\ \ j\ \ INT,\ \ k\ \ INT,\ \ val\ \ DOUBLE)
+\]
+%
+Each tensor is stored in a separate table. Table A stores a 3D tensor, where, as common for 
+the COO format, each value ($val$) can be addressed by specifying the corresponding indices 
+($i$, $j$, $k$).
+
+\subsection{Mapping Einstein Summation to SQL}
+
+\subsection{Optimizing Contraction Order}
