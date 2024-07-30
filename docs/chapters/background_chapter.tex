@@ -16,10 +16,11 @@ For example, consider a tensor $T$ with indices $i,j,k$ and corresponding ranges
 $i \in \{1,2\},\ j \in \{1,2,3,4,5,6\}$ and $k \in \{1,2,3,4\}$. The size of
 tensor $T$ is calculated as follows: $2 \cdot 6 \cdot 4 = 48$. This means tensor
 $T$ has a total of $48$ elements. An example of a matrix A with indices i, j and a tensor 
-A with indices i, j, k, both represented as a graph, can be seen in Figure 2.1.
+A with indices i, j, k, both represented as a graph, can be seen in Figure 
+\ref{fig:tensor:vec_mat_ten}.
 
 \begin{figure}[H]
-    \label{fig_matrix_tensor_network}
+    \label{fig:tensor:vec_mat_ten}
     \centering
     \begin{tikzpicture}[
             node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
@@ -104,7 +105,7 @@ In 1916, Albert Einstein introduced the so called Einstein notation, also known 
 Einstein summation convention or Einstein summation notation, for the sake of
 representing tensor expressions in a concise manner. As an example, the contraction of tensors
 $A \in \mathbb{R}^{I \times J \times K}$ and $B \in \mathbb{R}^{K \times M \times N}$
-in Figure \ref{fig_matrix_tensor_network},
+in Figure \ref{fig:tensor:vec_mat_ten},
 
 \[C_{ijmn} = \sum_{k}A_{ijk} \cdot B_{kmn}\]
 \noindent
@@ -117,7 +118,7 @@ are to be summed over. Consequently, the contraction can be rewritten as:
 \\
 To expand upon the expressive power of the original Einstein notation, modern Einstein
 notation was introduced. This notation is used by most linear algebra and machine
-learning libraries supporting Einstein summation, that is the evaluation of the actual
+learning libraries supporting Einstein summation, that is, the evaluation of the actual
 tensor expressions. Modern Einstein notation explicitly states the indices for the
 output tensor, enabling further operations like transpositions, traces or summation
 over non shared indices. In modern Einstein notation, the expression from the previous
@@ -141,11 +142,11 @@ as Einsum, and we will use the original, the modern notation or just the format
 string, depending on the context.
 
 \section{Operations with Einsum}
-Einsum is a powerful tool for performing various tensor operations. Table 2.1 shows 
-some common operations that can be performed using Einsum.
+Einsum is a powerful tool for performing various tensor operations. Table \ref{tab:einsum:ops} 
+shows some common operations that can be performed using Einsum.
 
 \begin{table}[hbp]
-    \caption{Example Operations with Einsum.}
+    \caption{Example operations with Einsum.}
     \label{tab:einsum:ops}
     \centering
     \def\arraystretch{1.1}
@@ -171,12 +172,12 @@ Note that while the examples provided are relatively simple, real-world Einstein
 summation problems may include thousands of tensors.
 
 \section{Tensor Contractions}
+\label{sec:tensor:contractions}
 Tensor contraction is the process of reducing one or multiple tensor's orders by summing 
 over pairs of matching indices. Tensor networks where more than two tensors share an index
 are called tensor hypernetworks.
 
 \begin{figure}
-    \label{fig_tensor_hypernetwork}
     \centering
     \begin{tikzpicture}[
             node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
@@ -208,11 +209,13 @@ are called tensor hypernetworks.
         \draw[-] (C.south) -- (I_5.north) node [right, fill=white, opacity=.0, text opacity=1] {l};
     \end{tikzpicture}
     \caption{A tensor hypernetwork.}
+    \label{fig:tensor:hypernetwork}
 \end{figure}
 
 \noindent
 The contraction of the tensor hypernetwork $A \in \mathbb{R}^{I \times J \times K}, B \in 
-\mathbb{R}^{K \times M \times N}$ and $C \in \mathbb{R}^{K \times L}$ in Figure 2.2,
+\mathbb{R}^{K \times M \times N}$ and $C \in \mathbb{R}^{K \times L}$ in Figure 
+\ref{fig:tensor:hypernetwork},
 
 \[T_{ijmnl} = \sum_{k}A_{ijk} \cdot B_{kmn} \cdot C_{kl}\]
 \noindent

@@ -44,32 +44,85 @@ any tensor expression in Einstein notation to SQL.
     in the WHERE clause.
 \end{description}
 %
+Say we want to map the tensor operation given by $ik,k \rightarrow i$, a matrix-vector 
+multiplication, with tensors $A \in \mathbb{R}^{I \times K}$, $v \in \mathbb{R}^{K}$ and 
+
+\begin{equation*}
+    A =
+    \begin{bmatrix}
+        0.0 & 1.0 \\
+        0.0 & 0.0 \\
+        5.0 & 0.0 \\
+        0.0 & 0.0
+    \end{bmatrix},
+    \quad
+    v =
+    \begin{bmatrix}
+        4.0 \\
+        1.0
+    \end{bmatrix}.
+\end{equation*}
+%
+When applying all four rules to map the example tensor expression to SQL, we get the result
+seen in Listing \ref{lst:einsum:sql}.
+
+\begin{lstlisting}[caption={Einstein summation in SQL.}, captionpos={t}, label={lst:einsum:sql}]
+    WITH A(i, j, val) AS (                          -- matrix A
+        VALUES (0, 1, 1.0), (2, 0, 5.0)
+    ), v(i, val) AS (                               -- vector v
+        VALUES (0, 4.0), (1, 1.0)
+    ) SELECT A.i AS i,                              -- R2
+        SUM(A.val * v.val) AS val                   -- R3
+      FROM A, v                                     -- R1
+      WHERE A.j=v.i                                 -- R4
+      GROUP BY A.i                                  -- R2
+\end{lstlisting}
+%
 While all four rules are needed to ensure every possible Einstein summation problem 
 can be translated to SQL, for some tensor expressions the conditions to apply the rules
 R2 and/or R4 are not fulfilled. If there are no indices after the arrow in the format 
 string, the output is scalar and does not require R2. Furthermore, if there are no common
 indices among the input tensors, there is no summation in the tensor expression and R4
-can be omitted.
-
-\begin{lstlisting}
-    int main() {
-        constexpr int biggest_possible_number = 10000;
-        atomic<bool> solution_found(false); // true if solution is found
-        atomic<int> final_solution(INT32_MAX);
-        const double start = omp_get_wtime();
-
-    #pragma omp parallel for schedule(dynamic) // start parallel region
-        for (int i = 0; i < biggest_possible_number; ++i) {
-            if (solution_found) // solution found, continue iterating
-                continue;
-            if (is_solution(i)) { // find solution
-                solution_found = true;
-                final_solution = i;
-            }
-        } // end parallel region
-        cout << "The solution is: " << final_solution << endl;
-        cout << omp_get_wtime() - start << " seconds" << endl;
-    }
-\end{lstlisting}
+can be omitted. The rules guarantee a correct mapping, not a mapping with minimal code size.
+Though requirering extra checks, in some cases the SQL queries could be simplified further.
 
 \subsection{Optimizing Contraction Order}
+Mapping a tensor expression directly into a single, non-nested SQL query in Einstein 
+notation is known to produce execution times that are far from optimal, especially for operations
+involving many tensors. The inefficiency stems from the fact that conventional query optimizers 
+are unaware of the contraction order of the repeating indices within tensor expressions and are 
+therefore incapable of effectively breaking down the query into smaller parts to exploit efficient
+contraction paths as described in the Background section \ref{sec:tensor:contractions}.\\
+One can get around this using intermediate tensors via subqueries or common table expressions, 
+which decomposes one large Einstein summation query into smaller pieces and lets the database 
+engine follow a pre-defined contraction order. More precisely, using GROUP BY and SUM 
+aggregation in intermediate computations enforce query engines to evaluate the query in the 
+right order.
+%The rest in here or rather in explanation of own implementation?
+% The opt\_einsum library provides a general and robust solution for finding an efficient 
+% contraction order for any given format string and associated tensors. It supports a variety 
+% of path-finding algorithms that range in complexity from exhaustive searches of all possible 
+% contraction paths to quicker, less-accurate greedy heuristics. By default, opt\_einsum will 
+% choose the best algorithm that keeps the path-finding time under 1 ms and returns the 
+% generated optimized contraction list.\\
+% The result is a list of contractions that can be used to construct a decomposed Einstein 
+% summation query. As a large operation will have several smaller Einstein summation operations, 
+% the mapping strategy described in 4.1.2 is applied iteratively. That is, this iterative 
+% application sets up the creation of a query that, besides being efficient by reducing the 
+% number of accessed elements, also enforces a certain contraction order to guarantee an optimal 
+% execution of the tensor expression within the database.
+
+\section{Our Implementation of the SQL Algorithm}
+We implemented the algorithm for mapping Einsum format strings to SQL queries proposed by Blacher 
+et al. in Python 3.11.2 (?) as a lightweight package, only requiring Numpy as a dependency. When
+calling \textit{sql\_einsum\_query()}, an Einsum notation string, the tensor names and the tensor 
+data has to be supplied. (?) The path argument is optional. When not supplied with a path, an 
+optimized contraction path is calculated using Cgreedy~\cite{cgreedy}, otherwise the given path is 
+used. The construction of the query is seperated into two parts. The first part creates the tensors 
+in COO format as SQL compatible structures and returns the appropriate query. The second part 
+applies the decomposition schema, more precisely, it uses the contraction path to build a 
+contraction list containing the information to solve larger Einsum problems by performing 
+pairwise tensor operations and constructs the second part of the query. To build the second part 
+of the query we iterate the contraction list and apply the four mapping rules explained in the 
+previous section to assemble the correct SQL strings for the given pairwise contractions. 
+Finally, we merge the two generated query parts and return the complete query.
