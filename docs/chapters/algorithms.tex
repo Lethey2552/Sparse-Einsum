@@ -9,13 +9,13 @@ the algorithm used for the C++ versions, decompose large Einstein summation oper
 into smaller, pairwise operations to exploit efficient contraction paths.
 
 \section{The SQL Algorithm}
-In this section, we present Blacher et al.'s~\cite{sql_einsum} algorithm for mapping format
-% and our implementation(?)
-strings and the corresponding tensors to SQL, enabling Einstein summation in databases.
-First, we introduce the portable schema for representing tensors, specifically sparse tensors,
-in SQL. We then show their four mapping rules to generate non-nested Einsum queries from
-arbitrary format strings. Finally, we explain how we exploit efficient contraction paths
-by decomposing large Einsum queries into smaller parts.
+In this section, we present Blacher et al.'s~\cite{sql_einsum} algorithm and our
+implementation of it for mapping format strings and the corresponding tensors to SQL,
+enabling Einstein summation in databases. First, we introduce the portable schema for
+representing tensors, specifically sparse tensors, in SQL. We then show their four mapping
+rules to generate non-nested Einsum queries from arbitrary format strings. Finally, we
+explain how we exploit efficient contraction paths by decomposing large Einsum queries
+into smaller parts.
 
 \subsection{Portable Schema for Tensors}
 Blacher et al. chose the COO format to represent tensors as it only uses integers and
@@ -102,7 +102,7 @@ right order.
 % TODO: Edit this section to list the right arguments for calling sql_einsum_query()
 \section{Our Implementation of the SQL Algorithm}
 We implemented the algorithm for mapping Einsum format strings to SQL queries proposed by Blacher
-et al. in Python 3.11.0 as a lightweight package, only requiring Numpy as a dependency. When
+et al. in Python 3.11.0 as a small package, only requiring Numpy as a dependency. When
 calling \textit{sql\_einsum\_query()}, an Einsum notation string, the tensor names, and the tensor
 data have to be supplied. (?) The path argument is optional. When not supplied with a path, an
 optimized contraction path is calculated using cgreedy~\cite{cgreedy}. The cgreedy package
@@ -117,3 +117,12 @@ in Einstein notation. To build the second part of the query, we iterate the cont
 apply the four mapping rules explained in the previous section to assemble the correct SQL
 strings for the given pairwise contractions. Finally, we merge the two generated query parts and
 return the complete query.
+
+\section{The C++ Algorithm}
+Our method expands on Torch's strategy of mapping the Einstein summation problems to batch matrix
+multiplication (BMM). We introduce an approach that pre-processes tensors for pairwise operations,
+making them compatible with the BMM framework. We compute the result to carry out the required
+tensor operations. Lastly, post-processing is done to ensure that the expected output format of
+the original tensor operation is adhered to. With this method, we apply the decomposition schema
+and separate the computational steps taken into three distinct sections. This allows us to debug,
+measure and improve each section individually, while giving the benefit of readability.

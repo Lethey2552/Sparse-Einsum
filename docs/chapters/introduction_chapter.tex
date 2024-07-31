@@ -1,16 +1,16 @@
 Einstein notation is a powerful and compact notation for representing
 tensor expressions. It was introduced by Albert Einstein in the early 20th century
-in order to simplify tensor expressions in ``The Foundation of the General Theory of 
-Relativity"~\cite{einstein1916}. The notation is both elegant and efficient, 
-thus making it a valuable tool in countless fields such as theoretical physics, 
-mathematics, and computer science.
+in order to simplify tensor expressions in ``The Foundation of the General Theory of
+Relativity"~\cite{einstein1916}. Due to being brief but still comprehensive, Einstein
+notation has become a valuable tool in many fields such as physics, mathematics, and
+computer science.
 \\\\
-The fundamental operation for evaluating tensor expressions presented in Einstein 
-notation is Einstein summation, often referred to simply as ``Einsum". This operation 
-allows for the calculation of various tensor expressions, including element-wise 
-multiplications, dot products, outer products, and matrix multiplications. The computational 
-efficiency and expressiveness of Einsum have led to its adoption in numerous applications,
-ranging from machine learning to scientific computing.
+The fundamental operation for evaluating tensor expressions presented in Einstein
+notation is Einstein summation, often referred to simply as ``Einsum". This operation
+allows for the calculation of various tensor expressions, including element-wise
+multiplications, dot products, outer products, and matrix multiplications. The predominant
+reason for the adoption of Einsum notation in numerous applications, ranging from machine
+learning to scientific computing, is its conciseness.
 \\\\
 In many practical applications, especially in machine learning and scientific computing,
 the data involved is often sparse. In sparse tensors most values are zero. Handling sparse
@@ -20,8 +20,8 @@ and other major artificial intelligence frameworks~\cite{tensorflow, pytorch} ty
 support Einstein summation for dense tensors, but not for sparse tensors. The only known
 library that aims to support Einsum operations on sparse tensors is Sparse~\cite{sparse}.
 However, like NumPy, Sparse only allows for a limited number of symbols to be used as
-indices, which is why we use opt\_einsum~\cite{opt_einsum}. opt\_einsum is a package for 
-optimizing the contraction order of Einsum expressions. More importantly for us though, 
+indices, which is why we use opt\_einsum~\cite{opt_einsum}. opt\_einsum is a package for
+optimizing the contraction order of Einsum expressions. More importantly for us though,
 opt\_einsum can handle UTF-8 symbols and use Sparse and other libraries like Torch
 as a backend. Real Einstein summation problems often include expressions with hundreds or
 even thousands of higher order tensors. In order to express the aforementioned operations
@@ -51,17 +51,17 @@ to multiple libraries:
 % this and that library and we accept more different indices as input.
 %
 By comparing these implementations, we aim to provide a comprehensive analysis of
-the performance and scalability of sparse Einstein summation in various computing 
-environments. The SQL-based implementation serves as a baseline for our implementations,
-showcasing the potential of database query languages for tensor operations.
-Furthermore, the C++ implementations demonstrate the impact of low-level optimizations
-on computational performance. The code for our implementations is available on
+the performance and scalability of sparse Einstein summation in diverse computing
+environments. The SQL-based implementation serves as a baseline for our implementations.
+It showcases the potential of database query languages for tensor operations.
+Furthermore, the C++ implementations show how low-level optimizations impact
+computational performance. The code for our implementations is available on
 GitHub at: https://github.com/Lethey2552/Sparse-Einsum.
 \\
-By comparing our implementations against the sparse library Sparse and highly
-performance-tuned dense tensor libraries like Torch, we seek to identify the
-strengths and weaknesses of each approach, providing guidelines for selecting the
-appropriate method based on specific use cases and computational requirements.
-This work contributes to the broader understanding of tensor operations and their
-efficient implementation, aiming to offer practical insights for researchers and
-practitioners in fields that rely heavily on tensor computations.
+We aim to determine the advantages and disadvantages of each approach by comparing
+our implementations against the sparse library Sparse and highly performance-tuned
+dense tensor libraries like Torch. This will help determine which approach is best
+for a given set of use cases and computational requirements. The goal of this effort
+is to provide researchers and practitioners in disciplines that significantly rely
+on tensor calculations with practical insights by expanding the understanding of
+tensor operations and their effective implementation.
