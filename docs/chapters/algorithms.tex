@@ -35,12 +35,12 @@ where each value ($val$) can be addressed by specifying the corresponding indice
 ``Efficient and Portable Einstein Summation in SQL" introduces four rules for mapping
 any tensor expression in Einstein notation to SQL.
 
-\begin{description}
-    \item \textbf{R1} All input tensors are enumerated in the FROM clause.
-    \item \textbf{R2} The indices of the output tensor are enumerated in the SELECT clause
+\begin{description}[leftmargin=!,labelwidth=\widthof{\bfseries R1}]
+    \item [R1] All input tensors are enumerated in the FROM clause.
+    \item [R2] The indices of the output tensor are enumerated in the SELECT clause
           and the GROUP BY clause.
-    \item \textbf{R3} The new value is the SUM of all values multiplied together.
-    \item \textbf{R4} Indices that are the same among input tensors are transitively equated
+    \item [R3] The new value is the SUM of all values multiplied together.
+    \item [R4] Indices that are the same among input tensors are transitively equated
           in the WHERE clause.
 \end{description}
 %
@@ -131,41 +131,68 @@ BMM first to introduce the template that has to be followed by the pre-processin
 In order to achieve predictable computations with the BMM, we apply the template seen in Figure
 \ref{fig:bmm:template}. The indices of the two input tensors are grouped as follows:
 
-\begin{description}
-    \item \textbf{Batch Indices.} All individual batch dimensions have to be combined into a single
+% TODO: Right tensor index s_l is wrong in the figure. Change it to s_r.
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.7]{gray_bmm_indice_grouping.pdf}
+    \caption{The figure used by Gray J. \cite{jcmgray}  to describe the classification of indices
+        used for the grouping. The left tensor has the index order $(b, k_l, c, s_l)$ and the right
+        tensor $(b, c, k_r, s_r)$.}
+    \label{fig:bmm:template}
+\end{figure}
+%
+\begin{description}[leftmargin=!,labelwidth=\widthof{\bfseries Contracted Indices (c)}]
+    \item [Batch Indices (b)] All individual batch dimensions have to be combined into a single
           batch dimension.
-    \item \textbf{Contracted Indices.} The dimensions to over which the contraction takes place.
-    \item \textbf{Summed Left and Summed Right Indices.} All indices that only have a single occurence.
-    \item \textbf{Kept Left and Kept Right Indices.} All indices and their dimensions that occur in only
-          a single input tensor and in the output.
+    \item [Contracted Indices (c)] The dimensions over which the contraction takes place.
+    \item [Summed Indices (s)] All indices that only have a single occurence. This is grouped for
+          both input tensors separately.
+    \item [Kept Indices (k)] All indices and their dimensions that occur in only a single input
+          tensor and in the output. This is grouped for both input tensors separately.
 \end{description}
 %
-For our implementation we treat the removal of the S indices as part of the preprocessing. This means
-the input tensors for our BMM have the following index groups: ...
-% TODO: write the rest
-\begin{center}
-    \label{fig:bmm:template}
-    \includegraphics[scale=0.7]{gray_bmm_indice_grouping.pdf}
-\end{center}
+For our implementation we treat the removal of the summed indices as part of the preprocessing.
+This means the input tensors for the BMM only have index order $(b, k_l, c)$ for the left term and
+$(b, c, k_r)$ for the right term. For the COO format, since every index results in a column,
+the index order translates to the columns followed by a last column for the value. The BMM
+computes the results in batches. Say $A$ and $B$ are matrices within the same batch with indices
+$(k_l, c)$ for $A$ and indices $(c, k_r)$ for $B$. The pairwise matrix multiplication for the COO
+matrices is performed using the following algorithm:
+
+\begin{enumerate}[label*=\arabic*.]
+    \item Transpose $B$ by swapping the index columns.
+    \item Sort the rows of $B$ by comparing the index values from first to last.
+    \item Traverse both matrices $A$ and $B$ row-wise and
+          \begin{enumerate}[label*=\arabic*.]
+              \item Compare 2nd element of the current row in $A$ and $B$.
+              \item If they match, store a new row in the resulting COO matrix with the 1st element of
+                    $A$'s current row as its 1st element, the 1st element of $B$'s current row as its
+                    2nd element and the product of the two rows values.
+          \end{enumerate}
+    \item If there are any two rows with the same indices in the resulting matrix, add their values and
+          store them with the previously duplicate indices.
+    \item Sort the resulting matrix.
+\end{enumerate}
+The final tensor is returned and can now be post-processed.
 
 \subsection{Pre-Processing}
 The pre-processing phase of the algorithm is critical for aligning the tensors in Coordinate List
-(COO) format with the requirements of batch matrix multiplication. This step involves some critical
-steps to make sure that the tensors are correctly formatted and shaped for efficient computation.\\
-First, the algorithm calculates appropriate format strings for COO tensors. These are important
-since they will drive how the tensors are to be manipulated to obtain the correct structure as
-specified by the contraction list. The format string should align with the requirements of the
-desired contraction to ensure correctness and efficiency of the subsequent operation.\\
+(COO) format with the requirements of batch matrix multiplication. First, the algorithm calculates
+appropriate format strings for the COO tensors. The format strings should align with the requirements
+of the BMM to ensure correctness and efficiency of the subsequent operation.\\
 Besides computing the format strings, the algorithm computes the new shapes for the tensors.
-In doing so, this step will need an assessment of the dimensions required to allow the BMM operation,
-all while preserving the tensor operations. Precise computation of these new shapes is critical
-to ensure that the tensors are aligned correctly for the contraction process.\\
-These computed format strings are used in our algorithm to call our C++ single einsum function.
-This function runs the einsum with the given format so that it can exactly manipulate the tensor
-elements. At the same time, the new shapes are used to reshape the tensors via a call to the C++
-reshape function. This is done to make the tensors comply with the dimensional requirements of BMM.\\
-This pre-processing step will result in a COO tensor, which is optimally suited for batch matrix
-multiplication. The complex einsum operations that align format and shape of tensors are performed
-within the BMM framework to do the computation in an efficient and result-accurate way.
+In doing so, this step will combine all batch dimensions into one and ignore dimensions not present
+in the format string. Precise computation of these new shapes is critical to ensure that the tensors
+are aligned correctly for the BMM.\\
+The computed format strings are used to call a special, single Einsum function. This function performs
+Einstein summation on a single tensor, allowing for the computation of diagonals, summation over
+specified dimensions and the permutation thereof. The new shapes are used to reshape the tensors to
+comply with the dimensional requirements of BMM. Both of these steps are only performed if necessary.
+The pre-processing will result in a COO tensor, which is suited for batch matrix multiplication.
 
 \subsection{Post-Processing}
+The result of the BMM may have to be post-processed to fit the contraction lists output
+specifications. The post-processing includes the reshaping of the single, combined batch dimension
+into the specified number of batch dimensions by treating it as a multi-index and unraveling it.
+Furthermore, the final dimensions may be permuted by swapping the COO tensors columns to fit the
+correct output format. Again, both of these steps are only performed if necessary.
