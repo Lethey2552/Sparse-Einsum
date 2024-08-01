@@ -19,18 +19,13 @@ class Coo_matrix:
 
     @classmethod
     def coo_from_standard(cls, mat: np.ndarray):
-        coo_mat = [[] for _ in range(len(mat.shape) + 1)]
+        non_zero_indices = np.nonzero(mat)
+        non_zero_values = mat[non_zero_indices]
 
-        for idx, value in np.ndenumerate(mat):
-            if mat[idx] == 0:
-                continue
+        # Stack indices and append the values as the last row
+        coo_mat = np.vstack(non_zero_indices + (non_zero_values,))
 
-            for i, id in enumerate(idx):
-                coo_mat[i].append(id)
-
-            coo_mat[-1].append(value)
-
-        return cls(np.transpose(np.array(coo_mat, dtype=np.float64)), mat.shape)
+        return cls(coo_mat.T, mat.shape)
 
     @classmethod
     def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix"):
@@ -44,66 +39,6 @@ class Coo_matrix:
         AB_shape = (A.shape[0], B.shape[1])
 
         return cls(C_data, AB_shape)
-
-    # @classmethod
-    # def coo_matmul_test(cls, A: "Coo_matrix", B: "Coo_matrix"):
-    #     B_T = B.coo_transpose()
-    #     C_dict = {}
-
-    #     for i in range(len(A)):
-    #         for j in range(len(B_T)):
-
-    #             if A[i, 1] == B_T[j, 1]:
-    #                 key = (A[i, 0], B_T[j, 0])
-
-    #                 if key not in C_dict:
-    #                     C_dict[key] = 0
-    #                 C_dict[key] += A[i, 2] * B_T[j, 2]
-
-    #     C = [[], [], []]
-    #     for (i, j), v in C_dict.items():
-    #         C[0].append(i)
-    #         C[1].append(j)
-    #         C[2].append(v)
-
-    #     AB_shape = tuple([A.shape[0], B.shape[1]])
-
-    #     return cls(np.transpose(np.array(C)), AB_shape)
-
-    # @classmethod
-    # def coo_bmm_test(cls, A: "Coo_matrix", B: "Coo_matrix"):
-    #     cols_to_consider_A = A[:, :-3]
-    #     cols_to_consider_B = B[:, :-3]
-    #     combinations = np.unique(cols_to_consider_A[:, 0])
-
-    #     # time = 0
-    #     # tic = timer()
-    #     # toc = timer()
-    #     # time += toc - tic
-    #     # print(f"Measured result: {time}s")
-
-    #     AB_data = []
-    #     for comb in combinations:
-    #         A_masked = A.data[A[:, 0] == comb]
-    #         B_masked = B.data[B[:, 0] == comb]
-
-    #         A_test = Coo_matrix(A_masked[:, -3:], A.shape[-2:])
-    #         B_test = Coo_matrix(B_masked[:, -3:], B.shape[-2:])
-
-    #         AB = Coo_matrix.coo_matmul(A_test, B_test)
-
-    #         # Append combination to the results
-    #         comb_with_values = np.hstack(
-    #             [np.full((AB.data.shape[0], 1), comb), AB.data])
-
-    #         AB_data.append(comb_with_values)
-
-    #     if AB_data:
-    #         AB_data = np.vstack(AB_data)
-    #         new_shape = tuple(A.shape[:-2]) + AB.shape[-2:]
-    #         return cls(AB_data, new_shape)
-    #     else:
-    #         return cls(np.array([]), A.shape[:-1] + B.shape[-1:])
 
     @classmethod
     def coo_bmm(cls, A: "Coo_matrix", B: "Coo_matrix"):
@@ -188,68 +123,22 @@ class Coo_matrix:
     def __str__(self):
         return np.array2string(self.data)
 
-    # def single_einsum_test(self, notation: str):
-    #     input_notation, output_notation = notation.split('->')
-
-    #     # Ensure that the notation is for a single input tensor
-    #     assert ',' not in input_notation
-
-    #     indices = {k: i for i, k in enumerate(input_notation)}
-    #     output_indices = [indices[idx]
-    #                       for idx in output_notation if idx in indices]
-
-    #     result_dict = {}
-
-    #     for row in self.data:
-    #         key = tuple(row[idx] for idx in output_indices)
-    #         if key in result_dict:
-    #             result_dict[key] += row[-1]
-    #         else:
-    #             result_dict[key] = row[-1]
-
-    #     self.data = np.array([list(key) + [value]
-    #                          for key, value in result_dict.items() if value != 0])
-
-    #     # Adjust shape
-    #     if self.data.size == 0:
-    #         self.shape = (0,) * len(output_notation)
-    #     else:
-    #         self.shape = tuple(int(max(self.data[:, i]) + 1)
-    #                            for i in range(self.data.shape[1] - 1))
-
     def single_einsum(self, notation: str):
         self.data, self.shape = c_single_einsum(self.data.flatten(),
                                                 self.data.shape[0],
                                                 self.data.shape[1],
-                                                np.array(self.shape),
+                                                np.array(
+                                                    self.shape, dtype=np.int32),
                                                 notation.encode('utf-8')
                                                 )
-
-    # def reshape(self, new_shape):
-    #     if np.prod(self.shape) != np.prod(new_shape):
-    #         raise ValueError(
-    #             "The total number of elements must remain the same for reshaping.")
-
-    #     integer_indices = self.data[:, :-1].astype(int)
-    #     float_values = self.data[:, -1]
-
-    #     # Flatten, calculate new indices and create new data array
-    #     original_flat_indices = np.ravel_multi_index(
-    #         integer_indices.T, self.shape)
-
-    #     new_indices = np.unravel_index(original_flat_indices, new_shape)
-
-    #     self.data = np.column_stack(
-    #         [np.array(new_indices).T, float_values.reshape(-1, 1)])
-    #     self.shape = new_shape
 
     def reshape(self, new_shape):
         self.data = c_reshape(self.data.flatten(),
                               self.data.shape[0],
                               self.data.shape[1],
-                              np.array(self.shape),
+                              np.array(self.shape, dtype=np.int32),
                               len(self.shape),
-                              np.array(new_shape),
+                              np.array(new_shape, dtype=np.int32),
                               len(new_shape)
                               )
         self.shape = new_shape
@@ -289,21 +178,122 @@ class Coo_matrix:
         Returns:
         np.ndarray: A dense NumPy array with the same dimensionality as `self.shape`, 
                     populated with the values from `self.data` and zeros elsewhere.
-
-        Example:
-        >>> coo_mat = np.array([[0, 0, 1],
-                                [1, 2, 3],
-                                [2, 1, 4]])
-        >>> coo_matrix = Coo_matrix(coo_mat, (3, 3))
-        >>> coo_matrix.coo_to_standard()
-        array([[1, 0, 0],
-               [0, 0, 3],
-               [0, 4, 0]])
         """
+        mat = np.zeros(self.shape, dtype=self.data.dtype)
+        indices = tuple(self.data[:, i].astype(int)
+                        for i in range(self.data.shape[1] - 1))
 
-        mat = np.zeros(self.shape)
-
-        for entry in self.data:
-            mat[tuple([int(i) for i in entry[:-1]])] = entry[-1]
+        mat[indices] = self.data[:, -1]
 
         return mat
+
+
+######## Legacy functions kept for validation ########
+"""
+    @classmethod
+    def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix"):
+        B_T = B.coo_transpose()
+        C_dict = {}
+
+        for i in range(len(A)):
+            for j in range(len(B_T)):
+
+                if A[i, 1] == B_T[j, 1]:
+                    key = (A[i, 0], B_T[j, 0])
+
+                    if key not in C_dict:
+                        C_dict[key] = 0
+                    C_dict[key] += A[i, 2] * B_T[j, 2]
+
+        C = [[], [], []]
+        for (i, j), v in C_dict.items():
+            C[0].append(i)
+            C[1].append(j)
+            C[2].append(v)
+
+        AB_shape = tuple([A.shape[0], B.shape[1]])
+
+        return cls(np.transpose(np.array(C)), AB_shape)
+
+    @classmethod
+    def coo_bmm(cls, A: "Coo_matrix", B: "Coo_matrix"):
+        cols_to_consider_A = A[:, :-3]
+        cols_to_consider_B = B[:, :-3]
+        combinations = np.unique(cols_to_consider_A[:, 0])
+
+        # time = 0
+        # tic = timer()
+        # toc = timer()
+        # time += toc - tic
+        # print(f"Measured result: {time}s")
+
+        AB_data = []
+        for comb in combinations:
+            A_masked = A.data[A[:, 0] == comb]
+            B_masked = B.data[B[:, 0] == comb]
+
+            A_test = Coo_matrix(A_masked[:, -3:], A.shape[-2:])
+            B_test = Coo_matrix(B_masked[:, -3:], B.shape[-2:])
+
+            AB = Coo_matrix.coo_matmul(A_test, B_test)
+
+            # Append combination to the results
+            comb_with_values = np.hstack(
+                [np.full((AB.data.shape[0], 1), comb), AB.data])
+
+            AB_data.append(comb_with_values)
+
+        if AB_data:
+            AB_data = np.vstack(AB_data)
+            new_shape = tuple(A.shape[:-2]) + AB.shape[-2:]
+            return cls(AB_data, new_shape)
+        else:
+            return cls(np.array([]), A.shape[:-1] + B.shape[-1:])
+
+    def single_einsum(self, notation: str):
+        input_notation, output_notation = notation.split('->')
+
+        # Ensure that the notation is for a single input tensor
+        assert ',' not in input_notation
+
+        indices = {k: i for i, k in enumerate(input_notation)}
+        output_indices = [indices[idx]
+                          for idx in output_notation if idx in indices]
+
+        result_dict = {}
+
+        for row in self.data:
+            key = tuple(row[idx] for idx in output_indices)
+            if key in result_dict:
+                result_dict[key] += row[-1]
+            else:
+                result_dict[key] = row[-1]
+
+        self.data = np.array([list(key) + [value]
+                             for key, value in result_dict.items() if value != 0])
+
+        # Adjust shape
+        if self.data.size == 0:
+            self.shape = (0,) * len(output_notation)
+        else:
+            self.shape = tuple(int(max(self.data[:, i]) + 1)
+                               for i in range(self.data.shape[1] - 1))
+
+    def reshape(self, new_shape):
+        if np.prod(self.shape) != np.prod(new_shape):
+            raise ValueError(
+                "The total number of elements must remain the same for reshaping.")
+
+        integer_indices = self.data[:, :-1].astype(int)
+        float_values = self.data[:, -1]
+
+        # Flatten, calculate new indices and create new data array
+        original_flat_indices = np.ravel_multi_index(
+            integer_indices.T, self.shape)
+
+        new_indices = np.unravel_index(original_flat_indices, new_shape)
+
+        self.data = np.column_stack(
+            [np.array(new_indices).T, float_values.reshape(-1, 1)])
+        self.shape = new_shape
+"""

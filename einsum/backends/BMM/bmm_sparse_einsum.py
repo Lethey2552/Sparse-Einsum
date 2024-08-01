@@ -22,7 +22,7 @@ def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
     return mat
 
 
-def calculate_contractions(cl: list, arrays: np.ndarray, show_progress: bool):
+def calculate_contractions(cl: list, arrays: list, show_progress: bool):
     global handle_idx_time
     global fit_tensor_time
     global bmm_time
@@ -41,7 +41,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray, show_progress: bool):
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
         for id in contraction[0]:
-            arrays.pop(id)
+            del arrays[id]
 
         tic = timer()
         # Get index lists and sets
@@ -69,8 +69,10 @@ def calculate_contractions(cl: list, arrays: np.ndarray, show_progress: bool):
         toc = timer()
         fit_tensor_time += toc - tic
 
-        scalar_mul = True if len(current_arrays[1].shape) == 1 and len(
-            current_arrays[0].shape) == 1 and current_arrays[1].shape[0] == 1 and current_arrays[0].shape[0] == 1 else False
+        scalar_mul = True if (len(current_arrays[1].shape) == 1 and
+                              len(current_arrays[0].shape) == 1 and
+                              current_arrays[1].shape[0] == 1 and
+                              current_arrays[0].shape[0] == 1) else False
 
         tic = timer()
         if scalar_mul:
@@ -105,9 +107,7 @@ def calculate_contractions(cl: list, arrays: np.ndarray, show_progress: bool):
     print("bmm_time TIME:", bmm_time)
     print("shape_out_time TIME:", shape_out_time)
     print("permute_time TIME:", permute_time)
-
     print()
-    print("TOAL TIME:", handle_idx_time + fit_tensor_time + bmm_time)
 
     return arrays[0]
 
@@ -168,13 +168,7 @@ def clean_einsum_notation(einsum_notation: str):
 
 
 def arrays_to_coo(arrays):
-    all_coo = True
-    for array in arrays:
-        if not isinstance(array, Coo_matrix):
-            all_coo = False
-            break
-
-    if not all_coo:
+    if not isinstance(arrays[0], Coo_matrix):
         tmp = []
         for array in arrays:
             if not isinstance(array, Coo_matrix):
@@ -194,6 +188,7 @@ def is_dim_size_two(list: list):
 
 def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=True):
     dim_size_two = False
+
     in_out_idc = clean_einsum_notation(einsum_notation)
 
     # if not dim_size_two:
@@ -226,9 +221,15 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
     tic = timer()
     cl = generate_contraction_list(in_out_idc, path)
     toc = timer()
-    res = calculate_contractions(cl, arrays, show_progress)
+    generate_contraction_list_time = toc - tic
 
-    print(f"GENERATE CONTRACTION LIST TIME: {toc - tic}s")
+    tic = timer()
+    res = calculate_contractions(cl, arrays, show_progress)
+    toc = timer()
+    calculate_contractions_time = toc - tic
+
+    print(f"GENERATE CONTRACTION LIST TIME: {generate_contraction_list_time}s")
+    print(f"CALCULATE CONTRACTIONS TIME: {calculate_contractions_time}s")
     print()
 
     return res
