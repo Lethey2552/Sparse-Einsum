@@ -196,13 +196,13 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
     dim_size_two = False
     in_out_idc = clean_einsum_notation(einsum_notation)
 
-    if not dim_size_two:
-        arrays = arrays_to_coo(arrays)
+    # if not dim_size_two:
+    arrays = arrays_to_coo(arrays)
 
-        if len(arrays) == 1:
-            arrays[0].single_einsum(einsum_notation)
+    if len(arrays) == 1:
+        arrays[0].single_einsum(einsum_notation)
 
-            return arrays[0]
+        return arrays[0]
 
     if path is None:
         # Get Sesum contraction path
@@ -219,9 +219,9 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
         )
 
     # Run specialized einsum for dim size 2 problems
-    if dim_size_two:
-        res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
-        return res
+    # if dim_size_two:
+    #     res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
+    #     return res
 
     tic = timer()
     cl = generate_contraction_list(in_out_idc, path)
