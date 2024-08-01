@@ -362,58 +362,85 @@ void apply_permutation(std::vector<int> &dimensions, std::vector<Entry> &entries
     }
 }
 
-void sum_over_trivial_indices(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &sum_indices, int cols)
+void sum_over_trivial_indices(std::vector<int> &dimensions,
+                              std::vector<Entry> &entries,
+                              const std::vector<int> &sum_indices,
+                              int cols)
 {
-    std::unordered_set<int> sum_indices_set(sum_indices.begin(), sum_indices.end());
+    // Create a bitset for sum indices for fast lookup
+    std::vector<bool> is_sum_index(cols, false);
+    for (int index : sum_indices)
+    {
+        is_sum_index[index] = true;
+    }
+
+    std::unordered_map<std::vector<int>, double, ArrayHash> key_to_value;
+
+    // clock_t start, end;
+    // double total_time = 0;
+
+// Parallel region
+#pragma omp parallel
+    {
+        // Each thread needs its own local data to avoid contention
+        std::unordered_map<std::vector<int>, double, ArrayHash> local_key_to_value;
+        std::vector<int> local_temp_key;
+        local_temp_key.reserve(cols);
+
+#pragma omp for schedule(static, 1000)
+        for (int i = 0; i < entries.size(); ++i)
+        {
+            const auto &entry = entries[i];
+            int offset = entry.offset;
+            int num_idx = entry.num_idx;
+            double value = entry.value;
+
+            // Clear and construct new key excluding sum indices
+            local_temp_key.clear();
+            for (int j = 0; j < num_idx; ++j)
+            {
+                if (!is_sum_index[j])
+                {
+                    local_temp_key.push_back(dimensions[offset + j]);
+                }
+            }
+
+            // Aggregate values for each unique key
+            local_key_to_value[local_temp_key] += value;
+        }
+
+// Merge local results into the global map
+#pragma omp critical
+        {
+            // start = clock();
+            for (const auto &[key, value] : local_key_to_value)
+            {
+                key_to_value[key] += value;
+            }
+            // end = clock();
+            // total_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+        }
+    }
+
+    // std::cout << "TOTAL THREAD TIME: " << total_time << std::endl;
+    // std::cout << entries.size() << std::endl;
+
+    // Convert the hashmap back into the entry and dimensions format
     std::vector<Entry> new_entries;
     std::vector<int> new_dimensions;
-    std::vector<int> temp_key;
 
-    // Hash map to quickly find existing keys
-    std::unordered_map<std::vector<int>, int, ArrayHash> key_to_entry_index;
-
-    // Reserve space to avoid repeated reallocations
+    new_entries.reserve(key_to_value.size());
     new_dimensions.reserve(dimensions.size());
 
-    // Iterate over entries
-    for (const auto &entry : entries)
+    for (const auto &[key, value] : key_to_value)
     {
-        int offset = entry.offset;
-        int num_idx = entry.num_idx;
-        double value = entry.value;
+        Entry new_entry;
+        new_entry.offset = new_dimensions.size();
+        new_entry.num_idx = key.size();
+        new_entry.value = value;
 
-        // Construct new key excluding sum indices
-        temp_key.clear();
-        for (int i = 0; i < num_idx; ++i)
-        {
-            if (sum_indices_set.find(i) == sum_indices_set.end())
-            {
-                temp_key.push_back(dimensions[offset + i]);
-            }
-        }
-
-        // Check if the new key already exists
-        auto it = key_to_entry_index.find(temp_key);
-        if (it != key_to_entry_index.end())
-        {
-            // Key found, update the value
-            new_entries[it->second].value += value;
-        }
-        else
-        {
-            // Key not found, create new entry
-            Entry new_entry;
-            new_entry.offset = new_dimensions.size();
-            new_entry.num_idx = temp_key.size();
-            new_entry.value = value;
-
-            // Insert the new key into the hash map
-            key_to_entry_index[temp_key] = new_entries.size();
-
-            // Insert new dimensions and entry
-            new_dimensions.insert(new_dimensions.end(), temp_key.begin(), temp_key.end());
-            new_entries.push_back(new_entry);
-        }
+        new_dimensions.insert(new_dimensions.end(), key.begin(), key.end());
+        new_entries.push_back(new_entry);
     }
 
     // Update original entries and dimensions with new data
@@ -565,7 +592,7 @@ void single_einsum(const double *data, int rows, int cols,
         std::cout << std::endl;
     }
 
-    // clock_t start, end;
+    clock_t start, end;
 
     fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
 
@@ -587,7 +614,7 @@ void single_einsum(const double *data, int rows, int cols,
     // sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
     // std::cout << "sum_time: " << sum_time << "s" << std::endl;
 
-    // start = clock();
+    // // start = clock();
     if (perm_indices.size() != 0)
     {
         apply_permutation(dimensions, entries, perm_indices);

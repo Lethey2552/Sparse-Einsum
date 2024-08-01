@@ -27,10 +27,10 @@ if __name__ == "__main__":
     # B = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
     # C = sparse.random((2, 2, 3, 2, 2), density=0.5, idx_dtype=int)
 
-    # einsum_notation = "ab,bc->ac"
+    # einsum_notation = "abc->c"
 
-    # A = sparse.random((2, 2), density=1.0, idx_dtype=int)
-    # B = sparse.random((2, 2), density=1.0, idx_dtype=int)
+    # A = sparse.random((20000, 200, 20), density=1.0, idx_dtype=int)
+    # B = sparse.random((2000, 20000), density=1.0, idx_dtype=int)
 
     sparse_arrays = [A, B, C]
     dense_arrays = []

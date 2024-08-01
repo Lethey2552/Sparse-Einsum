@@ -13,6 +13,7 @@
 #include <omp.h>
 #include <numeric>
 // #include <ips4o.hpp>
+#include <tbb/concurrent_hash_map.h>
 #include <tbb/parallel_sort.h>
 
 // Define a custom hash function for std::pair<int, int>

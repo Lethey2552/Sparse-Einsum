@@ -8,7 +8,7 @@ from timeit import default_timer as timer
 
 
 def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
-                                         number_of_tensors=10,
+                                         number_of_tensors=40,
                                          regularity=2.5,
                                          max_tensor_order=10,
                                          max_edge_order=5,
