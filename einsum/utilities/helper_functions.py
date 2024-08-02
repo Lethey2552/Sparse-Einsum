@@ -102,7 +102,7 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
 
 
 def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
-    mat_a_standard = mat_a.coo_to_standard()
+    mat_a_standard = mat_a.to_numpy()
 
     return (np.allclose(mat_a_standard, mat_b))
 

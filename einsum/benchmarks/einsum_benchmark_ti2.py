@@ -62,7 +62,7 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
             torch_tensors.append(torch.from_numpy(numpy_tensor))
             sparse_tensors.append(sparse_tensor)
             sparse_einsum_tensors.append(
-                Coo_matrix.coo_from_standard(numpy_tensor))
+                Coo_matrix.from_numpy(numpy_tensor))
 
         # Time opt_einsum with sparse as a backend
         # tic = timer()
@@ -154,11 +154,11 @@ def einsum_benchmark_instance_benchmark(instance_name: str):
 
 
 if __name__ == "__main__":
-    run_random_tensor_hypernetwork_benchmark = True
-    run_einsum_benchmark_instance_benchmark = False
+    run_random_tensor_hypernetwork_benchmark = False
+    run_einsum_benchmark_instance_benchmark = True
 
     if run_random_tensor_hypernetwork_benchmark:
         random_tensor_hypernetwork_benchmark()
 
     if run_einsum_benchmark_instance_benchmark:
-        einsum_benchmark_instance_benchmark("mc_2021_027")
+        einsum_benchmark_instance_benchmark("mc_2021_036")

@@ -333,7 +333,7 @@ if __name__ == "__main__":
     coo_data = np.array([list(row) for row in res])
     coo_shape = tuple([(max(col) + 1)for col in coo_data[:, :-1].T])
     coo_mat = Coo_matrix(coo_data, coo_shape)
-    mat = coo_mat.coo_to_standard()
+    mat = coo_mat.to_numpy()
 
     # Get reference result
     np_einsum = np.einsum(

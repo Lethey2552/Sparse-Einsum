@@ -18,12 +18,13 @@ class Coo_matrix:
         self.shape = shape
 
     @classmethod
-    def coo_from_standard(cls, mat: np.ndarray):
+    def from_numpy(cls, mat: np.ndarray):
         non_zero_indices = np.nonzero(mat)
         non_zero_values = mat[non_zero_indices]
 
         # Stack indices and append the values as the last row
-        coo_mat = np.vstack(non_zero_indices + (non_zero_values,))
+        coo_mat = np.vstack(non_zero_indices +
+                            (non_zero_values,), dtype=np.double)
 
         return cls(coo_mat.T, mat.shape)
 
@@ -167,7 +168,7 @@ class Coo_matrix:
         transposed_shape = (self.shape[1], self.shape[0])
         return Coo_matrix(M, transposed_shape)
 
-    def coo_to_standard(self) -> np.ndarray:
+    def to_numpy(self) -> np.ndarray:
         """
         Converts a sparse matrix in COO (Coordinate) format to a dense standard NumPy array.
 

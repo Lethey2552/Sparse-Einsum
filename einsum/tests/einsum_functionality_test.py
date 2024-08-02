@@ -19,7 +19,7 @@ def get_sparse_einsum(dense_arrays):
     sparse_einsum_arrays = []
 
     for i in dense_arrays:
-        sparse_einsum_arrays.append(Coo_matrix.coo_from_standard(i))
+        sparse_einsum_arrays.append(Coo_matrix.from_numpy(i))
 
     return sparse_einsum_arrays
 

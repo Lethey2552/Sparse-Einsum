@@ -44,7 +44,7 @@ if __name__ == "__main__":
         if run_torch:
             torch_arrays.append(torch.from_numpy(dense_array))
 
-        sparse_einsum_arrays.append(Coo_matrix.coo_from_standard(dense_array))
+        sparse_einsum_arrays.append(Coo_matrix.from_numpy(dense_array))
 
     if run_np:
         # Numpy Dense

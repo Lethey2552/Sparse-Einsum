@@ -172,7 +172,7 @@ def arrays_to_coo(arrays):
         tmp = []
         for array in arrays:
             if not isinstance(array, Coo_matrix):
-                tmp.append(Coo_matrix.coo_from_standard(array))
+                tmp.append(Coo_matrix.from_numpy(array))
 
         arrays = tmp
 
