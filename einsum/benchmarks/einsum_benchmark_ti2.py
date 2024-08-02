@@ -2,8 +2,11 @@ import opt_einsum as oe
 import numpy as np
 import torch
 import sesum.sr as sr
+import sqlite3 as sql
 from cgreedy import compute_path
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
+from einsum.backends.SQL.sql_sparse_einsum import (
+    sql_einsum_query, get_matrix_from_sql_response)
 from timeit import default_timer as timer
 
 
@@ -85,7 +88,7 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
         toc = timer()
         sparse_einsum_time += toc - tic
 
-        if not np.isclose(np.sum(sparse_result), np.sum(sparse_einsum_result.coo_to_standard())):
+        if not np.isclose(np.sum(sparse_result), np.sum(sparse_einsum_result.to_numpy())):
             print("Error in calculation: Einsum results not equal!")
             correct_results = False
 
@@ -101,7 +104,11 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
     print(f"Results are correct: {'Yes' if correct_results else 'No'}")
 
 
-def einsum_benchmark_instance_benchmark(instance_name: str):
+def einsum_benchmark_instance_benchmark(instance_name: str,
+                                        run_sparse=True,
+                                        run_sesum=True,
+                                        run_sql_einsum=True,
+                                        run_torch=True):
     import einsum_benchmark
 
     instance = einsum_benchmark.instances[instance_name]
@@ -121,22 +128,26 @@ def einsum_benchmark_instance_benchmark(instance_name: str):
     # print("Flops optimized path")
     # print("log10[FLOPS]:", round(flops_log10, 2))
     # print("log2[SIZE]:", round(size_log2, 2))
-    try:
-        tic = timer()
-        result = oe.contract(format_string, *tensors,
-                             optimize=path, backend='sparse')
-        toc = timer()
-        print("sum[OUTPUT]:", np.sum(result), sum_output)
-        print(f"opt_einsum time: {toc - tic}s\n")
-    except Exception as e:
-        print(e)
+    if run_sparse:
+        try:
+            tic = timer()
+            result = oe.contract(format_string, *tensors,
+                                 optimize=path, backend='sparse')
+            toc = timer()
+            print("sum[OUTPUT]:", np.sum(result), sum_output)
+            print(f"opt_einsum time: {toc - tic}s\n")
+        except Exception as e:
+            print(e)
 
-    tic = timer()
-    result = sr.sesum(format_string, *tensors, path=path, dtype=None, debug=False, safe_convert=False,
-                      backend="sparse", semiring=sr.standard)
-    toc = timer()
-    print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
-    print(f"Sesum time: {toc - tic}s\n")
+    if run_sesum:
+        tic = timer()
+        result = sr.sesum(format_string, *tensors,
+                          path=path, dtype=None,
+                          debug=False, safe_convert=False,
+                          backend="sparse", semiring=sr.standard)
+        toc = timer()
+        print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
+        print(f"Sesum time: {toc - tic}s\n")
 
     tic = timer()
     result = sparse_einsum(format_string, tensors, path=path)
@@ -144,13 +155,34 @@ def einsum_benchmark_instance_benchmark(instance_name: str):
     print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
     print(f"sparse_einsum time: {toc - tic}s\n")
 
-    tic = timer()
-    torch_tensors = [torch.from_numpy(i) for i in tensors]
-    result = oe.contract(format_string, *torch_tensors,
-                         optimize=path, backend='torch')
-    toc = timer()
-    print("sum[OUTPUT]:", result, sum_output)
-    print(f"Torch time: {toc - tic}s")
+    if run_sql_einsum:
+        tensor_dict = {}
+        tensor_names = []
+        for i, arr in enumerate(tensors):
+            tensor_dict["T" + str(i)] = arr
+            tensor_names.append("T" + str(i))
+
+        tic = timer()
+        query = sql_einsum_query(format_string, tensor_names, tensor_dict)
+
+        db_connection = sql.connect("SQL_einsum.db")
+        db = db_connection.cursor()
+
+        result = db.execute(query)
+        result = get_matrix_from_sql_response(result.fetchall())
+        toc = timer()
+
+        print("sum[OUTPUT]:", result, sum_output)
+        print(f"SQL Einsum time: {toc - tic}s")
+
+    if run_torch:
+        tic = timer()
+        torch_tensors = [torch.from_numpy(i) for i in tensors]
+        result = oe.contract(format_string, *torch_tensors,
+                             optimize=path, backend='torch')
+        toc = timer()
+        print("sum[OUTPUT]:", result, sum_output)
+        print(f"Torch time: {toc - tic}s")
 
 
 if __name__ == "__main__":
@@ -161,4 +193,5 @@ if __name__ == "__main__":
         random_tensor_hypernetwork_benchmark()
 
     if run_einsum_benchmark_instance_benchmark:
-        einsum_benchmark_instance_benchmark("mc_2021_036")
+        einsum_benchmark_instance_benchmark(
+            "mc_2021_036", run_sparse=False, run_torch=False)

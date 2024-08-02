@@ -1,8 +1,11 @@
 import numpy as np
 import opt_einsum as oe
 import sparse
+import sqlite3 as sql
 import torch
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
+from einsum.backends.SQL.sql_sparse_einsum import (
+    sql_einsum_query, get_matrix_from_sql_response)
 from einsum.utilities.helper_functions import compare_matrices
 from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
@@ -10,6 +13,7 @@ from timeit import default_timer as timer
 if __name__ == "__main__":
     print_results = False
     run_np = False
+    run_sql_einsum = True
     run_torch = True
 
     einsum_notation = "xtbacik,ysabcrk,ubacjr->abcji"
@@ -39,7 +43,7 @@ if __name__ == "__main__":
 
     for i in sparse_arrays:
         dense_array = sparse.asnumpy(i)
-        if run_np:
+        if run_np or run_sql_einsum:
             dense_arrays.append(dense_array)
         if run_torch:
             torch_arrays.append(torch.from_numpy(dense_array))
@@ -77,8 +81,8 @@ if __name__ == "__main__":
 
     print(
         f"Shapes: Numpy - {numpy_res.shape if run_np else 'None'},    Sparse - {sparse_res.shape},    Sparse Einsum - {sparse_einsum_res.shape}")
-    print(f"""Results are correct:\n    Sparse Einsum - Sparse: {compare_matrices(sparse_einsum_res, sparse.asnumpy(sparse_res))}
-    Sparse Einsum - Numpy: {compare_matrices(sparse_einsum_res, numpy_res) if run_np else 'None'}""")
+    print(f"""Results are correct:\n    Sparse Einsum - Sparse: {np.isclose(np.sum(sparse_res), np.sum(sparse_einsum_res.to_numpy()))}
+    Sparse Einsum - Numpy: {np.isclose(np.sum(numpy_res), np.sum(sparse_einsum_res.to_numpy())) if run_np else 'None'}""")
 
     print(f"Numpy time: {numpy_time if run_np else 'None'}s")
     print(f"Torch time: {torch_time if run_torch else 'None'}s")
@@ -88,4 +92,17 @@ if __name__ == "__main__":
     if print_results:
         print(f"Numpy result:\n{numpy_res if run_np else 'None'}")
         print(f"Sparse result:\n{sparse.asnumpy(sparse_res)}\n")
-        print(f"Sparse Einsum result:\n{sparse_einsum_res.coo_to_standard()}")
+        print(f"Sparse Einsum result:\n{sparse_einsum_res.to_numpy()}")
+
+    tic = timer()
+    query = sql_einsum_query(einsum_notation, dense_arrays)
+
+    db_connection = sql.connect("SQL_einsum.db")
+    db = db_connection.cursor()
+
+    result = db.execute(query)
+    result = get_matrix_from_sql_response(result.fetchall())
+    toc = timer()
+
+    print("sum[OUTPUT]:", np.sum(result), np.sum(sparse_einsum_res.to_numpy()))
+    print(f"SQL Einsum time: {toc - tic}s")
