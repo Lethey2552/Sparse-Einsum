@@ -33,9 +33,6 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
     num_contractions_tenth = len(cl) // 10
     progress = 0
 
-    # print(cl[2])
-    # print(arrays[2].shape)
-
     for i, contraction in enumerate(cl):
         if show_progress and num_contractions_tenth != 0 and i % num_contractions_tenth == 0:
             sys.stdout.write(f"\rProgress: {progress}% done!")
@@ -47,6 +44,7 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
         for id in contraction[0]:
             del arrays[id]
 
+        # if contraction[2] == True or (current_arrays[1].sparsity <= 0.9 and current_arrays[0].sparsity <= 0.9):
         tic = timer()
         if contraction[2] == False:
             # Get index lists and sets
@@ -85,7 +83,7 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
         tic = timer()
         if scalar_mul:
             AB = np.array([[0.0, current_arrays[1].data[0][1]
-                          * current_arrays[0].data[0][1]]])
+                            * current_arrays[0].data[0][1]]])
             arrays.append(Coo_matrix(AB, current_arrays[1].shape))
         else:
             arrays.append(Coo_matrix.coo_bmm(
@@ -106,6 +104,12 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
             arrays[-1].swap_cols(perm_AB)
         toc = timer()
         permute_time += toc - tic
+        # else:
+        #     tensor_left = current_arrays[1].to_numpy()
+        #     tensor_right = current_arrays[0].to_numpy()
+
+        #     res = oe.contract(contraction[1], tensor_left, tensor_right)
+        #     arrays.append(Coo_matrix.from_numpy(res))
 
         if type(arrays[-1].shape) != tuple:
             arrays[-1].shape = tuple(arrays[-1].shape)

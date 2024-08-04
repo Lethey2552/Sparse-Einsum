@@ -16,11 +16,17 @@ class Coo_matrix:
     def __init__(self, data: np.ndarray, shape: np.array):
         self.data = data
         self.shape = shape
+        self.nnz = data.shape[0]
+        self.sparsity = self.nnz / np.prod(shape)
 
     @classmethod
     def from_numpy(cls, mat: np.ndarray):
         non_zero_indices = np.nonzero(mat)
-        non_zero_values = mat[non_zero_indices]
+
+        if len(mat.shape) == 0:
+            non_zero_values = [mat]
+        else:
+            non_zero_values = mat[non_zero_indices]
 
         # Stack indices and append the values as the last row
         coo_mat = np.vstack(non_zero_indices +
@@ -184,7 +190,10 @@ class Coo_matrix:
         indices = tuple(self.data[:, i].astype(int)
                         for i in range(self.data.shape[1] - 1))
 
-        mat[indices] = self.data[:, -1]
+        if len(self.shape) == 0 or (len(self.shape) == 1 and self.shape[0] == 1):
+            mat = self.data[:, -1][0]
+        else:
+            mat[indices] = self.data[:, -1]
 
         return mat
 
