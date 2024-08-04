@@ -193,4 +193,4 @@ if __name__ == "__main__":
 
     if run_einsum_benchmark_instance_benchmark:
         einsum_benchmark_instance_benchmark(
-            "mc_2021_036", run_sparse=False, run_torch=False, run_sql_einsum=False)
+            "mc_2022_087", run_sparse=False, run_torch=False, run_sql_einsum=False)
