@@ -1,6 +1,7 @@
 import numpy as np
-import sesum.sr as sr
+import opt_einsum as oe
 import sys
+import torch
 from cgreedy import compute_path
 from einsum.utilities.helper_functions import find_idc_types
 from einsum.utilities.classes.coo_matrix import Coo_matrix
@@ -32,6 +33,9 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
     num_contractions_tenth = len(cl) // 10
     progress = 0
 
+    # print(cl[2])
+    # print(arrays[2].shape)
+
     for i, contraction in enumerate(cl):
         if show_progress and num_contractions_tenth != 0 and i % num_contractions_tenth == 0:
             sys.stdout.write(f"\rProgress: {progress}% done!")
@@ -44,30 +48,34 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
             del arrays[id]
 
         tic = timer()
-        # Get index lists and sets
-        input_idc, output_idc = clean_einsum_notation(contraction[1])
-        shape_left = current_arrays[1].shape
-        shape_right = current_arrays[0].shape
+        if contraction[2] == False:
+            # Get index lists and sets
+            input_idc, output_idc = clean_einsum_notation(contraction[1])
+            shape_left = current_arrays[1].shape
+            shape_right = current_arrays[0].shape
 
-        results = find_idc_types(
-            input_idc,
-            output_idc,
-            shape_left,
-            shape_right
-        )
-        toc = timer()
-        handle_idx_time += toc - tic
+            results = find_idc_types(
+                input_idc,
+                output_idc,
+                shape_left,
+                shape_right
+            )
+            toc = timer()
+            handle_idx_time += toc - tic
 
-        eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
+            eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
-        tic = timer()
-        # Fit both input tensors to match contraction
-        current_arrays[1] = fit_tensor_to_bmm(
-            current_arrays[1], eq_left, shape_left)
-        current_arrays[0] = fit_tensor_to_bmm(
-            current_arrays[0], eq_right, shape_right)
-        toc = timer()
-        fit_tensor_time += toc - tic
+            tic = timer()
+            # Fit both input tensors to match contraction
+            current_arrays[1] = fit_tensor_to_bmm(
+                current_arrays[1], eq_left, shape_left)
+            current_arrays[0] = fit_tensor_to_bmm(
+                current_arrays[0], eq_right, shape_right)
+            toc = timer()
+            fit_tensor_time += toc - tic
+        else:
+            shape_out = contraction[3]
+            perm_AB = contraction[4]
 
         scalar_mul = True if (len(current_arrays[1].shape) == 1 and
                               len(current_arrays[0].shape) == 1 and
@@ -179,6 +187,195 @@ def arrays_to_coo(arrays):
     return arrays
 
 
+def preprocess_input_tensors(cl, tensors):
+    # # Copy the original tensors list to keep track of active tensors
+    # active_tensors = list(tensors)
+    # original_indices = list(range(len(tensors)))
+
+    # for i, contraction in enumerate(cl):
+    #     contraction_indices = contraction[0]
+    #     current_arrays = [active_tensors[idx] for idx in contraction[0]]
+
+    #     # TODO: Solve original indice problem
+    #     original_index_1 = tensors.index(current_arrays[1])
+    #     original_index_0 = np.where(tensors == current_arrays[0])
+
+    #     tmp_con = list(cl[i] + (False,))
+
+    #     for id in contraction[0]:
+    #         del active_tensors[id]
+    #         del original_indices[id]
+
+    #     if current_arrays[1] is not None and current_arrays[0] is not None:
+    #         input_idc, output_idc = clean_einsum_notation(contraction[1])
+
+    #         tensor_A_idc = input_idc[0]
+    #         tensor_B_idc = input_idc[1]
+    #         if len(tensor_A_idc) != len(current_arrays[1].shape):
+    #             print(
+    #                 f"{i}: {current_arrays[1].shape}        {input_idc[1]}        {len(tensor_A_idc)}")
+    #         if len(tensor_B_idc) != len(current_arrays[0].shape):
+    #             print(
+    #                 f"{i}: {current_arrays[0].shape}        {input_idc[0]}        {len(tensor_B_idc)}")
+
+    #         input_idc, output_idc = clean_einsum_notation(contraction[1])
+    #         shape_left = current_arrays[1].shape
+    #         shape_right = current_arrays[0].shape
+
+    #         results = find_idc_types(
+    #             input_idc,
+    #             output_idc,
+    #             shape_left,
+    #             shape_right
+    #         )
+
+    #         eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
+
+    #         current_arrays[1] = torch.from_numpy(current_arrays[1])
+    #         current_arrays[0] = torch.from_numpy(current_arrays[0])
+    #         if eq_left:
+    #             current_arrays[1] = oe.contract(
+    #                 eq_left, current_arrays[1], backend="torch")
+    #         if eq_right:
+    #             current_arrays[0] = oe.contract(
+    #                 eq_right, current_arrays[0], backend="torch")
+    #         if shape_left:
+    #             current_arrays[1] = torch.reshape(
+    #                 current_arrays[1], shape_left)
+    #         if shape_right:
+    #             current_arrays[0] = torch.reshape(
+    #                 current_arrays[0], shape_right)
+
+    #         tmp_con[2] = True
+    #         tmp_con.append(shape_out)
+    #         tmp_con.append(perm_AB)
+
+    #         # Write the modified tensors back to the original array
+    #         for idx, original_idx in zip(contraction_indices, original_indices):
+    #             tensors[original_idx] = current_arrays[idx]
+
+    #     cl[i] = tuple(tmp_con)
+    #     active_tensors.append(None)
+
+    # print(active_tensors)
+
+    # for i, contraction in enumerate(cl):
+    #     idx1, idx2 = contraction[0]
+
+    #     # Ensure indices are within the range of active tensors
+    #     if idx1 < len(active_tensors) and idx2 < len(active_tensors):
+    #         tensor1 = active_tensors[idx2]
+    #         tensor2 = active_tensors[idx1]
+
+    #         # Get index lists
+    #         input_idc, output_idc = clean_einsum_notation(contraction[1])
+    #         # shape_left = tensor_A.shape
+    #         # shape_right = tensor_B.shape
+
+    #         tensor_A_idc = input_idc[1]
+    #         tensor_B_idc = input_idc[0]
+    #         if len(tensor_A_idc) != len(tensor1.shape) and i <= 30:
+    #             print(
+    #                 f"{i}: {tensor1.shape}        {input_idc[1]}        {len(tensor_A_idc)}        {idx2} and {idx1}")
+    #         if len(tensor_B_idc) != len(tensor2.shape) and i <= 30:
+    #             print(
+    #                 f"{i}: {tensor2.shape}        {input_idc[0]}        {len(tensor_B_idc)}        {idx1} and {idx2}")
+
+    #         active_tensors.pop(idx1)
+    #         active_tensors.pop(idx2)
+
+    active_tensor_indices = list(range(len(tensors)))
+
+    for i, contraction in enumerate(cl):
+        idx0, idx1 = contraction[0]
+        tmp_con = list(cl[i] + (False,))
+
+        # Get the actual indices from the active tensor list
+        actual_idx0 = active_tensor_indices[idx0]
+        actual_idx1 = active_tensor_indices[idx1]
+        # print(contraction)
+        # print()
+        # print("ITERATION:", contraction[1])
+        # print(active_tensor_indices)
+
+        # Preprocess only if both are from the original tensors list
+        if actual_idx0 is not None and actual_idx1 is not None:
+            current_arrays = [tensors[active_tensor_indices[idx]]
+                              for idx in contraction[0]]
+
+            # Get index lists
+            input_idc, output_idc = clean_einsum_notation(contraction[1])
+            shape_left = current_arrays[1].shape
+            shape_right = current_arrays[0].shape
+
+            tensor_A_idc = input_idc[0]
+            tensor_B_idc = input_idc[1]
+            if len(tensor_A_idc) != len(current_arrays[1].shape):
+                print(
+                    f"{i}: {current_arrays[1].shape}        {input_idc[1]}        {len(tensor_A_idc)}")
+            if len(tensor_B_idc) != len(current_arrays[0].shape):
+                print(
+                    f"{i}: {current_arrays[0].shape}        {input_idc[0]}        {len(tensor_B_idc)}")
+
+            results = find_idc_types(
+                input_idc,
+                output_idc,
+                shape_left,
+                shape_right
+            )
+            eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
+
+            # current_arrays[1] = torch.from_numpy(current_arrays[1])
+            # current_arrays[0] = torch.from_numpy(current_arrays[0])
+            if eq_left:
+                current_arrays[1] = oe.contract(
+                    eq_left, current_arrays[1], use_blas=True)
+            if eq_right:
+                current_arrays[0] = oe.contract(
+                    eq_right, current_arrays[0], use_blas=True)
+            if shape_left:
+                current_arrays[1] = np.reshape(
+                    current_arrays[1], shape_left)
+            if shape_right:
+                current_arrays[0] = np.reshape(
+                    current_arrays[0], shape_right)
+
+            tmp_con[2] = True
+            tmp_con.append(shape_out)
+            tmp_con.append(perm_AB)
+            for j, idx in enumerate(contraction[0]):
+                # test_A = tensors[active_tensor_indices[idx]]
+                # test_B = current_arrays[j].numpy()
+
+                # if not np.allclose(test_A, test_B):
+                #     print(test_A.shape)
+                #     print(test_B.shape)
+                #     print(test_A)
+                #     print(test_B)
+                tensors[active_tensor_indices[idx]] = current_arrays[j]
+
+        cl[i] = tuple(tmp_con)
+        if idx0 > idx1:
+            active_tensor_indices.pop(idx0)
+            active_tensor_indices.pop(idx1)
+        else:
+            active_tensor_indices.pop(idx1)
+            active_tensor_indices.pop(idx0)
+
+        # Append a new index to represent the result of the contraction
+        active_tensor_indices.append(None)
+
+    print(len(cl))
+
+    count = 0
+    for i in range(len(cl)):
+        if cl[i][2] == True:
+            count += 1
+    print(count)
+
+    return tensors
+
+
 def is_dim_size_two(list: list):
     for t in list:
         if not all(element == 2 for element in t.shape):
@@ -190,14 +387,6 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
     dim_size_two = False
 
     in_out_idc = clean_einsum_notation(einsum_notation)
-
-    # if not dim_size_two:
-    arrays = arrays_to_coo(arrays)
-
-    if len(arrays) == 1:
-        arrays[0].single_einsum(einsum_notation)
-
-        return arrays[0]
 
     if path is None:
         # Get Sesum contraction path
@@ -213,6 +402,9 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
             threshold_optimal=12
         )
 
+    if len(arrays) == 1:
+        return np.einsum(einsum_notation, arrays[0])
+
     # Run specialized einsum for dim size 2 problems
     # if dim_size_two:
     #     res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
@@ -223,6 +415,11 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
     toc = timer()
     generate_contraction_list_time = toc - tic
 
+    arrays = preprocess_input_tensors(cl, arrays)
+
+    # if not dim_size_two:
+    arrays = arrays_to_coo(arrays)
+
     tic = timer()
     res = calculate_contractions(cl, arrays, show_progress)
     toc = timer()
@@ -232,4 +429,4 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
     print(f"CALCULATE CONTRACTIONS TIME: {calculate_contractions_time}s")
     print()
 
-    return res
+    return res.to_numpy()

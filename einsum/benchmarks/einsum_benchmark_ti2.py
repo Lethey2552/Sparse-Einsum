@@ -53,7 +53,7 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
 
         torch_tensors = []
         sparse_tensors = []
-        sparse_einsum_tensors = []
+        dense_tensors = []
         tensor_indices = eq.split("->")[0].split(",")
 
         for indices in tensor_indices:
@@ -64,8 +64,7 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
             numpy_tensor = sparse.asnumpy(sparse_tensor)
             torch_tensors.append(torch.from_numpy(numpy_tensor))
             sparse_tensors.append(sparse_tensor)
-            sparse_einsum_tensors.append(
-                Coo_matrix.from_numpy(numpy_tensor))
+            dense_tensors.append(numpy_tensor)
 
         # Time opt_einsum with sparse as a backend
         # tic = timer()
@@ -84,11 +83,11 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
         # Time sparse_einsum
         tic = timer()
         sparse_einsum_result = sparse_einsum(
-            eq, sparse_einsum_tensors, path=path)
+            eq, dense_tensors, path=path)
         toc = timer()
         sparse_einsum_time += toc - tic
 
-        if not np.isclose(np.sum(sparse_result), np.sum(sparse_einsum_result.to_numpy())):
+        if not np.isclose(np.sum(sparse_result), np.sum(sparse_einsum_result)):
             print("Error in calculation: Einsum results not equal!")
             correct_results = False
 
@@ -194,4 +193,4 @@ if __name__ == "__main__":
 
     if run_einsum_benchmark_instance_benchmark:
         einsum_benchmark_instance_benchmark(
-            "mc_2021_036", run_sparse=False, run_torch=False)
+            "mc_2021_036", run_sparse=False, run_torch=False, run_sql_einsum=False)

@@ -5,8 +5,6 @@ import sqlite3 as sql
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)
-from einsum.utilities.classes.coo_matrix import Coo_matrix
-from einsum.utilities.helper_functions import compare_matrices
 
 
 def run_sql_query(query):
@@ -46,30 +44,19 @@ def get_dense(sparse_arrays):
     return dense_arrays
 
 
-def get_sparse_einsum(dense_arrays):
-    sparse_einsum_arrays = []
-
-    for i in dense_arrays:
-        sparse_einsum_arrays.append(Coo_matrix.from_numpy(i))
-
-    return sparse_einsum_arrays
-
-
-def run_einsum(einsum_notation, dense_arrays, sparse_einsum_arrays):
-    sparse_einsum_res = sparse_einsum(einsum_notation, sparse_einsum_arrays)
+def run_einsum(einsum_notation, dense_arrays):
     numpy_res = np.einsum(einsum_notation, *dense_arrays)
-
+    sparse_einsum_res = sparse_einsum(einsum_notation, dense_arrays)
     return numpy_res, sparse_einsum_res
 
 
 def sparse_einsum_equals_numpy(einsum_notation, sparse_arrays):
     dense_arrays = get_dense(sparse_arrays)
-    sparse_einsum_arrays = get_sparse_einsum(dense_arrays)
 
     numpy_res, sparse_einsum_res = run_einsum(
-        einsum_notation, dense_arrays, sparse_einsum_arrays)
+        einsum_notation, dense_arrays)
 
-    return compare_matrices(sparse_einsum_res, numpy_res)
+    return np.allclose(sparse_einsum_res, numpy_res)
 
 
 class TestSQLEinsum(unittest.TestCase):
@@ -286,6 +273,8 @@ class TestEinsumFunctions(unittest.TestCase):
         A = sparse.random((2, 3, 4), density=1.0, idx_dtype=int)
         B = sparse.random((2, 4, 3), density=1.0, idx_dtype=int)
 
+        print(sparse.asnumpy(A))
+        print(sparse.asnumpy(B))
         sparse_arrays = [A, B]
         equal_output = sparse_einsum_equals_numpy(
             einsum_notation, sparse_arrays)
