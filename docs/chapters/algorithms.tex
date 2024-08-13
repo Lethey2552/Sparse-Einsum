@@ -136,7 +136,7 @@ of the two input tensors are grouped as follows:
 % TODO: Right tensor index s_l is wrong in the figure. Change it to s_r.
 \begin{figure}[H]
     \centering
-    \includegraphics[scale=0.7]{gray_bmm_indice_grouping.pdf}
+    \includegraphics[scale=0.45]{gray_bmm_indice_grouping1_edited.pdf}
     \caption{The figure used by Gray J. \cite{jcmgray}  to describe the classification of indices
         used for the grouping. The left tensor has the index order $(b, k_l, c, s_l)$ and the right
         tensor $(b, c, k_r, s_r)$.}
@@ -161,9 +161,9 @@ of this format we apply multiple pre-processing steps. First, the algorithm calc
 format strings for the COO tensors. The format strings should align with the requirements of the BMM
 to ensure correctness and efficiency of the subsequent operation.\\
 Besides computing the format strings, the algorithm computes the new shapes for the tensors.
-In doing so, this step will combine all batch dimensions into one and ignore dimensions not present
-in the format string. Precise computation of these new shapes is critical to ensure that the tensors
-are aligned correctly for the BMM.\\
+In doing so, this step will combine all batch, contracted and kept dimensions into one single dimension 
+respectively and ignore dimensions not present in the format string. Precise computation of these new 
+shapes is critical to ensure that the tensors are aligned correctly for the BMM.\\
 The computed format strings are used to call a special, single Einsum function. This function performs
 Einstein summation on a single tensor, allowing for the computation of diagonals, summation over
 specified dimensions and the permutation thereof. The new shapes are used to reshape the tensors to
@@ -171,29 +171,122 @@ comply with the dimensional requirements of BMM. Both of these steps are only pe
 The pre-processing will result in a COO tensor, which is suited for batch matrix multiplication.
 
 \subsection{Sparse BMM}
-The BMM computes the results in batches. Say $A$ and $B$ are matrices within the same batch with indices
-$(k_l, c)$ for $A$ and indices $(c, k_r)$ for $B$. The pairwise matrix multiplication for the COO
-matrices is performed using the following algorithm:
+The BMM computes the results in batches. In our case a batch only contains two elements. A COO tensors 
+rows with the same batch index represent a two dimensional matrix in COO format. A batch contains 
+the two matrices, one for each tensor, where the batch index is the same. Since the batch index of 
+the matrices in a batch are the same and we compute the products within batches, we represent them 
+without the batch index after selecting a batch. Say $A$ and $B$ are tensors with indices $(b, k_l, c)$ 
+for $A$ and indices $(b, c, k_r)$ for $B$. The multiplication for the COO tensors is performed 
+using the following algorithm:
 
+% \mathbin{\color{red}0}
+\begin{alignat*}{5}
+    &Steps \quad && &&Tensor\ A && &&Tensor\ B \\
+    &1. &&A(b, k_l, c) &&= \begin{bmatrix}
+                                 b & k_l & c & v    \\
+                                 0 & 0   & 0 & 2.37 \\
+                                 0 & 0   & 1 & 0.45 \\
+                                 0 & 1   & 0 & 0.63 \\
+                                 0 & 1   & 1 & 1.89 \\
+                                 1 & 0   & 0 & 1.13 \\
+                                 1 & 0   & 1 & 0.08 \\
+                             \end{bmatrix} \qquad 
+    &&B(b, c, k_r) &&= \begin{bmatrix}
+                        b & c & k_r & v    \\
+                        0 & 0 & 0   & 0.32 \\
+                        0 & 0 & 1   & 0.67 \\
+                        0 & 0 & 2   & 2.57 \\
+                        0 & 1 & 0   & 1.45 \\
+                        0 & 1 & 1   & 0.14 \\
+                        1 & 0 & 0   & 0.81 \\
+                    \end{bmatrix}
+    \\
+    &2. &&A'(k_l, c) &&= \begin{bmatrix}
+                                k_l & c & v    \\
+                                0   & 0 & 2.37 \\
+                                0   & 1 & 0.45 \\
+                                1   & 0 & 0.63 \\
+                                1   & 1 & 1.89 \\
+                            \end{bmatrix}
+    &&B'(k_r, c) &&= \begin{bmatrix}
+                        k_r & c & v    \\
+                        0   & 0 & 0.32 \\
+                        0   & 1 & 1.45 \\
+                        1   & 0 & 0.67 \\
+                        1   & 1 & 0.14 \\
+                        2   & 0 & 2.57 \\
+                    \end{bmatrix}
+    \\
+    &3. &&A'(k_l, c) &&= \begin{bmatrix}
+                                k_l & c & v    \\
+                                0   & 0 & 2.37 \\
+                                0   & 1 & 0.45 \\
+                                1   & 0 & 0.63 \\
+                                1   & 1 & 1.89 \\
+                            \end{bmatrix}
+    &&B'(k_r, c) &&= \begin{bmatrix}
+                        k_r & c & v    \\
+                        0   & 0 & 0.32 \\
+                        0   & 1 & 1.45 \\
+                        1   & 0 & 0.67 \\
+                        1   & 1 & 0.14 \\
+                        2   & 0 & 2.57 \\
+                    \end{bmatrix}
+    \\
+    & &&C'(k_l, k_r) &&= \begin{bmatrix}
+                            k_l & k_r & v    \\
+                            0   & 0   & 0.76 \\
+                            0   & 1   & 1.59 \\
+                            0   & 2   & 6.09 \\
+                            0   & 0   & 0.65 \\
+                            0   & 1   & 0.06 \\
+                            1   & 0   & 0.20 \\
+                            1   & 1   & 0.42 \\
+                            1   & 2   & 1.62 \\
+                            1   & 0   & 2.74 \\
+                            1   & 1   & 0.26 \\
+                        \end{bmatrix}
+    &&
+    \\
+    &4./5. &&C(b, k_l, k_r) &&= \begin{bmatrix}
+                                        k_l & k_r & v    \\
+                                        0   & 0   & 1.41 \\
+                                        0   & 1   & 1.65 \\
+                                        0   & 2   & 6.09 \\
+                                        1   & 0   & 2.94 \\
+                                        1   & 1   & 0.68 \\
+                                        1   & 2   & 1.62 \\
+                                    \end{bmatrix}
+&&
+    \\
+\end{alignat*}
+%
 \begin{enumerate}[label*=\arabic*.]
-    \item Transpose $B$ by swapping the index columns.
-    \item Sort the rows of $B$ by comparing the index values from first to last.
-    \item Traverse both matrices $A$ and $B$ row-wise and
+    \item Get batches by selecting rows of tensor A and B with the same batch index as COO matrices
+    $A'$ and $B'$. For each batch perform the following operations:
+    \item Transpose $B'$ by swapping columns $c$ and $k_r$ and sorting the rows of $B'$ by comparing 
+    column $k_r$'s entries followed by $c$'s.
+    \item Let a row of $A'$ be represented as $[k_l^i, c^i, v^i]$ and a row of $B'$ be represented as 
+    $[k_r^j, c^j, v^j]$ with $i$ and $j$ indicating the selected rows and $v^i$ and $v^j$ being the 
+    values of the row. Now, iterate both matrices 
+    $A'$ and $B'$ row-wise and
           \begin{enumerate}[label*=\arabic*.]
-              \item Compare 2nd element of the current row in $A$ and $B$.
-              \item If they match, store a new row in the resulting COO matrix with the 1st element of
-                    $A$'s current row as its 1st element, the 1st element of $B$'s current row as its
-                    2nd element and the product of the two rows values.
+              \item[] If $c^i = c^j$, compute and store $[k_l^i, k_r^j, v^i * v^j]$.
           \end{enumerate}
-    \item If there are any two rows with the same indices in the resulting matrix, add their values and
-          store them with the previously duplicate indices.
-    \item Sort the resulting matrix.
+    \item If there are any two rows with the same indices for a value in the resulting matrix, add 
+    their values and store them with the previously duplicate indices.
+    \item Sort the rows of the resulting matrix by comparing column $k_l$'s entries followed by 
+    $k_r$'s.
+    \item Append the resulting COO matrix to the final tensor $C$ with its batch index added as the
+    first column $[b, k_l, k_r, v]$
+    \item Repeat from 2. with next batch until all batches are done.
 \end{enumerate}
 The final tensor is returned and can now be post-processed.
 
 \subsection{Post-Processing}
 The result of the BMM may have to be post-processed to fit the contraction lists output
-specifications. The post-processing includes the reshaping of the single, combined batch dimension
-into the specified number of batch dimensions by treating it as a multi-index and unraveling it.
-Furthermore, the final dimensions may be permuted by swapping the COO tensors columns to fit the
-correct output format. Again, both of these steps are only performed if necessary.
+specifications. The post-processing includes the reshaping of the three combined dimensions for
+the batch, contracted and summed indices into the required number of dimensions by treating 
+each combined dimension as a multi-index and unraveling it. Furthermore, the final dimensions 
+may be permuted by swapping the COO tensors columns to fit the correct output format. Again, 
+both of these steps are only performed if necessary.

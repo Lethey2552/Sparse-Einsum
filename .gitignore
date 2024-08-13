@@ -11,6 +11,7 @@ coo_bmm_cuda/
 *.json
 
 # Latex
+*.png
 *.out
 *.bbl
 *.bcf
