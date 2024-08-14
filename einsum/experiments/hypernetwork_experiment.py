@@ -8,7 +8,7 @@ from util import (get_sql_query, get_sql_performance, get_sparse_performance,
 
 
 def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=True, run_torch=False):
-    number_of_tensors = 3
+    number_of_tensors = 5
     regularity = 2.5
     max_tensor_order = 10
     max_edge_order = 5
@@ -45,7 +45,7 @@ def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=T
     for indices in tensor_indices:
         indice_tuple = tuple([size_dict[c] for c in indices])
         sparse_tensor = sparse.random(
-            indice_tuple, density=0.01, idx_dtype=int)
+            indice_tuple, density=0.1, idx_dtype=int)
 
         numpy_tensor = sparse.asnumpy(sparse_tensor)
 

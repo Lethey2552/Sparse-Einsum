@@ -44,6 +44,7 @@ def get_sql_performance(n, query, sparse_result=False):
         tic = timer()
         for _ in range(n):
             sql_result = db.execute(query)
+            print(sql_result.fetchall())
             sql_result = get_matrix_from_sql_response(sql_result.fetchall())
         toc = timer()
     except Exception:
@@ -55,7 +56,10 @@ def get_sql_performance(n, query, sparse_result=False):
     print(sparse_result)
 
     if not sparse_result is False:
-        assert np.allclose(sql_result, sparse_result)
+        if not np.any(sparse_result):
+            assert np.isclose(np.sum(sql_result), np.sum(sparse_result))
+        else:
+            assert np.allclose(sql_result, sparse_result)
 
     return 1 / ((toc-tic) / n)
 

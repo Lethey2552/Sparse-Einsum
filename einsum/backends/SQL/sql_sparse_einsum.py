@@ -3,6 +3,7 @@ from cgreedy import compute_path
 from operator import itemgetter
 from string import ascii_letters
 from einsum.utilities.helper_functions import get_sizes
+from itertools import product
 
 
 ASCII = list(ascii_letters)
@@ -20,54 +21,53 @@ def find_contraction(positions, input_sets, output_set):
 
     return new_result, remaining, idc_removed, idc_contract
 
+# TODO: Handle SQL results being zero and shaping of output
+
 
 def sql_einsum_values(tensors: dict):
     """
     Creates the tensors in COO format as SQL compatible structures
     and returns the appropriate query.
     """
-    query = ""
-
+    query_for_single_tensors = []
     for tensor_name, tensor in tensors.items():
-        cast = True
-        query += f"{tensor_name}({', '.join(ASCII[:len(tensor.shape)])}, val) AS (\n"
+        if isinstance(tensor, float) or isinstance(tensor, int):
+            query = f" {tensor_name}(val) AS ( VALUES ("
+            query += "("
+            query += f"CAST({tensor} AS DOUBLE PRECISION))))\n"
+        else:
+            query = f" {tensor_name}({', '.join(ASCII[:len(tensor.shape)])}, val) AS (\n"
+            # create value tuples
+            values = []
+            cast = False
+            for row, indices in enumerate(product(*[range(i) for i in tensor.shape])):
+                # skip zero values
+                if tensor[indices] == 0:
+                    continue
+                # if we add the first value we have to give the data type
+                if not cast:
+                    type_definition = "("
+                    for index in indices:
+                        type_definition += f"CAST({index} AS INTEGER), "
+                    type_definition += f"CAST({tensor[indices]} AS DOUBLE PRECISION))"
+                    values.append(type_definition)
+                    cast = True
+                else:
+                    values.append(f"{indices + (tensor[indices],)}")
 
-        # TODO: Handle SQL results being zero and shaping of output
-        # if not np.any(tensor):
-        #     query += "VALUES("
-        #     for i in range(len(tensor.shape)):
-        #         query += "CAST (0 AS DOUBLE PRECISION),"
-        #     query += "CAST (1 AS DOUBLE PRECISION))\n),"
+            # Handle the case where all values are zero
+            if not values:
+                # Insert a placeholder value (e.g., with indices 0, 0, 0,... and val 0.0)
+                type_definition = "("
+                type_definition += ", ".join([f"CAST(0 AS INTEGER)"]
+                                             * len(tensor.shape))
+                type_definition += ", CAST(0.0 AS DOUBLE PRECISION))"
+                values.append(type_definition)
 
-        it = np.nditer(tensor, flags=['multi_index'])
-        for x in it:
-            # skip zero values
-            if tensor[it.multi_index] == 0:
-                continue
-
-            # give data type for first entry with COO format
-            if cast:
-                type_casts = ""
-
-                for i in it.multi_index:
-                    type_casts += f"CAST({i} AS DOUBLE PRECISION), "
-                type_casts += f"CAST({x} AS DOUBLE PRECISION)"
-
-                query += f"VALUES({type_casts}),\n"
-
-                cast = False
-            else:
-                item_coo = "("
-
-                for i in it.multi_index:
-                    item_coo += f"{i}, "
-
-                query += f"{item_coo}{x}), "
-
-        query = query[:-2]
-        query += "\n), "
-
-    return query[:-2] + "\n"
+            query += f"  VALUES {', '.join(values)}\n)"
+        query_for_single_tensors.append(query)
+    query = f"WITH {', '.join(query_for_single_tensors)}"
+    return query
 
 
 def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
@@ -269,7 +269,7 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, path_info):
 
 
 def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, path_info=None):
-    query = "WITH "
+    query = ""
     values_query = sql_einsum_values(tensors)
 
     tensor_shapes = [t.shape for t in tensors.values()]
