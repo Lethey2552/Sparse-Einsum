@@ -5,7 +5,6 @@ import sqlite3 as sql
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)
-# from sql_commands import sql_einsum_query
 from timeit import default_timer as timer
 import traceback
 
