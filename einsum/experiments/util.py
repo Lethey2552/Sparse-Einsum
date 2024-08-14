@@ -5,6 +5,7 @@ import sqlite3 as sql
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)
+# from sql_commands import sql_einsum_query
 from timeit import default_timer as timer
 import traceback
 
@@ -35,6 +36,8 @@ def get_sparse_performance(n, format_string, tensors, path):
 
     return 1 / ((toc-tic) / n), sparse_result
 
+# Does not work for our sql_einsum_query nor for Blachers sql_einsum_query function
+
 
 def get_sql_performance(n, query, sparse_result=False):
     db_connection = sql.connect("SQL_einsum.db")
@@ -44,16 +47,12 @@ def get_sql_performance(n, query, sparse_result=False):
         tic = timer()
         for _ in range(n):
             sql_result = db.execute(query)
-            print(sql_result.fetchall())
             sql_result = get_matrix_from_sql_response(sql_result.fetchall())
         toc = timer()
     except Exception:
         print(traceback.format_exc())
 
         return 0
-
-    print(sql_result)
-    print(sparse_result)
 
     if not sparse_result is False:
         if not np.any(sparse_result):

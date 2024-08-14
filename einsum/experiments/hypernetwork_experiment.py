@@ -7,14 +7,14 @@ from util import (get_sql_query, get_sql_performance, get_sparse_performance,
                   get_torch_performance, get_sparse_einsum_performance)
 
 
-def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=True, run_torch=False):
-    number_of_tensors = 5
+def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=False, run_torch=False):
+    number_of_tensors = 10
     regularity = 2.5
     max_tensor_order = 10
     max_edge_order = 5
     number_of_output_indices = 5
     min_axis_size = 2
-    max_axis_size = 5
+    max_axis_size = 10
     seed = 12345
 
     format_string, shapes, size_dict = random_tensor_hypernetwork(number_of_tensors=number_of_tensors,
@@ -49,23 +49,20 @@ def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=T
 
         numpy_tensor = sparse.asnumpy(sparse_tensor)
 
-        # print(numpy_tensor)
-        # if np.count_nonzero(numpy_tensor) <= 1:
-        #     idx_1 = np.random.choice(numpy_tensor.shape[0], 2, replace=False)
+        if np.count_nonzero(numpy_tensor) <= 1:
+            idx_1 = np.random.choice(numpy_tensor.shape[0], 2, replace=False)
 
-        #     if len(numpy_tensor.shape) != 1:
-        #         idx_2 = np.random.choice(
-        #             numpy_tensor.shape[1], 2, replace=False)
+            if len(numpy_tensor.shape) != 1:
+                idx_2 = np.random.choice(
+                    numpy_tensor.shape[1], 2, replace=False)
 
-        #         numpy_tensor[idx_1[0], idx_2[0]] = np.random.rand()
-        #         numpy_tensor[idx_1[1], idx_2[1]] = np.random.rand()
-        #     else:
-        #         numpy_tensor[idx_1[0]] = np.random.rand()
-        #         numpy_tensor[idx_1[1]] = np.random.rand()
+                numpy_tensor[idx_1[0], idx_2[0]] = np.random.rand()
+                numpy_tensor[idx_1[1], idx_2[1]] = np.random.rand()
+            else:
+                numpy_tensor[idx_1[0]] = np.random.rand()
+                numpy_tensor[idx_1[1]] = np.random.rand()
 
         tensors.append(numpy_tensor)
-
-    # print(tensors)
 
     sparse_result = False
     # Time opt_einsum sparse backend average execution

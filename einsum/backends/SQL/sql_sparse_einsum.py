@@ -296,6 +296,7 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 
 
 def get_matrix_from_sql_response(coo_mat: np.ndarray):
+    print(coo_mat)
     if len(coo_mat) == 0:
         raise ValueError
 
