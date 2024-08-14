@@ -7,6 +7,176 @@ double permute_time = 0;
 double sort_time = 0;
 double bmm_sort_time = 0;
 
+// void coo_bmm_test(const double *A_data, int A_rows, int A_cols,
+//                   const double *B_data, int B_rows, int B_cols,
+//                   double **C_data, int *C_rows, int *C_cols)
+// {
+
+//     bool is_batched = (A_cols > 3 && B_cols > 3);
+//     is_batched = true;
+//     // std::cout << is_batched << std::endl;
+
+//     // Prepare the result container
+//     std::vector<std::tuple<double, int, int, double>> result_data;
+
+//     int max_batch = 1;
+
+//     for (int i = 0; i < A_rows; ++i)
+//     {
+//         int batch_idx = static_cast<int>(A_data[i * A_cols]);
+//         max_batch = (max_batch < batch_idx ? batch_idx : max_batch);
+//     }
+
+//     // Iterate over each batch
+//     for (int b = 0; b < (is_batched ? max_batch : 1); ++b)
+//     {
+//         int A_batch_start = b * A_cols;
+//         int B_batch_start = b * B_cols;
+
+//         // Extract A and B's coordinates and values
+//         std::vector<int> A1_crd, A2_crd;
+//         std::vector<double> A_vals;
+//         std::vector<int> B1_crd, B2_crd;
+//         std::vector<double> B_vals;
+
+//         if (b == 0)
+//             std::cout << "PRINT A:" << std::endl;
+//         for (int i = 0; i < A_rows; ++i)
+//         {
+//             int A_batch = static_cast<int>(A_data[i * A_cols]);
+
+//             if (A_batch != b)
+//                 continue;
+
+//             int A1 = static_cast<int>(A_data[i * A_cols + 1]);
+//             int A2 = static_cast<int>(A_data[i * A_cols + 2]);
+//             double A_val = A_data[i * A_cols + 3];
+
+//             A1_crd.push_back(A1);
+//             A2_crd.push_back(A2);
+//             A_vals.push_back(A_val);
+
+//             // Print values
+//             if (b == 0)
+//                 std::cout << "[" << A1 << " " << A2 << " " << A_val << "]" << std::endl;
+//         }
+
+//         if (b == 0)
+//             std::cout << "PRINT B:" << std::endl;
+//         for (int j = 0; j < B_rows; ++j)
+//         {
+//             int B_batch = static_cast<int>(B_data[j * B_cols]);
+
+//             if (B_batch != b)
+//                 continue;
+
+//             int B1 = static_cast<int>(B_data[j * B_cols + 1]);
+//             int B2 = static_cast<int>(B_data[j * B_cols + 2]);
+//             double B_val = B_data[j * B_cols + 3];
+
+//             B1_crd.push_back(B1);
+//             B2_crd.push_back(B2);
+//             B_vals.push_back(B_val);
+
+//             // Print values
+//             if (b == 0)
+//                 std::cout << "[" << B1 << " " << B2 << " " << B_val << "]" << std::endl;
+//         }
+
+//         if (b == 0)
+//         { // Perform the sparse matrix multiplication
+//             int iA = 0, jB = 0;
+//             while (iA < A_rows && jB < B_rows)
+//             {
+//                 int row_A = A1_crd[iA];
+//                 int col_B = B1_crd[jB];
+
+//                 std::cout << "ROW A: " << row_A << std::endl;
+
+//                 if (row_A == col_B)
+//                 {
+//                     // Iterate over matching indices
+//                     int seg_A = iA;
+//                     while (seg_A < A_rows && A1_crd[seg_A] == row_A)
+//                         seg_A++;
+//                     int seg_B = jB;
+//                     while (seg_B < B_rows && B1_crd[seg_B] == col_B)
+//                         seg_B++;
+
+//                     // Calculate the value for C
+//                     for (int i = iA; i < seg_A; ++i)
+//                     {
+//                         int col_A = A2_crd[i];
+//                         for (int j = jB; j < seg_B; ++j)
+//                         {
+//                             if (B2_crd[j] == col_A)
+//                             {
+//                                 double value = A_vals[i] * B_vals[j];
+//                                 result_data.push_back(std::make_tuple(static_cast<double>(b), row_A, B2_crd[j], value));
+//                             }
+//                         }
+//                     }
+//                     iA = seg_A;
+//                     jB = seg_B;
+//                 }
+//                 else if (row_A < col_B)
+//                 {
+//                     iA++;
+//                 }
+//                 else
+//                 {
+//                     jB++;
+//                 }
+//             }
+//         }
+//     }
+
+//     // Sort the result by batch, row, and column indices
+//     std::sort(result_data.begin(), result_data.end());
+
+//     *C_rows = static_cast<int>(result_data.size());
+//     *C_cols = is_batched ? 4 : 3;
+
+//     *C_data = new double[*C_rows * *C_cols];
+//     for (size_t i = 0; i < result_data.size(); ++i)
+//     {
+//         if (is_batched)
+//         {
+//             (*C_data)[i * *C_cols + 0] = std::get<0>(result_data[i]);
+//             (*C_data)[i * *C_cols + 1] = std::get<1>(result_data[i]);
+//             (*C_data)[i * *C_cols + 2] = std::get<2>(result_data[i]);
+//             (*C_data)[i * *C_cols + 3] = std::get<3>(result_data[i]);
+//         }
+//         else
+//         {
+//             (*C_data)[i * *C_cols + 0] = std::get<1>(result_data[i]);
+//             (*C_data)[i * *C_cols + 1] = std::get<2>(result_data[i]);
+//             (*C_data)[i * *C_cols + 2] = std::get<3>(result_data[i]);
+//         }
+//     }
+
+//     // Print the result_data
+//     std::cout << "TEST C_data:" << std::endl;
+//     for (size_t i = 0; i < *C_rows; ++i)
+//     {
+//         std::cout << "(";
+//         if (is_batched)
+//         {
+//             std::cout << (*C_data)[i * *C_cols + 0] << ", " // Batch index
+//                       << (*C_data)[i * *C_cols + 1] << ", " // Row index
+//                       << (*C_data)[i * *C_cols + 2] << ", " // Column index
+//                       << (*C_data)[i * *C_cols + 3];        // Value
+//         }
+//         else
+//         {
+//             std::cout << (*C_data)[i * *C_cols + 0] << ", " // Row index
+//                       << (*C_data)[i * *C_cols + 1] << ", " // Column index
+//                       << (*C_data)[i * *C_cols + 2];        // Value
+//         }
+//         std::cout << ")" << std::endl;
+//     }
+// }
+
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
              double **C_data, int *C_rows, int *C_cols)
@@ -105,12 +275,12 @@ void coo_bmm(const double *A_data, int A_rows, int A_cols,
     }
 
     // start = clock();
-    std::sort(result_data.begin(), result_data.end());
+    std::sort(std::execution::par, result_data.begin(), result_data.end());
     // end = clock();
     // bmm_sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
     // std::cout << "bmm_sort_time: " << bmm_sort_time << "s" << std::endl;
 
-    *C_rows = result_data.size();
+    *C_rows = static_cast<int>(result_data.size());
     *C_cols = is_batched ? 4 : 3; // 4 columns if batched (batch, row, col, value); otherwise 3 (row, col, value)
 
     *C_data = new double[*C_rows * *C_cols];
@@ -273,7 +443,7 @@ void fill_dimensions_and_entries(const double *data, int rows, int cols,
     for (int i = 0; i < rows; ++i)
     {
         Entry entry;
-        entry.offset = dimensions.size(); // Offset before adding new elements
+        entry.offset = static_cast<uint32_t>(dimensions.size()); // Offset before adding new elements
         entry.num_idx = cols - 1;
 
         // Fill dimensions vector
@@ -315,7 +485,7 @@ void remove_non_diag_indices(std::vector<int> &dimensions, std::vector<Entry> &e
         if (is_valid_diagonal)
         {
             Entry new_entry;
-            new_entry.offset = new_dimensions.size();
+            new_entry.offset = static_cast<uint32_t>(new_dimensions.size());
             new_entry.num_idx = num_idx - 1;
             new_entry.value = entry.value;
 
@@ -435,8 +605,8 @@ void sum_over_trivial_indices(std::vector<int> &dimensions,
     for (const auto &[key, value] : key_to_value)
     {
         Entry new_entry;
-        new_entry.offset = new_dimensions.size();
-        new_entry.num_idx = key.size();
+        new_entry.offset = static_cast<uint32_t>(new_dimensions.size());
+        new_entry.num_idx = static_cast<uint16_t>(key.size());
         new_entry.value = value;
 
         new_dimensions.insert(new_dimensions.end(), key.begin(), key.end());
@@ -483,7 +653,7 @@ void parallel_sort(std::vector<Entry> &entries, const std::vector<int> &dimensio
     for (size_t step = chunk_size; step < n; step *= 2)
     {
 #pragma omp parallel for
-        for (int64_t start = 0; start < n; start += 2 * step)
+        for (int64_t start = 0; static_cast<size_t>(start) < n; start += 2 * step)
         {
             int64_t mid = std::min(start + step, n);
             int64_t end = std::min(start + 2 * step, n);
@@ -513,7 +683,7 @@ void single_einsum(const double *data, int rows, int cols,
     {
         *result_rows = rows;
         *result_cols = cols;
-        *new_shape_size = output_notation.size();
+        *new_shape_size = static_cast<int>(output_notation.size());
 
         *new_shape = new int[*new_shape_size];
         for (int i = 0; i < *new_shape_size; ++i)
@@ -592,7 +762,7 @@ void single_einsum(const double *data, int rows, int cols,
         std::cout << std::endl;
     }
 
-    clock_t start, end;
+    // clock_t start, end;
 
     fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
 
@@ -623,38 +793,16 @@ void single_einsum(const double *data, int rows, int cols,
     // permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
     // std::cout << "permute_time: " << permute_time << "s" << std::endl;
 
-    // start = clock();
-    // // Sort entries
-    // std::sort(entries.begin(), entries.end(),
-    //           [&dimensions](const Entry &a, const Entry &b)
-    //           { return compare_entries(a, b, dimensions); });
-    // // Sort entries in parallel using TBB
-    // tbb::parallel_sort(entries.begin(), entries.end(),
-    //                    [&dimensions](const Entry &a, const Entry &b)
-    //                    { return compare_entries(a, b, dimensions); });
-    // end = clock();
-    // sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "sort_time: " << sort_time << "s" << std::endl;
-
-    // std::cout << "Dimensions after removing indices:" << std::endl;
-    // for (Entry entry : entries)
-    // {
-    //     for (int i = 0; i < entry.num_idx; ++i)
-    //     {
-    //         std::cout << dimensions[entry.offset + i] << ", ";
-    //     }
-    //     std::cout << "VALUE: " << entry.value << std::endl;
-    // }
-    // std::cout << std::endl;
+    // parallel_sort(entries, dimensions);
 
     // Prepare the output data
-    *result_rows = entries.size();
-    *result_cols = output_chars.size() + 1;
+    *result_rows = static_cast<int>(entries.size());
+    *result_cols = static_cast<int>(output_chars.size()) + 1;
     size_t shape_vec_size = shape_vec.size();
 
     if (shape_vec_size != 0)
     {
-        *new_shape_size = shape_vec_size;
+        *new_shape_size = static_cast<int>(shape_vec_size);
         *new_shape = new int[*new_shape_size];
         for (int i = 0; i < *new_shape_size; ++i)
         {
@@ -696,7 +844,7 @@ int ravel_single_index(const std::vector<int> &indices, const std::vector<int> &
     int flat_index = 0;
     int stride = 1;
     // Iterate over the dimensions in reverse order
-    for (int i = shape.size() - 1; i >= 0; --i)
+    for (int i = static_cast<int>(shape.size()) - 1; i >= 0; --i)
     {
         flat_index += indices[i] * stride;
         stride *= shape[i];
@@ -731,12 +879,12 @@ void reshape(const double *data, int data_rows, int data_cols,
         std::vector<int> indices(data_cols - 1);
         for (int j = 0; j < data_cols - 1; ++j)
         {
-            indices[j] = data[i * data_cols + j];
+            indices[j] = static_cast<int>(data[i * data_cols + j]);
         }
         original_flat_indices.push_back(ravel_single_index(indices, shape_vec));
     }
 
-    *result_rows = original_flat_indices.size();
+    *result_rows = static_cast<int>(original_flat_indices.size());
     *result_cols = new_shape_length + 1;
     *result_data = new double[*result_rows * *result_cols];
 
@@ -744,7 +892,7 @@ void reshape(const double *data, int data_rows, int data_cols,
     for (int i = 0; i < *result_rows; ++i)
     {
         int flat_index = original_flat_indices[i];
-        for (int j = new_shape_vec.size() - 1; j >= 0; --j)
+        for (int j = static_cast<int>(new_shape_vec.size()) - 1; j >= 0; --j)
         {
             (*result_data)[i * *result_cols + j] = flat_index % new_shape_vec[j];
             flat_index /= new_shape_vec[j];
@@ -757,7 +905,7 @@ void reshape(const double *data, int data_rows, int data_cols,
 uint64_t encode_indices(const std::vector<int> &indices)
 {
     uint64_t encoded_index = 0;
-    int n = indices.size();
+    int n = static_cast<int>(indices.size());
     for (int k = 0; k < n; ++k)
     {
         encoded_index |= (static_cast<uint64_t>(indices[k]) << k);
@@ -805,7 +953,7 @@ void einsum_dim_2(
 
     for (int i = 0; i < n_map_items; ++i)
     {
-        sizes[keys_sizes[i]] = values_sizes[i];
+        sizes[keys_sizes[i]] = static_cast<uint32_t>(values_sizes[i]);
     }
 
     // Get pointers to tensors in data
@@ -813,7 +961,7 @@ void einsum_dim_2(
     for (int i = 0; i < n_tensors; ++i)
     {
         data_ptr.emplace_back(tmp);
-        tmp += (1 << in_out_sizes[i]);
+        tmp += (1ULL << in_out_sizes[i]);
     }
 
     for (int i = 0; i < n_tensors - 1; ++i)

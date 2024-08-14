@@ -12,8 +12,61 @@ time = 0
 time_bmm = 0
 
 
-class Coo_matrix:
+class Coo_tensor:
+    """
+    A class representing a sparse tensor in COO (Coordinate) format.
+
+    The COO format is a format for representing sparse tensors, where the 
+    tensor is stored as a list of non-zero elements along with their coordinates 
+    (indices).
+
+    Attributes
+    -----------
+    data : np.ndarray
+        A 2D NumPy array where each row represents a non-zero element in the 
+        tensor. The columns are the indices for each dimension of the non-zero 
+        elements, with the last column containing the values of these elements.
+    shape : tuple of int
+        The shape of the original dense tensor from which the COO tensor was created.
+    nnz : int
+        The number of non-zero elements in the tensor.
+    sparsity : float
+        The fraction of non-zero elements relative to the total number of elements 
+        in the tensor, computed as `nnz / np.prod(shape)`.
+
+    Parameters
+    -----------
+    data : np.ndarray
+        A 2D array containing the COO format data. Expected shape is (nnz, 3) 
+        where nnz is the number of non-zero elements.
+    shape : np.array
+        A 1D array specifying the dimensions of the original matrix.
+    """
+
     def __init__(self, data: np.ndarray, shape: np.array):
+        """
+        Initialize a COO tensor with the given data and shape.
+
+        Parameters
+        -----------
+        data : np.ndarray
+            A 2D NumPy array where each row represents a non-zero element in the 
+            tensor. The columns are the indices for each dimension of the non-zero 
+            elements, with the last column containing the values of these elements.
+        shape : np.array
+            A 1D array indicating the dimensions of the original dense tensor. 
+            This should match the shape of the tensor from which the COO tensor 
+            was derived.
+
+        Notes
+        ------
+        The data array is expected to have non-zero elements in the format of 
+        [index 0, index 1, ..., index n, value]. The class computes additional 
+        attributes such as the total number of non-zero elements (`nnz`) and the 
+        sparsity of the tensor based on the provided shape.
+        """
+        # sorted_indices = np.lexsort((data[:, 2], data[:, 1], data[:, 0]))
+        # data = data[sorted_indices]
         self.data = data
         self.shape = shape
         self.nnz = data.shape[0]
@@ -21,6 +74,25 @@ class Coo_matrix:
 
     @classmethod
     def from_numpy(cls, mat: np.ndarray):
+        """
+            Create a COO (Coordinate) tensor representation from a NumPy array.
+
+            This class method converts a dense NumPy array into a COO tensor format. 
+            The resulting COO tensor includes the coordinates of non-zero elements 
+            and their corresponding values, stacked into a format suitable for sparse 
+            matrix operations.
+
+            Parameters:
+            -----------
+            mat : np.ndarray
+                A dense NumPy array to be converted into COO tensor format.
+
+            Returns:
+            --------
+            Coo_tensor
+                An instance of the `Coo_tensor` class initialized with the COO format data 
+                and the original shape of the input array.
+        """
         non_zero_indices = np.nonzero(mat)
 
         if len(mat.shape) == 0:
@@ -35,7 +107,7 @@ class Coo_matrix:
         return cls(coo_mat.T, mat.shape)
 
     @classmethod
-    def coo_matmul(cls, A: "Coo_matrix", B: "Coo_matrix"):
+    def coo_matmul(cls, A: "Coo_tensor", B: "Coo_tensor"):
         if A.data.size == 0 or B.data.size == 0:
             C_data = np.transpose(np.array([[], [], []]))
         else:
@@ -48,7 +120,7 @@ class Coo_matrix:
         return cls(C_data, AB_shape)
 
     @classmethod
-    def coo_bmm(cls, A: "Coo_matrix", B: "Coo_matrix"):
+    def coo_bmm(cls, A: "Coo_tensor", B: "Coo_tensor"):
         # global time_bmm
         # tic = timer()
 
@@ -172,7 +244,7 @@ class Coo_matrix:
             M = M[np.lexsort((M[:, 1], M[:, 0]))]
 
         transposed_shape = (self.shape[1], self.shape[0])
-        return Coo_matrix(M, transposed_shape)
+        return Coo_tensor(M, transposed_shape)
 
     def to_numpy(self) -> np.ndarray:
         """

@@ -1,20 +1,19 @@
 #ifndef COO_MATMUL_H
 #define COO_MATMUL_H
 
+#include <algorithm>
+#include <assert.h>
+#include <execution>
+#include <iostream>
+#include <numeric>
+#include <omp.h>
+#include <string>
+#include <time.h>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <tuple>
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <time.h>
-#include <assert.h>
-#include <omp.h>
-#include <numeric>
 // #include <ips4o.hpp>
-#include <tbb/concurrent_hash_map.h>
-#include <tbb/parallel_sort.h>
 
 // Define a custom hash function for std::pair<int, int>
 struct PairHash
@@ -57,7 +56,6 @@ struct Entry
     uint16_t num_idx;
     double value;
 };
-
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
              double **C_data, int *C_rows, int *C_cols);

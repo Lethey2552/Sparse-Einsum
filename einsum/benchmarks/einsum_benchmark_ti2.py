@@ -1,4 +1,5 @@
 import opt_einsum as oe
+import pathlib
 import numpy as np
 import torch
 import sesum.sr as sr
@@ -20,7 +21,7 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
                                          max_axis_size=15,
                                          seed=12345):
     import sparse
-    from einsum.utilities.classes.coo_matrix import Coo_matrix
+    from einsum.utilities.classes.coo_matrix import Coo_tensor
     from einsum_benchmark.generators.random.connected_hypernetwork import connected_hypernetwork as random_tensor_hypernetwork
 
     torch_time = 0
@@ -148,25 +149,29 @@ def einsum_benchmark_instance_benchmark(instance_name: str,
         print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
         print(f"Sesum time: {toc - tic}s\n")
 
-    tic = timer()
-    result = sparse_einsum(format_string, tensors, path=path)
-    toc = timer()
-    print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
-    print(f"sparse_einsum time: {toc - tic}s\n")
-
     if run_sql_einsum:
-        tensor_dict = {}
-        tensor_names = []
-        for i, arr in enumerate(tensors):
-            tensor_dict["T" + str(i)] = arr
-            tensor_names.append("T" + str(i))
+        file = pathlib.Path(__file__).parent.resolve().joinpath(
+            f"{instance_name}_sql_query.sql")
 
-        tic = timer()
-        query = sql_einsum_query(format_string, tensor_names, tensor_dict)
+        if file.is_file():
+            with open(file, "r") as f:
+                query = f.read()
+        else:
+            with open(file, "w") as f:
+                tensor_dict = {}
+                tensor_names = []
+                for i, arr in enumerate(tensors):
+                    tensor_dict["T" + str(i)] = arr
+                    tensor_names.append("T" + str(i))
+
+                query = sql_einsum_query(
+                    format_string, tensor_names, tensor_dict)
+                f.write(query)
 
         db_connection = sql.connect("SQL_einsum.db")
         db = db_connection.cursor()
 
+        tic = timer()
         result = db.execute(query)
         result = get_matrix_from_sql_response(result.fetchall())
         toc = timer()
@@ -183,6 +188,12 @@ def einsum_benchmark_instance_benchmark(instance_name: str,
         print("sum[OUTPUT]:", result, sum_output)
         print(f"Torch time: {toc - tic}s")
 
+    tic = timer()
+    result = sparse_einsum(format_string, tensors, path=path)
+    toc = timer()
+    print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
+    print(f"sparse_einsum time: {toc - tic}s\n")
+
 
 if __name__ == "__main__":
     run_random_tensor_hypernetwork_benchmark = False
@@ -193,4 +204,4 @@ if __name__ == "__main__":
 
     if run_einsum_benchmark_instance_benchmark:
         einsum_benchmark_instance_benchmark(
-            "mc_2022_087", run_sparse=False, run_torch=False, run_sql_einsum=False)
+            "mc_2022_079", run_sparse=False, run_torch=False, run_sql_einsum=False)

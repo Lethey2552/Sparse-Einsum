@@ -1,10 +1,10 @@
+import copy
 import numpy as np
 import opt_einsum as oe
 import sys
-import torch
 from cgreedy import compute_path
 from einsum.utilities.helper_functions import find_idc_types
-from einsum.utilities.classes.coo_matrix import Coo_matrix
+from einsum.utilities.classes.coo_matrix import Coo_tensor
 from timeit import default_timer as timer
 
 handle_idx_time = 0
@@ -15,7 +15,7 @@ permute_time = 0
 dense_time = 0
 
 
-def fit_tensor_to_bmm(mat: Coo_matrix, eq: str | None, shape: tuple | None):
+def fit_tensor_to_bmm(mat: Coo_tensor, eq: str | None, shape: tuple | None):
     if eq:
         mat.single_einsum(eq)
     if shape:
@@ -46,8 +46,8 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
         for id in contraction[0]:
             del arrays[id]
 
-        is_coo_1 = isinstance(current_arrays[1], Coo_matrix)
-        is_coo_0 = isinstance(current_arrays[0], Coo_matrix)
+        is_coo_1 = isinstance(current_arrays[1], Coo_tensor)
+        is_coo_0 = isinstance(current_arrays[0], Coo_tensor)
         is_sparse_1 = False
         is_sparse_0 = False
 
@@ -59,12 +59,12 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
                 current_arrays[0]) / np.prod(current_arrays[0].shape)) <= 0.9
 
         if (is_coo_1 or is_coo_0) or (is_sparse_1 and is_sparse_0):
-            if not isinstance(current_arrays[1], Coo_matrix):
-                current_arrays[1] = Coo_matrix.from_numpy(current_arrays[1])
-            if not isinstance(current_arrays[0], Coo_matrix):
-                current_arrays[0] = Coo_matrix.from_numpy(current_arrays[0])
+            if not isinstance(current_arrays[1], Coo_tensor):
+                current_arrays[1] = Coo_tensor.from_numpy(current_arrays[1])
+            if not isinstance(current_arrays[0], Coo_tensor):
+                current_arrays[0] = Coo_tensor.from_numpy(current_arrays[0])
 
-            tic = timer()
+            # tic = timer()
             # Get index lists and sets
             input_idc, output_idc = clean_einsum_notation(contraction[1])
             shape_left = current_arrays[1].shape
@@ -76,67 +76,67 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
                 shape_left,
                 shape_right
             )
-            toc = timer()
-            handle_idx_time += toc - tic
+            # toc = timer()
+            # handle_idx_time += toc - tic
 
             eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
-            tic = timer()
+            # tic = timer()
             # Fit both input tensors to match contraction
             current_arrays[1] = fit_tensor_to_bmm(
                 current_arrays[1], eq_left, shape_left)
             current_arrays[0] = fit_tensor_to_bmm(
                 current_arrays[0], eq_right, shape_right)
-            toc = timer()
-            fit_tensor_time += toc - tic
+            # toc = timer()
+            # fit_tensor_time += toc - tic
 
             scalar_mul = True if (len(current_arrays[1].shape) == 1 and
                                   len(current_arrays[0].shape) == 1 and
                                   current_arrays[1].shape[0] == 1 and
                                   current_arrays[0].shape[0] == 1) else False
 
-            tic = timer()
+            # tic = timer()
             if scalar_mul:
                 AB = np.array([[0.0, current_arrays[1].data[0][1]
                                 * current_arrays[0].data[0][1]]])
-                arrays.append(Coo_matrix(AB, current_arrays[1].shape))
+                arrays.append(Coo_tensor(AB, current_arrays[1].shape))
             else:
-                arrays.append(Coo_matrix.coo_bmm(
+                arrays.append(Coo_tensor.coo_bmm(
                     current_arrays[1], current_arrays[0]))
-            toc = timer()
-            bmm_time += toc - tic
+            # toc = timer()
+            # bmm_time += toc - tic
 
-            tic = timer()
+            # tic = timer()
 
             # Output reshape
             if shape_out is not None:
                 arrays[-1].reshape(shape_out)
-            toc = timer()
-            shape_out_time += toc - tic
+            # toc = timer()
+            # shape_out_time += toc - tic
 
-            tic = timer()
+            # tic = timer()
             if perm_AB is not None:
                 arrays[-1].swap_cols(perm_AB)
-            toc = timer()
-            permute_time += toc - tic
+            # toc = timer()
+            # permute_time += toc - tic
         else:
-            tic = timer()
+            # tic = timer()
             res = oe.contract(
                 contraction[1], current_arrays[1], current_arrays[0])
-            arrays.append(Coo_matrix.from_numpy(res))
-            toc = timer()
-            dense_time += toc - tic
+            arrays.append(Coo_tensor.from_numpy(res))
+            # toc = timer()
+            # dense_time += toc - tic
 
         if type(arrays[-1].shape) != tuple:
             arrays[-1].shape = tuple(arrays[-1].shape)
 
-    print("\nhandle_idx_time TIME:", handle_idx_time)
-    print("fit_tensor_time TIME:", fit_tensor_time)
-    print("bmm_time TIME:", bmm_time)
-    print("shape_out_time TIME:", shape_out_time)
-    print("permute_time TIME:", permute_time)
-    print("dense_time TIME:", permute_time)
-    print()
+    # print("\nhandle_idx_time TIME:", handle_idx_time)
+    # print("fit_tensor_time TIME:", fit_tensor_time)
+    # print("bmm_time TIME:", bmm_time)
+    # print("shape_out_time TIME:", shape_out_time)
+    # print("permute_time TIME:", permute_time)
+    # print("dense_time TIME:", permute_time)
+    # print()
 
     return arrays[0]
 
@@ -153,34 +153,30 @@ def find_contraction(positions, input_sets, output_set):
     return new_result, remaining
 
 
-def generate_contraction_list(in_out_idc: str, path):
+def generate_contraction_list_with_code_points(in_out_idc: str, path):
     cl = []
 
+    # Convert characters to code points
     input_idc, output_idc = in_out_idc
-    input_sets = [set(indices) for indices in input_idc]
-    output_set = set(output_idc)
+    input_sets = [set(map(ord, indices)) for indices in input_idc]
+    output_set = set(map(ord, output_idc))
 
-    ##### INFO ######
-    # [((2, 1), 'k,kj->j'), ((1, 0), 'j,ij->i')]
-    ##### INFO END #####
-
-    # Create contraction list with (contract_idc, current_formula)
     for cnum, contract_idc in enumerate(path):
-        contract_idc = tuple(sorted(list(contract_idc), reverse=True))
+        contract_idc = sorted(contract_idc, reverse=True)
         out_idc, input_sets = find_contraction(
             contract_idc, input_sets, output_set)
 
-        tmp_inputs = [input_idc.pop(x) for x in contract_idc]
+        # Pop inputs and convert back to characters
+        tmp_inputs = [input_idc.pop(idx) for idx in contract_idc]
 
-        # Last contraction
-        if (cnum - len(path)) == -1:
+        if cnum == len(path) - 1:
             idx_result = output_idc
         else:
-            # use tensordot order to minimize transpositions
             all_input_inds = "".join(tmp_inputs)
-            idx_result = "".join(sorted(out_idc, key=all_input_inds.index))
+            idx_result = "".join(
+                sorted(map(chr, out_idc), key=all_input_inds.index))
 
-        einsum_str = ",".join(reversed(tmp_inputs)) + "->" + idx_result
+        einsum_str = f"{','.join(reversed(tmp_inputs))}->{idx_result}"
         cl.append((contract_idc, einsum_str))
 
         input_idc.append(idx_result)
@@ -197,11 +193,11 @@ def clean_einsum_notation(einsum_notation: str):
 
 
 def arrays_to_coo(arrays):
-    if not isinstance(arrays[0], Coo_matrix):
+    if not isinstance(arrays[0], Coo_tensor):
         tmp = []
         for array in arrays:
-            if not isinstance(array, Coo_matrix):
-                tmp.append(Coo_matrix.from_numpy(array))
+            if not isinstance(array, Coo_tensor):
+                tmp.append(Coo_tensor.from_numpy(array))
 
         arrays = tmp
 
@@ -215,16 +211,52 @@ def is_dim_size_two(list: list):
     return True
 
 
-def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=True):
-    dim_size_two = False
+def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=True, allow_alter_input=False):
+    """
+    Perform sparse tensor contraction using the Einstein summation convention.
+
+    This function computes the result of an Einstein summation operation on a list of input arrays
+    based on the provided einsum notation. It can optionally compute an optimized contraction path
+    if one is not provided. The resulting tensor is returned as a NumPy array.
+
+    Parameters
+    ----------
+    einsum_notation : str
+        The Einstein summation notation specifying the tensor contraction operation. 
+        For example, 'abc,cd->abd' describes a contraction between tensors 'abc' and 'cd' 
+        resulting in a tensor 'abd'.
+
+    arrays : list
+        A list of NumPy arrays or sparse Coo_tensors to be contracted. The number of arrays should
+        match the number of tensors specified in the einsum notation.
+
+    path : list of tuples, optional
+        A list of tuples specifying a path. Each tuple represents a pair of tensors to be 
+        contracted in the path. If not provided, the an optimized contraction path is computed
+        via `Cgreedy.compute_path`.
+
+    show_progress : bool, optional, default=True
+        If True, progress information will be displayed during the computation of the contractions.
+
+    Returns
+    --------
+    numpy.ndarray
+        The result of the Einstein summation operation, returned as a NumPy array.
+
+    """
+    # dim_size_two = False
 
     in_out_idc = clean_einsum_notation(einsum_notation)
+    if allow_alter_input:
+        tensors = arrays
+    else:
+        tensors = copy.deepcopy(arrays)
 
     if path is None:
         # Get Sesum contraction path
         path, flops_log10, size_log2 = compute_path(
             einsum_notation,
-            *arrays,
+            *tensors,
             seed=0,
             minimize='size',
             max_repeats=1024,
@@ -234,26 +266,26 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
             threshold_optimal=12
         )
 
-    if len(arrays) == 1:
-        return np.einsum(einsum_notation, arrays[0])
+    if len(tensors) == 1:
+        return np.einsum(einsum_notation, tensors[0])
 
     # Run specialized einsum for dim size 2 problems
     # if dim_size_two:
     #     res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
     #     return res
 
-    tic = timer()
-    cl = generate_contraction_list(in_out_idc, path)
-    toc = timer()
-    generate_contraction_list_time = toc - tic
+    # tic = timer()
+    cl = generate_contraction_list_with_code_points(in_out_idc, path)
+    # toc = timer()
+    # generate_contraction_list_time = toc - tic
 
-    tic = timer()
-    res = calculate_contractions(cl, arrays, show_progress)
-    toc = timer()
-    calculate_contractions_time = toc - tic
+    # tic = timer()
+    res = calculate_contractions(cl, tensors, show_progress)
+    # toc = timer()
+    # calculate_contractions_time = toc - tic
 
-    print(f"GENERATE CONTRACTION LIST TIME: {generate_contraction_list_time}s")
-    print(f"CALCULATE CONTRACTIONS TIME: {calculate_contractions_time}s")
-    print()
+    # print(f"GENERATE CONTRACTION LIST TIME: {generate_contraction_list_time}s")
+    # print(f"CALCULATE CONTRACTIONS TIME: {calculate_contractions_time}s")
+    # print()
 
     return res.to_numpy()

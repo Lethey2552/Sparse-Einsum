@@ -6,15 +6,13 @@ import torch
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)
-from einsum.utilities.helper_functions import compare_matrices
-from einsum.utilities.classes.coo_matrix import Coo_matrix
 from timeit import default_timer as timer
 
 if __name__ == "__main__":
-    print_results = False
+    print_results = True
     run_np = False
     run_sql_einsum = False
-    run_torch = True
+    run_torch = False
 
     # einsum_notation = "xtbacik,ysabcrk,ubacjr->abcji"
 
@@ -35,33 +33,16 @@ if __name__ == "__main__":
     # F = sparse.random((2, 2, 2), density=1.0, idx_dtype=int)
     # G = sparse.random((2, 2, 2), density=1.0, idx_dtype=int)
 
-    einsum_notation = "ab,bc->ac"
+    einsum_notation = "ij,iml,lo,jk,kmn,no->"
 
-    A = sparse.random((3, 2), density=1.0, idx_dtype=int)
-    B = sparse.random((2, 3), density=1.0, idx_dtype=int)
+    A = sparse.random((2, 3), density=1.0, idx_dtype=int, random_state=0)
+    B = sparse.random((2, 4, 5), density=1.0, idx_dtype=int, random_state=1)
+    C = sparse.random((5, 2), density=1.0, idx_dtype=int, random_state=2)
+    D = sparse.random((3, 7), density=1.0, idx_dtype=int, random_state=3)
+    E = sparse.random((7, 4, 2), density=1.0, idx_dtype=int, random_state=4)
+    F = sparse.random((2, 2), density=1.0, idx_dtype=int, random_state=5)
 
-    # A = np.array([[[0.39847798, 0.04342394, 0.25244498, 0.803297],
-    #                [0.1446166,  0.36134035, 0.81562155, 0.27616009],
-    #                [0.12586615, 0.64966924, 0.78180402, 0.65486967]],
-
-    #               [[0.90505456, 0.39027294, 0.07190914, 0.70894208],
-    #                [0.78628425, 0.73966205, 0.90426739, 0.11530047],
-    #                [0.86130312, 0.50369939, 0.63523924, 0.85087532]]])
-
-    # B = np.array([[[0.74898691, 0.41647307, 0.0240986],
-    #                [0.444104,   0.38949886, 0.46167201],
-    #                [0.43550413, 0.9604545,  0.90043466],
-    #                [0.07132514, 0.77343843, 0.55865197]],
-
-    #               [[0.65660706, 0.61733519, 0.48561688],
-    #                [0.14380024, 0.60082247, 0.1410047],
-    #                [0.92153173, 0.81797971, 0.81523549],
-    #                [0.35032391, 0.824577,   0.33877537]]])
-
-    # A = sparse.asarray(A)
-    # B = sparse.asarray(B)
-
-    sparse_arrays = [A, B]
+    sparse_arrays = [A, B, C, D, E, F]
     dense_arrays = []
     torch_arrays = []
 
@@ -111,8 +92,8 @@ if __name__ == "__main__":
     print(f"Sparse Einsum time: {sparse_einsum_time}s")
 
     if print_results:
-        print(f"Numpy result:\n{numpy_res if run_np else 'None'}")
-        print(f"Sparse result:\n{sparse.asnumpy(sparse_res)}\n")
+        print(f"\nNumpy result:\n{numpy_res if run_np else 'None'}")
+        print(f"Sparse result:\n{sparse.asnumpy(sparse_res)}")
         print(f"Sparse Einsum result:\n{sparse_einsum_res}")
 
     if run_sql_einsum:

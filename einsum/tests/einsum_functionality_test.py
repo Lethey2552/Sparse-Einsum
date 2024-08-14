@@ -67,7 +67,7 @@ class TestSQLEinsum(unittest.TestCase):
         A = sparse.random((3,), density=1.0, idx_dtype=int)
 
         sparse_arrays = [A]
-        equal_output = sparse_einsum_equals_numpy(
+        equal_output = sql_einsum_equals_numpy(
             einsum_notation, sparse_arrays)
 
         self.assertTrue(equal_output, "Calculation of 'ii->i' failed.")
@@ -273,8 +273,6 @@ class TestEinsumFunctions(unittest.TestCase):
         A = sparse.random((2, 3, 4), density=1.0, idx_dtype=int)
         B = sparse.random((2, 4, 3), density=1.0, idx_dtype=int)
 
-        print(sparse.asnumpy(A))
-        print(sparse.asnumpy(B))
         sparse_arrays = [A, B]
         equal_output = sparse_einsum_equals_numpy(
             einsum_notation, sparse_arrays)
