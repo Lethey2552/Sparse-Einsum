@@ -56,6 +56,7 @@ struct Entry
     uint16_t num_idx;
     double value;
 };
+
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
              double **C_data, int *C_rows, int *C_cols);
@@ -75,5 +76,37 @@ void einsum_dim_2(
     uint64_t *values_sizes,
     int32_t *path,
     double *arrays);
+
+//////// LEGACY FUNCTIONS ////////
+
+// Custom hash function
+struct VectorHash
+{
+    std::size_t operator()(const std::vector<int> &vec) const
+    {
+        std::size_t seed = vec.size();
+        for (auto &i : vec)
+        {
+            seed ^= i + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        }
+        return seed;
+    }
+};
+
+// Custom equality function
+struct VectorEqual
+{
+    bool operator()(const std::vector<int> &a, const std::vector<int> &b) const
+    {
+        return a == b;
+    }
+};
+
+void coo_bmm_legacy(const double *A_data, int A_rows, int A_cols,
+                    const double *B_data, int B_rows, int B_cols,
+                    double **C_data, int *C_rows, int *C_cols);
+void single_einsum_legacy(const double *data, int rows, int cols, const char *notation, const int *shape,
+                          double **result_data, int *result_rows, int *result_cols,
+                          int **new_shape, int *new_shape_size);
 
 #endif // COO_MATMUL_H

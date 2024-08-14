@@ -6,6 +6,8 @@ from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
     c_single_einsum,
     c_reshape,
     c_einsum_dim_2,
+    c_coo_bmm_legacy,
+    c_single_einsum_legacy,
 )
 
 time = 0
