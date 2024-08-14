@@ -32,6 +32,13 @@ def sql_einsum_values(tensors: dict):
         cast = True
         query += f"{tensor_name}({', '.join(ASCII[:len(tensor.shape)])}, val) AS (\n"
 
+        # TODO: Handle SQL results being zero and shaping of output
+        # if not np.any(tensor):
+        #     query += "VALUES("
+        #     for i in range(len(tensor.shape)):
+        #         query += "CAST (0 AS DOUBLE PRECISION),"
+        #     query += "CAST (1 AS DOUBLE PRECISION))\n),"
+
         it = np.nditer(tensor, flags=['multi_index'])
         for x in it:
             # skip zero values
@@ -56,6 +63,7 @@ def sql_einsum_values(tensors: dict):
                     item_coo += f"{i}, "
 
                 query += f"{item_coo}{x}), "
+
         query = query[:-2]
         query += "\n), "
 
@@ -288,6 +296,9 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 
 
 def get_matrix_from_sql_response(coo_mat: np.ndarray):
+    if len(coo_mat) == 0:
+        raise ValueError
+
     max_dim = ()
     for i in range(len(coo_mat[0]) - 1):
         max_dim = max_dim + (max(coo_mat, key=itemgetter(i))[i] + 1,)

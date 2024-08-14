@@ -21,7 +21,6 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
                                          max_axis_size=15,
                                          seed=12345):
     import sparse
-    from einsum.utilities.classes.coo_matrix import Coo_tensor
     from einsum_benchmark.generators.random.connected_hypernetwork import connected_hypernetwork as random_tensor_hypernetwork
 
     torch_time = 0
@@ -204,4 +203,4 @@ if __name__ == "__main__":
 
     if run_einsum_benchmark_instance_benchmark:
         einsum_benchmark_instance_benchmark(
-            "mc_2022_079", run_sparse=False, run_torch=False, run_sql_einsum=False)
+            "mc_2022_029", run_sparse=True, run_torch=False, run_sql_einsum=False)
