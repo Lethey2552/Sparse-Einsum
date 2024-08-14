@@ -35,13 +35,13 @@ def get_sparse_performance(n, format_string, tensors, path):
 
     return 1 / ((toc-tic) / n), sparse_result
 
-# Does not work for our sql_einsum_query nor for Blachers sql_einsum_query function
-
 
 def get_sql_performance(n, query, sparse_result=False):
+
     db_connection = sql.connect("SQL_einsum.db")
     db = db_connection.cursor()
 
+    # Error: Does not work for our sql_einsum_query nor for Blachers sql_einsum_query function
     try:
         tic = timer()
         for _ in range(n):
