@@ -18,6 +18,7 @@ def run_instance_experiment(instance_name, iterations=10, run_sparse=True, run_s
     # print("log10[FLOPS]:", round(path_meta.flops, 2))
     # print("log2[SIZE]:", round(path_meta.size, 2))
 
+    sparse_result = False
     # Time opt_einsum sparse backend average execution
     if run_sparse:
         sparse_time, sparse_result = get_sparse_performance(

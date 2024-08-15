@@ -6,40 +6,35 @@ from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
     c_single_einsum,
     c_reshape,
     c_einsum_dim_2,
-    c_coo_bmm_legacy,
-    c_single_einsum_legacy,
 )
-
-time = 0
-time_bmm = 0
 
 
 class Coo_tensor:
     """
     A class representing a sparse tensor in COO (Coordinate) format.
 
-    The COO format is a format for representing sparse tensors, where the 
-    tensor is stored as a list of non-zero elements along with their coordinates 
+    The COO format is a format for representing sparse tensors, where the
+    tensor is stored as a list of non-zero elements along with their coordinates
     (indices).
 
     Attributes
     -----------
     data : np.ndarray
-        A 2D NumPy array where each row represents a non-zero element in the 
-        tensor. The columns are the indices for each dimension of the non-zero 
+        A 2D NumPy array where each row represents a non-zero element in the
+        tensor. The columns are the indices for each dimension of the non-zero
         elements, with the last column containing the values of these elements.
     shape : tuple of int
         The shape of the original dense tensor from which the COO tensor was created.
     nnz : int
         The number of non-zero elements in the tensor.
-    sparsity : float
-        The fraction of non-zero elements relative to the total number of elements 
+    density : float
+        The fraction of non-zero elements relative to the total number of elements
         in the tensor, computed as `nnz / np.prod(shape)`.
 
     Parameters
     -----------
     data : np.ndarray
-        A 2D array containing the COO format data. Expected shape is (nnz, 3) 
+        A 2D array containing the COO format data. Expected shape is (nnz, 3)
         where nnz is the number of non-zero elements.
     shape : np.array
         A 1D array specifying the dimensions of the original matrix.
@@ -52,36 +47,37 @@ class Coo_tensor:
         Parameters
         -----------
         data : np.ndarray
-            A 2D NumPy array where each row represents a non-zero element in the 
-            tensor. The columns are the indices for each dimension of the non-zero 
+            A 2D NumPy array where each row represents a non-zero element in the
+            tensor. The columns are the indices for each dimension of the non-zero
             elements, with the last column containing the values of these elements.
         shape : np.array
-            A 1D array indicating the dimensions of the original dense tensor. 
-            This should match the shape of the tensor from which the COO tensor 
+            A 1D array indicating the dimensions of the original dense tensor.
+            This should match the shape of the tensor from which the COO tensor
             was derived.
 
         Notes
         ------
-        The data array is expected to have non-zero elements in the format of 
-        [index 0, index 1, ..., index n, value]. The class computes additional 
-        attributes such as the total number of non-zero elements (`nnz`) and the 
-        sparsity of the tensor based on the provided shape.
+        The data array is expected to have non-zero elements in the format of
+        [index 0, index 1, ..., index n, value]. The class computes additional
+        attributes such as the total number of non-zero elements (`nnz`) and the
+        density of the tensor based on the provided shape.
         """
         # sorted_indices = np.lexsort((data[:, 2], data[:, 1], data[:, 0]))
         # data = data[sorted_indices]
         self.data = data
         self.shape = shape
         self.nnz = data.shape[0]
-        self.sparsity = self.nnz / np.prod(shape)
+        self.density = self.nnz / \
+            np.prod(shape) if np.prod(shape) != 0 else 0.0
 
     @classmethod
     def from_numpy(cls, mat: np.ndarray):
         """
             Create a COO (Coordinate) tensor representation from a NumPy array.
 
-            This class method converts a dense NumPy array into a COO tensor format. 
-            The resulting COO tensor includes the coordinates of non-zero elements 
-            and their corresponding values, stacked into a format suitable for sparse 
+            This class method converts a dense NumPy array into a COO tensor format.
+            The resulting COO tensor includes the coordinates of non-zero elements
+            and their corresponding values, stacked into a format suitable for sparse
             matrix operations.
 
             Parameters:
@@ -92,7 +88,7 @@ class Coo_tensor:
             Returns:
             --------
             Coo_tensor
-                An instance of the `Coo_tensor` class initialized with the COO format data 
+                An instance of the `Coo_tensor` class initialized with the COO format data
                 and the original shape of the input array.
         """
         non_zero_indices = np.nonzero(mat)
@@ -209,9 +205,9 @@ class Coo_tensor:
                                                 self.data.shape[0],
                                                 self.data.shape[1],
                                                 np.array(
-                                                    self.shape, dtype=np.int32),
-                                                notation.encode('utf-8')
-                                                )
+            self.shape, dtype=np.int32),
+            notation.encode('utf-8')
+        )
 
     def reshape(self, new_shape):
         self.data = c_reshape(self.data.flatten(),
@@ -333,35 +329,40 @@ class Coo_tensor:
             return cls(AB_data, new_shape)
         else:
             return cls(np.array([]), A.shape[:-1] + B.shape[-1:])
+            
+    # def single_einsum(self, notation: str):
+    #     input_notation, output_notation = notation.split('->')
 
-    def single_einsum(self, notation: str):
-        input_notation, output_notation = notation.split('->')
+    #     # Ensure that the notation is for a single input tensor
+    #     assert ',' not in input_notation
 
-        # Ensure that the notation is for a single input tensor
-        assert ',' not in input_notation
+    #     indices = {k: i for i, k in enumerate(input_notation)}
+    #     output_indices = [indices[idx]
+    #                       for idx in output_notation if idx in indices]
+    #     result_dict = {}
 
-        indices = {k: i for i, k in enumerate(input_notation)}
-        output_indices = [indices[idx]
-                          for idx in output_notation if idx in indices]
+    #     # Aggregate values based on the output indices
+    #     for row in self.data:
+    #         key = tuple(row[idx] for idx in output_indices)
+    #         if key in result_dict:
+    #             result_dict[key] += row[-1]
+    #         else:
+    #             result_dict[key] = row[-1]
 
-        result_dict = {}
+    #     # Update the data with aggregated results
+    #     self.data = np.array([list(key) + [value]
+    #                           for key, value in result_dict.items() if value != 0])
 
-        for row in self.data:
-            key = tuple(row[idx] for idx in output_indices)
-            if key in result_dict:
-                result_dict[key] += row[-1]
-            else:
-                result_dict[key] = row[-1]
+    #     # Determine the new shape based on the einsum contraction
+    #     new_shape = []
+    #     for idx in output_notation:
+    #         if idx in input_notation:
+    #             new_shape.append(self.shape[input_notation.index(idx)])
+    #         else:
+    #             new_shape.append(
+    #                 int(max(self.data[:, output_notation.index(idx)])) + 1)
 
-        self.data = np.array([list(key) + [value]
-                             for key, value in result_dict.items() if value != 0])
-
-        # Adjust shape
-        if self.data.size == 0:
-            self.shape = (0,) * len(output_notation)
-        else:
-            self.shape = tuple(int(max(self.data[:, i]) + 1)
-                               for i in range(self.data.shape[1] - 1))
+    #     self.shape = tuple(new_shape)
 
     def reshape(self, new_shape):
         if np.prod(self.shape) != np.prod(new_shape):

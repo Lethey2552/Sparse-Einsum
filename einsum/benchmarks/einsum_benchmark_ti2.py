@@ -195,8 +195,8 @@ def einsum_benchmark_instance_benchmark(instance_name: str,
 
 
 if __name__ == "__main__":
-    run_random_tensor_hypernetwork_benchmark = False
-    run_einsum_benchmark_instance_benchmark = True
+    run_random_tensor_hypernetwork_benchmark = True
+    run_einsum_benchmark_instance_benchmark = False
 
     if run_random_tensor_hypernetwork_benchmark:
         random_tensor_hypernetwork_benchmark()

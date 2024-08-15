@@ -7,25 +7,24 @@ from util import (get_sql_query, get_sql_performance, get_sparse_performance,
                   get_torch_performance, get_sparse_einsum_performance)
 
 
-def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=False, run_torch=False):
-    number_of_tensors = 10
-    regularity = 2.5
-    max_tensor_order = 10
-    max_edge_order = 5
-    number_of_output_indices = 5
-    min_axis_size = 2
-    max_axis_size = 10
-    seed = 12345
+def run_hypernetwork_experiment(
+        iterations=10, run_sparse=True,
+        run_sql_einsum=False, run_torch=False,
+        random_hypernetwork_params={
+            "number_of_tensors": 10,
+            "regularity": 2.5,
+            "max_tensor_order": 10,
+            "max_edge_order": 5,
+            "number_of_output_indices": 5,
+            "min_axis_size": 2,
+            "max_axis_size": 10,
+            "return_size_dict": True,
+            "seed": 12345
+        },
+        sparsity=0.001):
 
-    format_string, shapes, size_dict = random_tensor_hypernetwork(number_of_tensors=number_of_tensors,
-                                                                  regularity=regularity,
-                                                                  max_tensor_order=max_tensor_order,
-                                                                  max_edge_order=max_edge_order,
-                                                                  number_of_output_indices=number_of_output_indices,
-                                                                  min_axis_size=min_axis_size,
-                                                                  max_axis_size=max_axis_size,
-                                                                  return_size_dict=True,
-                                                                  seed=seed)
+    format_string, shapes, size_dict = random_tensor_hypernetwork(
+        **random_hypernetwork_params)
 
     path, _, _ = compute_path(
         format_string,
@@ -45,7 +44,7 @@ def run_hypernetwork_experiment(iterations=10, run_sparse=True, run_sql_einsum=F
     for indices in tensor_indices:
         indice_tuple = tuple([size_dict[c] for c in indices])
         sparse_tensor = sparse.random(
-            indice_tuple, density=0.1, idx_dtype=int)
+            indice_tuple, density=sparsity, idx_dtype=int)
 
         numpy_tensor = sparse.asnumpy(sparse_tensor)
 

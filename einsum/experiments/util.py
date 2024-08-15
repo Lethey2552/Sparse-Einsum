@@ -25,6 +25,9 @@ def get_sql_query(format_string, tensors, file):
 
 def get_sparse_performance(n, format_string, tensors, path):
     try:
+        sparse_result = oe.contract(format_string, *tensors,
+                                    optimize=path, backend='sparse')
+
         tic = timer()
         for _ in range(n):
             sparse_result = oe.contract(format_string, *tensors,
@@ -32,6 +35,8 @@ def get_sparse_performance(n, format_string, tensors, path):
         toc = timer()
     except Exception as e:
         print(e)
+
+        return 0, False
 
     return 1 / ((toc-tic) / n), sparse_result
 
@@ -43,54 +48,69 @@ def get_sql_performance(n, query, sparse_result=False):
 
     # Error: Does not work for our sql_einsum_query nor for Blachers sql_einsum_query function
     try:
+        sql_result = db.execute(query)
+        sql_result = get_matrix_from_sql_response(sql_result.fetchall())
+
         tic = timer()
         for _ in range(n):
             sql_result = db.execute(query)
             sql_result = get_matrix_from_sql_response(sql_result.fetchall())
         toc = timer()
+
+        if not sparse_result is False:
+            if not np.any(sparse_result):
+                assert np.isclose(np.sum(sql_result), np.sum(sparse_result))
+            else:
+                assert np.allclose(sql_result, sparse_result)
     except Exception:
         print(traceback.format_exc())
 
         return 0
-
-    if not sparse_result is False:
-        if not np.any(sparse_result):
-            assert np.isclose(np.sum(sql_result), np.sum(sparse_result))
-        else:
-            assert np.allclose(sql_result, sparse_result)
 
     return 1 / ((toc-tic) / n)
 
 
 def get_torch_performance(n, format_string, tensors, path, sparse_result):
     try:
+        torch_tensors = [torch.from_numpy(i) for i in tensors]
+        torch_result = oe.contract(format_string, *torch_tensors,
+                                   optimize=path, backend='torch')
+
         tic = timer()
         for _ in range(n):
             torch_tensors = [torch.from_numpy(i) for i in tensors]
             torch_result = oe.contract(format_string, *torch_tensors,
                                        optimize=path, backend='torch')
         toc = timer()
+
+        if not sparse_result is False:
+            assert np.allclose(torch_result, sparse_result)
     except Exception as e:
         print(e)
 
-    if not sparse_result is False:
-        assert np.allclose(torch_result, sparse_result)
+        return 0
 
     return 1 / ((toc-tic) / n)
 
 
 def get_sparse_einsum_performance(n, format_string, tensors, path, sparse_result):
     try:
+        arrays = tensors[:]
+        sparse_einsum_result = sparse_einsum(format_string, arrays,
+                                             path=path, show_progress=False, allow_alter_input=True)
+
         tic = timer()
         for _ in range(n):
             arrays = tensors[:]
             sparse_einsum_result = sparse_einsum(format_string, arrays,
                                                  path=path, show_progress=False, allow_alter_input=True)
         toc = timer()
+
+        if not sparse_result is False:
+            assert np.allclose(sparse_einsum_result, sparse_result)
     except Exception as e:
         print(e)
 
-    if not sparse_result is False:
-        assert np.allclose(sparse_einsum_result, sparse_result)
+        return 0
 
     return 1 / ((toc-tic) / n)

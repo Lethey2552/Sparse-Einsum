@@ -6,176 +6,181 @@ double sum_time = 0;
 double permute_time = 0;
 double sort_time = 0;
 double bmm_sort_time = 0;
+double reshape_time = 0;
+double writeback_time = 0;
+double single_setup_time = 0;
 
-// void coo_bmm_test(const double *A_data, int A_rows, int A_cols,
-//                   const double *B_data, int B_rows, int B_cols,
-//                   double **C_data, int *C_rows, int *C_cols)
-// {
+/*
+void coo_bmm_test(const double *A_data, int A_rows, int A_cols,
+                  const double *B_data, int B_rows, int B_cols,
+                  double **C_data, int *C_rows, int *C_cols)
+{
 
-//     bool is_batched = (A_cols > 3 && B_cols > 3);
-//     is_batched = true;
-//     // std::cout << is_batched << std::endl;
+    bool is_batched = (A_cols > 3 && B_cols > 3);
+    is_batched = true;
+    // std::cout << is_batched << std::endl;
 
-//     // Prepare the result container
-//     std::vector<std::tuple<double, int, int, double>> result_data;
+    // Prepare the result container
+    std::vector<std::tuple<double, int, int, double>> result_data;
 
-//     int max_batch = 1;
+    int max_batch = 1;
 
-//     for (int i = 0; i < A_rows; ++i)
-//     {
-//         int batch_idx = static_cast<int>(A_data[i * A_cols]);
-//         max_batch = (max_batch < batch_idx ? batch_idx : max_batch);
-//     }
+    for (int i = 0; i < A_rows; ++i)
+    {
+        int batch_idx = static_cast<int>(A_data[i * A_cols]);
+        max_batch = (max_batch < batch_idx ? batch_idx : max_batch);
+    }
 
-//     // Iterate over each batch
-//     for (int b = 0; b < (is_batched ? max_batch : 1); ++b)
-//     {
-//         int A_batch_start = b * A_cols;
-//         int B_batch_start = b * B_cols;
+    // Iterate over each batch
+    for (int b = 0; b < (is_batched ? max_batch : 1); ++b)
+    {
+        int A_batch_start = b * A_cols;
+        int B_batch_start = b * B_cols;
 
-//         // Extract A and B's coordinates and values
-//         std::vector<int> A1_crd, A2_crd;
-//         std::vector<double> A_vals;
-//         std::vector<int> B1_crd, B2_crd;
-//         std::vector<double> B_vals;
+        // Extract A and B's coordinates and values
+        std::vector<int> A1_crd, A2_crd;
+        std::vector<double> A_vals;
+        std::vector<int> B1_crd, B2_crd;
+        std::vector<double> B_vals;
 
-//         if (b == 0)
-//             std::cout << "PRINT A:" << std::endl;
-//         for (int i = 0; i < A_rows; ++i)
-//         {
-//             int A_batch = static_cast<int>(A_data[i * A_cols]);
+        if (b == 0)
+            std::cout << "PRINT A:" << std::endl;
+        for (int i = 0; i < A_rows; ++i)
+        {
+            int A_batch = static_cast<int>(A_data[i * A_cols]);
 
-//             if (A_batch != b)
-//                 continue;
+            if (A_batch != b)
+                continue;
 
-//             int A1 = static_cast<int>(A_data[i * A_cols + 1]);
-//             int A2 = static_cast<int>(A_data[i * A_cols + 2]);
-//             double A_val = A_data[i * A_cols + 3];
+            int A1 = static_cast<int>(A_data[i * A_cols + 1]);
+            int A2 = static_cast<int>(A_data[i * A_cols + 2]);
+            double A_val = A_data[i * A_cols + 3];
 
-//             A1_crd.push_back(A1);
-//             A2_crd.push_back(A2);
-//             A_vals.push_back(A_val);
+            A1_crd.push_back(A1);
+            A2_crd.push_back(A2);
+            A_vals.push_back(A_val);
 
-//             // Print values
-//             if (b == 0)
-//                 std::cout << "[" << A1 << " " << A2 << " " << A_val << "]" << std::endl;
-//         }
+            // Print values
+            if (b == 0)
+                std::cout << "[" << A1 << " " << A2 << " " << A_val << "]" << std::endl;
+        }
 
-//         if (b == 0)
-//             std::cout << "PRINT B:" << std::endl;
-//         for (int j = 0; j < B_rows; ++j)
-//         {
-//             int B_batch = static_cast<int>(B_data[j * B_cols]);
+        if (b == 0)
+            std::cout << "PRINT B:" << std::endl;
+        for (int j = 0; j < B_rows; ++j)
+        {
+            int B_batch = static_cast<int>(B_data[j * B_cols]);
 
-//             if (B_batch != b)
-//                 continue;
+            if (B_batch != b)
+                continue;
 
-//             int B1 = static_cast<int>(B_data[j * B_cols + 1]);
-//             int B2 = static_cast<int>(B_data[j * B_cols + 2]);
-//             double B_val = B_data[j * B_cols + 3];
+            int B1 = static_cast<int>(B_data[j * B_cols + 1]);
+            int B2 = static_cast<int>(B_data[j * B_cols + 2]);
+            double B_val = B_data[j * B_cols + 3];
 
-//             B1_crd.push_back(B1);
-//             B2_crd.push_back(B2);
-//             B_vals.push_back(B_val);
+            B1_crd.push_back(B1);
+            B2_crd.push_back(B2);
+            B_vals.push_back(B_val);
 
-//             // Print values
-//             if (b == 0)
-//                 std::cout << "[" << B1 << " " << B2 << " " << B_val << "]" << std::endl;
-//         }
+            // Print values
+            if (b == 0)
+                std::cout << "[" << B1 << " " << B2 << " " << B_val << "]" << std::endl;
+        }
 
-//         if (b == 0)
-//         { // Perform the sparse matrix multiplication
-//             int iA = 0, jB = 0;
-//             while (iA < A_rows && jB < B_rows)
-//             {
-//                 int row_A = A1_crd[iA];
-//                 int col_B = B1_crd[jB];
+        if (b == 0)
+        { // Perform the sparse matrix multiplication
+            int iA = 0, jB = 0;
+            while (iA < A_rows && jB < B_rows)
+            {
+                int row_A = A1_crd[iA];
+                int col_B = B1_crd[jB];
 
-//                 std::cout << "ROW A: " << row_A << std::endl;
+                std::cout << "ROW A: " << row_A << std::endl;
 
-//                 if (row_A == col_B)
-//                 {
-//                     // Iterate over matching indices
-//                     int seg_A = iA;
-//                     while (seg_A < A_rows && A1_crd[seg_A] == row_A)
-//                         seg_A++;
-//                     int seg_B = jB;
-//                     while (seg_B < B_rows && B1_crd[seg_B] == col_B)
-//                         seg_B++;
+                if (row_A == col_B)
+                {
+                    // Iterate over matching indices
+                    int seg_A = iA;
+                    while (seg_A < A_rows && A1_crd[seg_A] == row_A)
+                        seg_A++;
+                    int seg_B = jB;
+                    while (seg_B < B_rows && B1_crd[seg_B] == col_B)
+                        seg_B++;
 
-//                     // Calculate the value for C
-//                     for (int i = iA; i < seg_A; ++i)
-//                     {
-//                         int col_A = A2_crd[i];
-//                         for (int j = jB; j < seg_B; ++j)
-//                         {
-//                             if (B2_crd[j] == col_A)
-//                             {
-//                                 double value = A_vals[i] * B_vals[j];
-//                                 result_data.push_back(std::make_tuple(static_cast<double>(b), row_A, B2_crd[j], value));
-//                             }
-//                         }
-//                     }
-//                     iA = seg_A;
-//                     jB = seg_B;
-//                 }
-//                 else if (row_A < col_B)
-//                 {
-//                     iA++;
-//                 }
-//                 else
-//                 {
-//                     jB++;
-//                 }
-//             }
-//         }
-//     }
+                    // Calculate the value for C
+                    for (int i = iA; i < seg_A; ++i)
+                    {
+                        int col_A = A2_crd[i];
+                        for (int j = jB; j < seg_B; ++j)
+                        {
+                            if (B2_crd[j] == col_A)
+                            {
+                                double value = A_vals[i] * B_vals[j];
+                                result_data.push_back(std::make_tuple(static_cast<double>(b), row_A, B2_crd[j], value));
+                            }
+                        }
+                    }
+                    iA = seg_A;
+                    jB = seg_B;
+                }
+                else if (row_A < col_B)
+                {
+                    iA++;
+                }
+                else
+                {
+                    jB++;
+                }
+            }
+        }
+    }
 
-//     // Sort the result by batch, row, and column indices
-//     std::sort(result_data.begin(), result_data.end());
+    // Sort the result by batch, row, and column indices
+    std::sort(result_data.begin(), result_data.end());
 
-//     *C_rows = static_cast<int>(result_data.size());
-//     *C_cols = is_batched ? 4 : 3;
+    *C_rows = static_cast<int>(result_data.size());
+    *C_cols = is_batched ? 4 : 3;
 
-//     *C_data = new double[*C_rows * *C_cols];
-//     for (size_t i = 0; i < result_data.size(); ++i)
-//     {
-//         if (is_batched)
-//         {
-//             (*C_data)[i * *C_cols + 0] = std::get<0>(result_data[i]);
-//             (*C_data)[i * *C_cols + 1] = std::get<1>(result_data[i]);
-//             (*C_data)[i * *C_cols + 2] = std::get<2>(result_data[i]);
-//             (*C_data)[i * *C_cols + 3] = std::get<3>(result_data[i]);
-//         }
-//         else
-//         {
-//             (*C_data)[i * *C_cols + 0] = std::get<1>(result_data[i]);
-//             (*C_data)[i * *C_cols + 1] = std::get<2>(result_data[i]);
-//             (*C_data)[i * *C_cols + 2] = std::get<3>(result_data[i]);
-//         }
-//     }
+    *C_data = new double[*C_rows * *C_cols];
+    for (size_t i = 0; i < result_data.size(); ++i)
+    {
+        if (is_batched)
+        {
+            (*C_data)[i * *C_cols + 0] = std::get<0>(result_data[i]);
+            (*C_data)[i * *C_cols + 1] = std::get<1>(result_data[i]);
+            (*C_data)[i * *C_cols + 2] = std::get<2>(result_data[i]);
+            (*C_data)[i * *C_cols + 3] = std::get<3>(result_data[i]);
+        }
+        else
+        {
+            (*C_data)[i * *C_cols + 0] = std::get<1>(result_data[i]);
+            (*C_data)[i * *C_cols + 1] = std::get<2>(result_data[i]);
+            (*C_data)[i * *C_cols + 2] = std::get<3>(result_data[i]);
+        }
+    }
 
-//     // Print the result_data
-//     std::cout << "TEST C_data:" << std::endl;
-//     for (size_t i = 0; i < *C_rows; ++i)
-//     {
-//         std::cout << "(";
-//         if (is_batched)
-//         {
-//             std::cout << (*C_data)[i * *C_cols + 0] << ", " // Batch index
-//                       << (*C_data)[i * *C_cols + 1] << ", " // Row index
-//                       << (*C_data)[i * *C_cols + 2] << ", " // Column index
-//                       << (*C_data)[i * *C_cols + 3];        // Value
-//         }
-//         else
-//         {
-//             std::cout << (*C_data)[i * *C_cols + 0] << ", " // Row index
-//                       << (*C_data)[i * *C_cols + 1] << ", " // Column index
-//                       << (*C_data)[i * *C_cols + 2];        // Value
-//         }
-//         std::cout << ")" << std::endl;
-//     }
-// }
+    // Print the result_data
+    std::cout << "TEST C_data:" << std::endl;
+    for (size_t i = 0; i < *C_rows; ++i)
+    {
+        std::cout << "(";
+        if (is_batched)
+        {
+            std::cout << (*C_data)[i * *C_cols + 0] << ", " // Batch index
+                      << (*C_data)[i * *C_cols + 1] << ", " // Row index
+                      << (*C_data)[i * *C_cols + 2] << ", " // Column index
+                      << (*C_data)[i * *C_cols + 3];        // Value
+        }
+        else
+        {
+            std::cout << (*C_data)[i * *C_cols + 0] << ", " // Row index
+                      << (*C_data)[i * *C_cols + 1] << ", " // Column index
+                      << (*C_data)[i * *C_cols + 2];        // Value
+        }
+        std::cout << ")" << std::endl;
+    }
+}
+*/
 
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
@@ -439,22 +444,25 @@ std::vector<std::string> split_utf8(const std::string &utf8_str)
 void fill_dimensions_and_entries(const double *data, int rows, int cols,
                                  std::vector<int> &dimensions, std::vector<Entry> &entries)
 {
-    dimensions.reserve(rows * (cols - 1));
+    // Reserve space for the dimensions and entries
+    dimensions.resize(rows * (cols - 1));
+    entries.resize(rows);
 
+#pragma omp parallel for
     for (int i = 0; i < rows; ++i)
     {
         Entry entry;
-        entry.offset = static_cast<uint32_t>(dimensions.size()); // Offset before adding new elements
+        entry.offset = i * (cols - 1);
         entry.num_idx = cols - 1;
 
-        // Fill dimensions vector
+        // Copy the dimension indices into the correct part of the dimensions vector
         for (int j = 0; j < cols - 1; ++j)
         {
-            dimensions.push_back(static_cast<int>(data[i * cols + j]));
+            dimensions[entry.offset + j] = static_cast<int>(data[i * cols + j]);
         }
 
-        entry.value = data[i * cols + cols - 1];
-        entries.push_back(entry);
+        entry.value = data[i * cols + (cols - 1)];
+        entries[i] = entry;
     }
 }
 
@@ -464,7 +472,7 @@ void remove_non_diag_indices(std::vector<int> &dimensions, std::vector<Entry> &e
     std::unordered_set<int> diag_indices_set(diag_indices.begin(), diag_indices.end());
     std::vector<Entry> new_entries;
     std::vector<int> new_dimensions;
-    new_dimensions.reserve(dimensions.size()); // Reserve space based on the original dimensions
+    new_dimensions.reserve(dimensions.size());
 
     // Iterate over existing entries
     for (const auto &entry : entries)
@@ -510,8 +518,7 @@ void remove_non_diag_indices(std::vector<int> &dimensions, std::vector<Entry> &e
 
 void apply_permutation(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &perm_indices)
 {
-    // Parallelize the loop over entries using OpenMP
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < entries.size(); ++i)
     {
         int offset = entries[i].offset;
@@ -547,13 +554,9 @@ void sum_over_trivial_indices(std::vector<int> &dimensions,
 
     std::unordered_map<std::vector<int>, double, ArrayHash> key_to_value;
 
-// clock_t start, end;
-// double total_time = 0;
-
-// Parallel region
 #pragma omp parallel
     {
-        // Each thread needs its own local data to avoid contention
+        // Each thread needs its own local data
         std::unordered_map<std::vector<int>, double, ArrayHash> local_key_to_value;
         std::vector<int> local_temp_key;
         local_temp_key.reserve(cols);
@@ -576,25 +579,17 @@ void sum_over_trivial_indices(std::vector<int> &dimensions,
                 }
             }
 
-            // Aggregate values for each unique key
             local_key_to_value[local_temp_key] += value;
         }
 
-// Merge local results into the global map
 #pragma omp critical
         {
-            // start = clock();
             for (const auto &[key, value] : local_key_to_value)
             {
                 key_to_value[key] += value;
             }
-            // end = clock();
-            // total_time += ((double)(end - start)) / CLOCKS_PER_SEC;
         }
     }
-
-    // std::cout << "TOTAL THREAD TIME: " << total_time << std::endl;
-    // std::cout << entries.size() << std::endl;
 
     // Convert the hashmap back into the entry and dimensions format
     std::vector<Entry> new_entries;
@@ -614,7 +609,6 @@ void sum_over_trivial_indices(std::vector<int> &dimensions,
         new_entries.push_back(new_entry);
     }
 
-    // Update original entries and dimensions with new data
     entries = std::move(new_entries);
     dimensions = std::move(new_dimensions);
 }
@@ -672,6 +666,7 @@ void single_einsum(const double *data, int rows, int cols,
                    double **result_data, int *result_rows, int *result_cols,
                    int **new_shape, int *new_shape_size)
 {
+
     bool debug = false;
 
     std::string notation_str(notation);
@@ -764,8 +759,13 @@ void single_einsum(const double *data, int rows, int cols,
     }
 
     // clock_t start, end;
+    // start = clock();
 
     fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
+
+    // end = clock();
+    // single_setup_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "single_setup_time: " << single_setup_time << "s" << std::endl;
 
     // start = clock();
     if (diag_indices.size() != 0)
@@ -785,7 +785,7 @@ void single_einsum(const double *data, int rows, int cols,
     // sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
     // std::cout << "sum_time: " << sum_time << "s" << std::endl;
 
-    // // start = clock();
+    // start = clock();
     if (perm_indices.size() != 0)
     {
         apply_permutation(dimensions, entries, perm_indices);
@@ -795,6 +795,8 @@ void single_einsum(const double *data, int rows, int cols,
     // std::cout << "permute_time: " << permute_time << "s" << std::endl;
 
     // parallel_sort(entries, dimensions);
+
+    // start = clock();
 
     // Prepare the output data
     *result_rows = static_cast<int>(entries.size());
@@ -822,17 +824,24 @@ void single_einsum(const double *data, int rows, int cols,
 
     *result_data = new double[*result_rows * *result_cols];
 
-    int r = 0;
-    for (const auto &entry : entries)
+#pragma omp parallel for
+    for (int r = 0; r < *result_rows; ++r)
     {
-        for (size_t c = 0; c < entry.num_idx; ++c)
+        const Entry &entry = entries[r];
+        double *row_ptr = *result_data + r * *result_cols; // Pointer to the start of the row
+
+        for (int c = 0; c < entry.num_idx; ++c)
         {
-            int value = dimensions[entry.offset + c] + 1;
-            (*result_data)[r * *result_cols + c] = value - 1;
+            row_ptr[c] = dimensions[entry.offset + c];
         }
-        (*result_data)[r * *result_cols + (*result_cols - 1)] = entry.value;
-        ++r;
+
+        // Set the value at the last column of the row
+        row_ptr[*result_cols - 1] = entry.value;
     }
+
+    // end = clock();
+    // writeback_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "writeback_time: " << writeback_time << "s" << std::endl;
 }
 
 // Function to calculate flat index for a single set of indices
@@ -852,54 +861,66 @@ int ravel_single_index(const std::vector<int> &indices, const std::vector<int> &
     }
     return flat_index;
 }
-
+//
 void reshape(const double *data, int data_rows, int data_cols,
              const int *shape, const int shape_length,
              const int *new_shape, const int new_shape_length,
              double **result_data, int *result_rows, int *result_cols)
 {
+    // clock_t start, end;
+    // start = clock();
+
     // Check if the total number of elements is the same
-    if (std::accumulate(shape, shape + shape_length, 1, std::multiplies<int>()) !=
-        std::accumulate(new_shape, new_shape + new_shape_length, 1, std::multiplies<int>()))
+    int total_elements_old = std::accumulate(shape, shape + shape_length, 1, std::multiplies<int>());
+    int total_elements_new = std::accumulate(new_shape, new_shape + new_shape_length, 1, std::multiplies<int>());
+    if (total_elements_old != total_elements_new)
     {
         throw std::invalid_argument("The total number of elements must remain the same for reshaping.");
     }
 
-    // Convert shape and new_shape to vectors
     std::vector<int> shape_vec(shape, shape + shape_length);
     std::vector<int> new_shape_vec(new_shape, new_shape + new_shape_length);
-    std::vector<double> coo_values(data_rows);
-    std::vector<int> original_flat_indices;
 
-    // TODO: tbb sorting works on this vector!!!!!!
-    // tbb::parallel_sort(original_flat_indices.begin(), original_flat_indices.end());
-
-    original_flat_indices.reserve(data_cols - 1);
-    for (int i = 0; i < data_rows; ++i)
-    {
-        std::vector<int> indices(data_cols - 1);
-        for (int j = 0; j < data_cols - 1; ++j)
-        {
-            indices[j] = static_cast<int>(data[i * data_cols + j]);
-        }
-        original_flat_indices.push_back(ravel_single_index(indices, shape_vec));
-    }
-
-    *result_rows = static_cast<int>(original_flat_indices.size());
+    // Precompute the number of result rows and columns
+    *result_rows = data_rows;
     *result_cols = new_shape_length + 1;
+
+    // Allocate memory for the result_data
     *result_data = new double[*result_rows * *result_cols];
 
-    // Unravel and write directly to result_data
+    // Pre-allocate space for indices
+    std::vector<int> flat_indices(data_rows);
+
+// Calculate flat indices in parallel using OpenMP
+#pragma omp parallel for
+    for (int i = 0; i < data_rows; ++i)
+    {
+        int flat_index = 0;
+        int multiplier = 1;
+        for (int j = shape_length - 1; j >= 0; --j)
+        {
+            flat_index += static_cast<int>(data[i * data_cols + j]) * multiplier;
+            multiplier *= shape_vec[j];
+        }
+        flat_indices[i] = flat_index;
+    }
+
+// Unravel flat indices into result_data in parallel using OpenMP
+#pragma omp parallel for
     for (int i = 0; i < *result_rows; ++i)
     {
-        int flat_index = original_flat_indices[i];
-        for (int j = static_cast<int>(new_shape_vec.size()) - 1; j >= 0; --j)
+        int flat_index = flat_indices[i];
+        for (int j = new_shape_length - 1; j >= 0; --j)
         {
             (*result_data)[i * *result_cols + j] = flat_index % new_shape_vec[j];
             flat_index /= new_shape_vec[j];
         }
         (*result_data)[i * *result_cols + (*result_cols - 1)] = data[i * data_cols + (data_cols - 1)];
     }
+
+    // end = clock();
+    // reshape_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "reshape_time: " << reshape_time << "s" << std::endl;
 }
 
 // Function to encode multi-dimensional indices into a single 64-bit integer
@@ -1116,353 +1137,33 @@ void einsum_dim_2(
 
 //////// LEGACY FUNCTIONS ////////
 
-double cpu_time_used_legacy = 0;
-
-void coo_bmm_legacy(const double *A_data, int A_rows, int A_cols,
-                    const double *B_data, int B_rows, int B_cols,
-                    double **C_data, int *C_rows, int *C_cols)
+/*
+void fill_dimensions_and_entries(const double *data, int rows, int cols,
+                                 std::vector<int> &dimensions, std::vector<Entry> &entries)
 {
-    // clock_t start, end;
-    // double cpu_time_used_legacy = 0;
-    // start = clock();
-    // end = clock();
-    // cpu_time_used_legacy += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "BMM Time: " << cpu_time_used_legacy << "s" << std::endl;
+    dimensions.reserve(rows * (cols - 1));
 
-    // Check if A_data and B_data are batched
-    // If batched extract batches else, treat as single matrices
-    bool is_batched = (A_cols > 3 && B_cols > 3);
-
-    std::unordered_map<double, std::vector<std::tuple<int, int, double>>> A_batches;
-    std::unordered_map<double, std::vector<std::tuple<int, int, double>>> B_batches;
-
-    if (is_batched)
+    for (int i = 0; i < rows; ++i)
     {
-        // Separate A and B entries by batch dimension
-        for (int i = 0; i < A_rows; ++i)
+        Entry entry;
+        entry.offset = static_cast<uint32_t>(dimensions.size()); // Offset before adding new elements
+        entry.num_idx = cols - 1;
+
+        // Fill dimensions vector
+        for (int j = 0; j < cols - 1; ++j)
         {
-            double batch = A_data[i * A_cols];
-            int row_A = static_cast<int>(A_data[i * A_cols + 1]);
-            int col_A = static_cast<int>(A_data[i * A_cols + 2]);
-            double val_A = A_data[i * A_cols + 3];
-            A_batches[batch].emplace_back(row_A, col_A, val_A);
+            dimensions.push_back(static_cast<int>(data[i * cols + j]));
         }
 
-        for (int i = 0; i < B_rows; ++i)
-        {
-            double batch = B_data[i * B_cols];
-            int col_B = static_cast<int>(B_data[i * B_cols + 1]);
-            int row_B = static_cast<int>(B_data[i * B_cols + 2]);
-            double val_B = B_data[i * B_cols + 3];
-            B_batches[batch].emplace_back(col_B, row_B, val_B);
-        }
-    }
-    else
-    {
-        // Treat A and B as single matrices
-        A_batches[0.0].reserve(A_rows);
-        B_batches[0.0].reserve(B_rows);
-
-        for (int i = 0; i < A_rows; ++i)
-        {
-            A_batches[0.0].emplace_back(static_cast<int>(A_data[i * A_cols + 1]),
-                                        static_cast<int>(A_data[i * A_cols + 2]),
-                                        A_data[i * A_cols + 3]);
-        }
-
-        for (int i = 0; i < B_rows; ++i)
-        {
-            B_batches[0.0].emplace_back(static_cast<int>(B_data[i * B_cols + 1]),
-                                        static_cast<int>(B_data[i * B_cols + 2]),
-                                        B_data[i * B_cols + 3]);
-        }
-    }
-
-    std::vector<std::tuple<double, int, int, double>> result_data;
-
-    // Perform matrix multiplication for each batch
-    for (const auto &batch_pair : A_batches)
-    {
-        double batch = batch_pair.first;
-        const auto &A_batch = batch_pair.second;
-        const auto &B_batch = B_batches[batch];
-
-        std::unordered_map<std::pair<int, int>, double, PairHash, PairEqual> C_dict;
-
-        for (const auto &a : A_batch)
-        {
-            int row_A = std::get<0>(a);
-            int col_A = std::get<1>(a);
-            double val_A = std::get<2>(a);
-
-            for (const auto &b : B_batch)
-            {
-                int col_B = std::get<0>(b);
-                int row_B = std::get<1>(b);
-                double val_B = std::get<2>(b);
-
-                if (col_A == col_B)
-                {
-                    auto key = std::make_pair(row_A, row_B);
-                    C_dict[key] += val_A * val_B;
-                }
-            }
-        }
-
-        for (const auto &kvp : C_dict)
-        {
-            result_data.push_back(std::make_tuple(batch, kvp.first.first, kvp.first.second, kvp.second));
-        }
-    }
-
-    std::sort(result_data.begin(), result_data.end());
-
-    *C_rows = result_data.size();
-    *C_cols = is_batched ? 4 : 3; // 4 columns if batched (batch, row, col, value); otherwise 3 (row, col, value)
-
-    *C_data = new double[*C_rows * *C_cols];
-    for (size_t i = 0; i < result_data.size(); ++i)
-    {
-        if (is_batched)
-        {
-            (*C_data)[i * *C_cols + 0] = std::get<0>(result_data[i]);
-            (*C_data)[i * *C_cols + 1] = std::get<1>(result_data[i]);
-            (*C_data)[i * *C_cols + 2] = std::get<2>(result_data[i]);
-            (*C_data)[i * *C_cols + 3] = std::get<3>(result_data[i]);
-        }
-        else
-        {
-            (*C_data)[i * *C_cols + 0] = std::get<1>(result_data[i]);
-            (*C_data)[i * *C_cols + 1] = std::get<2>(result_data[i]);
-            (*C_data)[i * *C_cols + 2] = std::get<3>(result_data[i]);
-        }
+        entry.value = data[i * cols + cols - 1];
+        entries.push_back(entry);
     }
 }
 
-// Helper function to find the positions of each character in a string
-std::unordered_map<char, std::vector<int>> find_positions(const std::string &str)
-{
-    std::unordered_map<char, std::vector<int>> positions;
-    for (int i = 0; i < str.size(); ++i)
-    {
-        positions[str[i]].push_back(i);
-    }
-    return positions;
-}
-
-// Function to find sum indices and update input_notation
-void find_sum_indices_legacy(std::string &input_notation, const std::string &output_notation,
-                             std::vector<int> &sum_indices)
-{
-    std::unordered_map<char, int> input_count;
-    for (char idx : input_notation)
-    {
-        input_count[idx]++;
-    }
-
-    sum_indices.clear(); // Clear existing sum indices
-
-    // Identify sum indices and update input_notation
-    for (int i = input_notation.size() - 1; i >= 0; --i)
-    {
-        char idx = input_notation[i];
-
-        if (input_count[idx] == 1 && output_notation.find(idx) == std::string::npos)
-        {
-            sum_indices.push_back(i);
-            input_notation.erase(i, 1); // Remove character at index i from input_notation
-        }
-    }
-}
-
-// Function to find diagonal indices and update input_notation
-void find_diag_indices_legacy(std::string &input_notation, std::vector<int> &diag_indices)
-{
-    std::unordered_map<char, std::vector<int>> positions;
-    for (int i = 0; i < input_notation.size(); ++i)
-    {
-        positions[input_notation[i]].push_back(i);
-    }
-
-    diag_indices.clear(); // Clear diag_indices to avoid duplicate entries
-
-    for (const auto &entry : positions)
-    {
-        if (entry.second.size() > 1)
-        {
-            diag_indices.insert(diag_indices.end(), entry.second.begin(), entry.second.end());
-
-            // Remove indices from input_notation
-            for (size_t i = entry.second.size() - 1; i > 0; --i)
-            {
-                input_notation.erase(entry.second[i], 1);
-            }
-        }
-    }
-}
-
-// Function to find permutation indices
-void find_perm_indices_legacy(const std::string &input_notation, const std::string &output_notation,
-                              std::vector<int> &perm_indices)
-{
-    // Map to store indices of output_notation
-    std::unordered_map<char, int> output_indices;
-    for (int i = 0; i < output_notation.size(); ++i)
-    {
-        output_indices[output_notation[i]] = i;
-    }
-
-    perm_indices.clear();
-    for (int i = 0; i < input_notation.size(); ++i)
-    {
-        char idx = input_notation[i];
-        if (output_indices.find(idx) != output_indices.end())
-        {
-            perm_indices.push_back(output_indices[idx]);
-        }
-    }
-}
-
-void sum_over_trivial_indices_legacy(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
-                                     const std::vector<int> &sum_indices)
-{
-
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> new_result_map;
-
-    for (const auto &entry : result_map)
-    {
-        const std::vector<int> &key = entry.first;
-        double value = entry.second;
-        std::vector<int> new_key;
-
-        for (size_t i = 0; i < key.size(); ++i)
-        {
-            if (std::find(sum_indices.begin(), sum_indices.end(), i) == sum_indices.end())
-            {
-                new_key.push_back(key[i]);
-            }
-        }
-
-        new_result_map[new_key] += value;
-    }
-
-    // Assign new_result_map to result_map
-    result_map = std::move(new_result_map);
-}
-
-void remove_non_diag_indices_legacy(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
-                                    const std::vector<int> &diag_indices)
-{
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> new_result_map;
-
-    // Iterate over each entry in result_map
-    for (const auto &entry : result_map)
-    {
-        const std::vector<int> &key = entry.first;
-        bool is_valid_diagonal = true;
-
-        // Check if all indices in diag_indices have the same value in the key
-        for (size_t i = 1; i < diag_indices.size(); ++i)
-        {
-            if (key[diag_indices[i]] != key[diag_indices[0]])
-            {
-                is_valid_diagonal = false;
-                break;
-            }
-        }
-
-        // If valid diagonal entry, construct new_key with only the last diag_index removed
-        if (is_valid_diagonal)
-        {
-            std::vector<int> new_key;
-            bool removed_last_diag = false;
-            for (int i = key.size() - 1; i >= 0; --i)
-            {
-                if (!removed_last_diag && std::find(diag_indices.begin(), diag_indices.end(), i) != diag_indices.end())
-                {
-                    removed_last_diag = true;
-                }
-                else
-                {
-                    new_key.push_back(key[i]);
-                }
-            }
-            std::reverse(new_key.begin(), new_key.end()); // Reverse new_key to correct order
-            new_result_map[new_key] = entry.second;
-        }
-    }
-
-    // Assign new_result_map to result_map
-    result_map = std::move(new_result_map);
-}
-
-void apply_permutation_legacy(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
-                              const std::vector<int> &perm_indices)
-{
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> new_result_map;
-
-    for (const auto &entry : result_map)
-    {
-        const std::vector<int> &key = entry.first;
-        std::vector<int> new_key(key.size());
-
-        // Apply permutation to create new_key
-        for (size_t i = 0; i < perm_indices.size(); ++i)
-        {
-            new_key[perm_indices[i]] = key[i];
-        }
-
-        new_result_map[new_key] = entry.second;
-    }
-
-    result_map = std::move(new_result_map);
-}
-
-void result_map_to_data_legacy(std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> &result_map,
-                               std::string &output_notation,
-                               double **result_data, int *result_rows, int *result_cols,
-                               int **new_shape, int *new_shape_size)
-{
-    // Convert for sorting
-    std::vector<std::tuple<std::vector<int>, double>> sorted_results;
-    sorted_results.reserve(result_map.size());
-    for (auto &entry : result_map)
-    {
-        sorted_results.emplace_back(std::move(entry.first), entry.second);
-    }
-
-    std::sort(sorted_results.begin(), sorted_results.end());
-
-    // Prepare the output data
-    *result_rows = sorted_results.size();
-    *result_cols = output_notation.size() + 1; // +1 for the value column
-    *result_data = new double[*result_rows * *result_cols];
-
-    // Initialize shape array
-    *new_shape_size = output_notation.size();
-    *new_shape = new int[*new_shape_size]();
-
-    int r = 0;
-    for (const auto &entry : sorted_results)
-    {
-        for (size_t c = 0; c < std::get<0>(entry).size(); ++c)
-        {
-            int value = std::get<0>(entry)[c] + 1;
-            (*result_data)[r * *result_cols + c] = value - 1;
-            if (value > (*new_shape)[c])
-            {
-                (*new_shape)[c] = value;
-            }
-        }
-        (*result_data)[r * *result_cols + output_notation.size()] = std::get<1>(entry);
-        ++r;
-    }
-}
-
-void single_einsum_legacy(const double *data, int rows, int cols,
-                          const char *notation, const int *shape,
-                          double **result_data, int *result_rows, int *result_cols,
-                          int **new_shape, int *new_shape_size)
+void single_einsum(const double *data, int rows, int cols,
+                   const char *notation, const int *shape,
+                   double **result_data, int *result_rows, int *result_cols,
+                   int **new_shape, int *new_shape_size)
 {
 
     bool debug = false;
@@ -1472,16 +1173,12 @@ void single_einsum_legacy(const double *data, int rows, int cols,
     std::string input_notation = notation_str.substr(0, arrow_pos);
     std::string output_notation = notation_str.substr(arrow_pos + 2);
 
-    assert(input_notation.find(',') == std::string::npos);
-
-    std::unordered_map<std::vector<int>, double, VectorHash, VectorEqual> result_map;
-
     // Handle equal input and output
     if (input_notation == output_notation)
     {
         *result_rows = rows;
         *result_cols = cols;
-        *new_shape_size = output_notation.size();
+        *new_shape_size = static_cast<int>(output_notation.size());
 
         *new_shape = new int[*new_shape_size];
         for (int i = 0; i < *new_shape_size; ++i)
@@ -1494,24 +1191,40 @@ void single_einsum_legacy(const double *data, int rows, int cols,
         return;
     }
 
-    for (int i = 0; i < rows; ++i)
+    // Split the input and output notation into UTF-8 characters
+    std::vector<std::string> input_chars = split_utf8(input_notation);
+    std::vector<std::string> output_chars = split_utf8(output_notation);
+
+    // Convert shape array to vector for easier manipulation
+    std::vector<int> shape_vec(shape, shape + input_chars.size());
+
+    if (debug)
     {
-        std::vector<int> key;
-        for (int j = 0; j < cols - 1; ++j)
-        {
-            key.push_back(static_cast<int>(data[i * cols + j]));
-        }
-        double value = data[i * cols + cols - 1];
-        result_map[key] += value;
+        std::cout << "UTF-8 STRINGS:" << std::endl;
+        std::cout << "Input Notation: ";
+        for (const auto &ch : input_chars)
+            std::cout << ch << ", ";
+        std::cout << std::endl;
+        std::cout << "Output Notation: ";
+        for (const auto &ch : output_chars)
+            std::cout << ch << ", ";
+        std::cout << std::endl;
     }
 
+    assert(input_notation.find(',') == std::string::npos);
+
+    std::vector<int> dimensions;
+    std::vector<Entry> entries;
     std::vector<int> sum_indices;
     std::vector<int> diag_indices;
     std::vector<int> perm_indices;
 
     // Handle diagonal indices
-    find_diag_indices_legacy(input_notation, diag_indices);
+    find_diag_indices(input_chars, diag_indices, shape_vec);
+    find_sum_indices(input_chars, output_chars, sum_indices, shape_vec);
+    find_perm_indices(input_chars, output_chars, perm_indices, shape_vec);
 
+    // Debug notation changes
     if (debug)
     {
         std::cout << "diag_indices: " << std::endl;
@@ -1523,30 +1236,6 @@ void single_einsum_legacy(const double *data, int rows, int cols,
         std::cout << "New notation: " << input_notation << "\n"
                   << std::endl;
     }
-
-    remove_non_diag_indices_legacy(result_map, diag_indices);
-
-    if (debug)
-    {
-        // Print the altered result_map
-        std::cout << "Altered result_map:" << std::endl;
-        for (const auto &entry : result_map)
-        {
-            std::cout << "{";
-            for (size_t i = 0; i < entry.first.size(); ++i)
-            {
-                std::cout << entry.first[i];
-                if (i != entry.first.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "} => " << entry.second << std::endl;
-        }
-    }
-
-    find_sum_indices_legacy(input_notation, output_notation, sum_indices);
-
     if (debug)
     {
         std::cout << "Sum indices: " << std::endl;
@@ -1558,30 +1247,6 @@ void single_einsum_legacy(const double *data, int rows, int cols,
         std::cout << "New notation: " << input_notation << "\n"
                   << std::endl;
     }
-
-    sum_over_trivial_indices_legacy(result_map, sum_indices);
-
-    if (debug)
-    {
-        // Print the altered result_map
-        std::cout << "Altered result_map:" << std::endl;
-        for (const auto &entry : result_map)
-        {
-            std::cout << "{";
-            for (size_t i = 0; i < entry.first.size(); ++i)
-            {
-                std::cout << entry.first[i];
-                if (i != entry.first.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "} => " << entry.second << std::endl;
-        }
-    }
-
-    find_perm_indices_legacy(input_notation, output_notation, perm_indices);
-
     if (debug)
     {
         std::cout << "perm_indices: " << std::endl;
@@ -1592,59 +1257,141 @@ void single_einsum_legacy(const double *data, int rows, int cols,
         std::cout << std::endl;
     }
 
-    apply_permutation_legacy(result_map, perm_indices);
+    clock_t start, end;
+    start = clock();
 
-    if (debug)
+    fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
+
+    end = clock();
+    single_setup_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "single_setup_time: " << single_setup_time << "s" << std::endl;
+
+    start = clock();
+    if (diag_indices.size() != 0)
     {
-        // Print the altered result_map
-        std::cout << "Altered result_map:" << std::endl;
-        for (const auto &entry : result_map)
-        {
-            std::cout << "{";
-            for (size_t i = 0; i < entry.first.size(); ++i)
-            {
-                std::cout << entry.first[i];
-                if (i != entry.first.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-            std::cout << "} => " << entry.second << std::endl;
-        }
+        remove_non_diag_indices(dimensions, entries, diag_indices, cols);
     }
+    end = clock();
+    diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "diagonal_time: " << diagonal_time << "s" << std::endl;
 
-    // Convert for sorting
-    std::vector<std::tuple<std::vector<int>, double>> sorted_results;
-    sorted_results.reserve(result_map.size());
-    for (auto &entry : result_map)
+    start = clock();
+    if (sum_indices.size() != 0)
     {
-        sorted_results.emplace_back(std::move(entry.first), entry.second);
+        sum_over_trivial_indices(dimensions, entries, sum_indices, cols);
     }
+    end = clock();
+    sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "sum_time: " << sum_time << "s" << std::endl;
 
-    std::sort(sorted_results.begin(), sorted_results.end());
+    start = clock();
+    if (perm_indices.size() != 0)
+    {
+        apply_permutation(dimensions, entries, perm_indices);
+    }
+    end = clock();
+    permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "permute_time: " << permute_time << "s" << std::endl;
+
+    // parallel_sort(entries, dimensions);
+
+    start = clock();
 
     // Prepare the output data
-    *result_rows = sorted_results.size();
-    *result_cols = output_notation.size() + 1; // +1 for the value column
+    *result_rows = static_cast<int>(entries.size());
+    *result_cols = static_cast<int>(output_chars.size()) + 1;
+    size_t shape_vec_size = shape_vec.size();
+
+    if (shape_vec_size != 0)
+    {
+        *new_shape_size = static_cast<int>(shape_vec_size);
+        *new_shape = new int[*new_shape_size];
+        for (int i = 0; i < *new_shape_size; ++i)
+        {
+            (*new_shape)[i] = shape_vec[i];
+        }
+    }
+    else
+    {
+        *result_cols = 2;
+        dimensions.emplace_back(0);
+        entries[0].num_idx = 1;
+        *new_shape_size = 1;
+        *new_shape = new int[*new_shape_size];
+        (*new_shape)[0] = 1;
+    }
+
     *result_data = new double[*result_rows * *result_cols];
 
-    // Initialize shape array
-    *new_shape_size = output_notation.size();
-    *new_shape = new int[*new_shape_size]();
-
     int r = 0;
-    for (const auto &entry : sorted_results)
+    for (const auto &entry : entries)
     {
-        for (size_t c = 0; c < std::get<0>(entry).size(); ++c)
+        for (size_t c = 0; c < entry.num_idx; ++c)
         {
-            int value = std::get<0>(entry)[c] + 1;
+            int value = dimensions[entry.offset + c] + 1;
             (*result_data)[r * *result_cols + c] = value - 1;
-            if (value > (*new_shape)[c])
-            {
-                (*new_shape)[c] = value;
-            }
         }
-        (*result_data)[r * *result_cols + output_notation.size()] = std::get<1>(entry);
+        (*result_data)[r * *result_cols + (*result_cols - 1)] = entry.value;
         ++r;
     }
+
+    end = clock();
+    writeback_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    std::cout << "writeback_time: " << writeback_time << "s" << std::endl;
 }
+
+void reshape(const double *data, int data_rows, int data_cols,
+             const int *shape, const int shape_length,
+             const int *new_shape, const int new_shape_length,
+             double **result_data, int *result_rows, int *result_cols)
+{
+    // clock_t start, end;
+    // start = clock();
+    // Check if the total number of elements is the same
+    if (std::accumulate(shape, shape + shape_length, 1, std::multiplies<int>()) !=
+        std::accumulate(new_shape, new_shape + new_shape_length, 1, std::multiplies<int>()))
+    {
+        throw std::invalid_argument("The total number of elements must remain the same for reshaping.");
+    }
+
+    // Convert shape and new_shape to vectors
+    std::vector<int> shape_vec(shape, shape + shape_length);
+    std::vector<int> new_shape_vec(new_shape, new_shape + new_shape_length);
+    std::vector<double> coo_values(data_rows);
+    std::vector<int> original_flat_indices;
+
+    // TODO: tbb sorting works on this vector!!!!!!
+    // tbb::parallel_sort(original_flat_indices.begin(), original_flat_indices.end());
+
+    original_flat_indices.reserve(data_cols - 1);
+    for (int i = 0; i < data_rows; ++i)
+    {
+        std::vector<int> indices(data_cols - 1);
+        for (int j = 0; j < data_cols - 1; ++j)
+        {
+            indices[j] = static_cast<int>(data[i * data_cols + j]);
+        }
+        original_flat_indices.push_back(ravel_single_index(indices, shape_vec));
+    }
+
+    *result_rows = static_cast<int>(original_flat_indices.size());
+    *result_cols = new_shape_length + 1;
+    *result_data = new double[*result_rows * *result_cols];
+
+    // Unravel and write directly to result_data
+    for (int i = 0; i < *result_rows; ++i)
+    {
+        int flat_index = original_flat_indices[i];
+        for (int j = static_cast<int>(new_shape_vec.size()) - 1; j >= 0; --j)
+        {
+            (*result_data)[i * *result_cols + j] = flat_index % new_shape_vec[j];
+            flat_index /= new_shape_vec[j];
+        }
+        (*result_data)[i * *result_cols + (*result_cols - 1)] = data[i * data_cols + (data_cols - 1)];
+    }
+
+    // end = clock();
+    // reshape_time += ((double)(end - start)) / CLOCKS_PER_SEC;
+    // std::cout << "reshape_time: " << reshape_time << "s" << std::endl;
+}
+*/
