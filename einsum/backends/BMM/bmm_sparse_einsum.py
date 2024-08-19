@@ -2,8 +2,9 @@ import copy
 import numpy as np
 import opt_einsum as oe
 import sys
+import torch
 from cgreedy import compute_path
-from einsum.utilities.helper_functions import find_idc_types
+from einsum.utilities.helper_functions import find_idc_types, clean_einsum_notation
 from einsum.utilities.classes.coo_matrix import Coo_tensor
 from timeit import default_timer as timer
 
@@ -24,7 +25,7 @@ def fit_tensor_to_bmm(mat: Coo_tensor, eq: str | None, shape: tuple | None):
     return mat
 
 
-def calculate_contractions(cl: list, arrays: list, show_progress: bool):
+def calculate_contractions(cl: list, arrays: list, show_progress: bool, density_threshold=0.01, memory_limit_gb=4):
     global handle_idx_time
     global fit_tensor_time
     global bmm_time
@@ -42,101 +43,78 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool):
             progress += 10
 
         current_arrays = [arrays[idx] for idx in contraction[0]]
-
         for id in contraction[0]:
             del arrays[id]
 
         is_coo_1 = isinstance(current_arrays[1], Coo_tensor)
         is_coo_0 = isinstance(current_arrays[0], Coo_tensor)
-        is_sparse_1 = False
-        is_sparse_0 = False
 
+        # Evaluate the density and memory of the tensors
         if not is_coo_1:
-            is_sparse_1 = (np.count_nonzero(
-                current_arrays[1]) / np.prod(current_arrays[1].shape)) <= 0.9
+            density_1 = (
+                current_arrays[1].count_nonzero() / current_arrays[1].numel())
+            size_1_gb = current_arrays[1].element_size(
+            ) * current_arrays[1].numel() / 1e9  # Convert bytes to GB
+            is_sparse_1 = (
+                density_1 <= density_threshold or size_1_gb >= memory_limit_gb)
         if not is_coo_0:
-            is_sparse_0 = (np.count_nonzero(
-                current_arrays[0]) / np.prod(current_arrays[0].shape)) <= 0.9
+            density_0 = (
+                current_arrays[0].count_nonzero() / current_arrays[0].numel())
+            size_0_gb = current_arrays[0].element_size(
+            ) * current_arrays[0].numel() / 1e9  # Convert bytes to GB
+            is_sparse_0 = (
+                density_0 <= density_threshold or size_0_gb >= memory_limit_gb)
 
+        # Choose whether to use dense or sparse operations
         if (is_coo_1 or is_coo_0) or (is_sparse_1 and is_sparse_0):
             if not isinstance(current_arrays[1], Coo_tensor):
-                current_arrays[1] = Coo_tensor.from_numpy(current_arrays[1])
+                current_arrays[1] = Coo_tensor.from_torch(current_arrays[1])
             if not isinstance(current_arrays[0], Coo_tensor):
-                current_arrays[0] = Coo_tensor.from_numpy(current_arrays[0])
+                current_arrays[0] = Coo_tensor.from_torch(current_arrays[0])
 
-            # tic = timer()
             # Get index lists and sets
             input_idc, output_idc = clean_einsum_notation(contraction[1])
             shape_left = current_arrays[1].shape
             shape_right = current_arrays[0].shape
 
             results = find_idc_types(
-                input_idc,
-                output_idc,
-                shape_left,
-                shape_right
-            )
-            # toc = timer()
-            # handle_idx_time += toc - tic
-
+                input_idc, output_idc, shape_left, shape_right)
             eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB = results
 
-            # tic = timer()
-            # Fit both input tensors to match contraction
+            # Fit tensors to match contraction
             current_arrays[1] = fit_tensor_to_bmm(
                 current_arrays[1], eq_left, shape_left)
             current_arrays[0] = fit_tensor_to_bmm(
                 current_arrays[0], eq_right, shape_right)
-            # toc = timer()
-            # fit_tensor_time += toc - tic
 
-            scalar_mul = True if (len(current_arrays[1].shape) == 1 and
-                                  len(current_arrays[0].shape) == 1 and
-                                  current_arrays[1].shape[0] == 1 and
-                                  current_arrays[0].shape[0] == 1) else False
+            scalar_mul = (len(current_arrays[1].shape) == 1 and len(current_arrays[0].shape) == 1 and
+                          current_arrays[1].shape[0] == 1 and current_arrays[0].shape[0] == 1)
 
-            # tic = timer()
+            # Perform scalar multiplication or COO batch matrix multiplication
             if scalar_mul:
-                AB = np.array([[0.0, current_arrays[1].data[0][1]
-                                * current_arrays[0].data[0][1]]])
+                AB = torch.tensor(
+                    [[0.0, current_arrays[1].data[0][1] * current_arrays[0].data[0][1]]])
                 arrays.append(Coo_tensor(AB, current_arrays[1].shape))
             else:
                 arrays.append(Coo_tensor.coo_bmm(
                     current_arrays[1], current_arrays[0]))
-            # toc = timer()
-            # bmm_time += toc - tic
 
-            # tic = timer()
-
-            # Output reshape
+            # Reshape output if needed
             if shape_out is not None:
                 arrays[-1].reshape(shape_out)
-            # toc = timer()
-            # shape_out_time += toc - tic
 
-            # tic = timer()
+            # Permute the result if needed
             if perm_AB is not None:
                 arrays[-1].swap_cols(perm_AB)
-            # toc = timer()
-            # permute_time += toc - tic
+
+            # Ensure the shape is a tuple
+            if type(arrays[-1].shape) != tuple:
+                arrays[-1].shape = tuple(arrays[-1].shape)
         else:
-            # tic = timer()
+            # Use dense operations with opt_einsum for contraction
             res = oe.contract(
                 contraction[1], current_arrays[1], current_arrays[0])
-            arrays.append(Coo_tensor.from_numpy(res))
-            # toc = timer()
-            # dense_time += toc - tic
-
-        if type(arrays[-1].shape) != tuple:
-            arrays[-1].shape = tuple(arrays[-1].shape)
-
-    # print("\nhandle_idx_time TIME:", handle_idx_time)
-    # print("fit_tensor_time TIME:", fit_tensor_time)
-    # print("bmm_time TIME:", bmm_time)
-    # print("shape_out_time TIME:", shape_out_time)
-    # print("permute_time TIME:", permute_time)
-    # print("dense_time TIME:", permute_time)
-    # print()
+            arrays.append(res)
 
     return arrays[0]
 
@@ -184,14 +162,6 @@ def generate_contraction_list_with_code_points(in_out_idc: str, path):
     return cl
 
 
-def clean_einsum_notation(einsum_notation: str):
-    einsum_notation = einsum_notation.replace(" ", "")
-    input_idc = einsum_notation.split("->")[0].split(",")
-    output_idc = einsum_notation.split("->")[1]
-
-    return input_idc, output_idc
-
-
 def arrays_to_coo(arrays):
     if not isinstance(arrays[0], Coo_tensor):
         tmp = []
@@ -211,7 +181,11 @@ def is_dim_size_two(list: list):
     return True
 
 
-def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=True, allow_alter_input=False):
+def sparse_einsum(einsum_notation: str,
+                  arrays: list,
+                  path=None,
+                  show_progress=True,
+                  allow_alter_input=False):
     """
     Perform sparse tensor contraction using the Einstein summation convention.
 
@@ -288,4 +262,9 @@ def sparse_einsum(einsum_notation: str, arrays: list, path=None, show_progress=T
     # print(f"CALCULATE CONTRACTIONS TIME: {calculate_contractions_time}s")
     # print()
 
-    return res.to_numpy()
+    if isinstance(res, Coo_tensor):
+        res = res.to_numpy()
+    else:
+        res = res.numpy()
+
+    return res

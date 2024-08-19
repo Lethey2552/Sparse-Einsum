@@ -2,6 +2,7 @@ import unittest
 import sparse
 import numpy as np
 import sqlite3 as sql
+import torch
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)
@@ -26,10 +27,10 @@ def sql_einsum_equals_numpy(einsum_notation, sparse_arrays):
         tensor_dict["T" + str(i)] = arr
         tensor_names.append("T" + str(i))
 
-    query = sql_einsum_query(
+    query, res_shape = sql_einsum_query(
         einsum_notation, tensor_names, tensor_dict)
 
-    sql_res = get_matrix_from_sql_response(run_sql_query(query))
+    sql_res = get_matrix_from_sql_response(run_sql_query(query), res_shape)
     numpy_res = np.einsum(einsum_notation, *dense_arrays)
 
     return np.allclose(sql_res, numpy_res)
@@ -46,6 +47,9 @@ def get_dense(sparse_arrays):
 
 def run_einsum(einsum_notation, dense_arrays):
     numpy_res = np.einsum(einsum_notation, *dense_arrays)
+
+    for i in range(len(dense_arrays)):
+        dense_arrays[i] = torch.from_numpy(dense_arrays[i])
     sparse_einsum_res = sparse_einsum(einsum_notation, dense_arrays)
     return numpy_res, sparse_einsum_res
 

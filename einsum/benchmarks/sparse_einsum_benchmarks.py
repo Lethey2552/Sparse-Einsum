@@ -3,6 +3,7 @@ import opt_einsum as oe
 import sparse
 import sqlite3 as sql
 import torch
+from einsum.experiments.util import delete_values_to_match_density
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)

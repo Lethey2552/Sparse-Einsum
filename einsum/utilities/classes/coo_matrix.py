@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from timeit import default_timer as timer
 import einsum.utilities.helper_functions as helper_functions
 from einsum.backends.BMM.cpp_methods.coo_methods_lib import (
@@ -103,6 +104,10 @@ class Coo_tensor:
                             (non_zero_values,), dtype=np.double)
 
         return cls(coo_mat.T, mat.shape)
+
+    @classmethod
+    def from_torch(cls, mat):
+        return Coo_tensor.from_numpy(mat.numpy())
 
     @classmethod
     def coo_matmul(cls, A: "Coo_tensor", B: "Coo_tensor"):
@@ -261,11 +266,18 @@ class Coo_tensor:
                         for i in range(self.data.shape[1] - 1))
 
         if len(self.shape) == 0 or (len(self.shape) == 1 and self.shape[0] == 1):
+
+            if self.data.size == 0:
+                return self.data
+
             mat = self.data[:, -1][0]
         else:
             mat[indices] = self.data[:, -1]
 
         return mat
+
+    def to_torch(self):
+        return torch.from_numpy(self.to_numpy())
 
 
 ######## Legacy functions kept for validation ########

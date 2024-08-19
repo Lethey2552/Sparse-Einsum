@@ -1,10 +1,12 @@
 import numpy as np
+import sqlite3 as sql
 from cgreedy import compute_path
-from operator import itemgetter
 from string import ascii_letters
-from einsum.utilities.helper_functions import get_sizes
+from einsum.utilities.helper_functions import get_sizes, clean_einsum_notation
 from itertools import product
 
+DB_CONNECTION = sql.connect("SQL_einsum.db")
+DB = DB_CONNECTION.cursor()
 
 ASCII = list(ascii_letters)
 
@@ -195,13 +197,9 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, path_info):
     c = 0
 
     # Build contraction tuple (positions, einsum_not, remaining_einsum_not)
-    einsum_notation = einsum_notation.replace(" ", "")
-    einsum_notation = einsum_notation.split("->")
-
-    input_idc = einsum_notation[0].split(",")
-    output_idc = einsum_notation[1]
-    input_sets = [set(indices) for indices in einsum_notation[0].split(",")]
-    output_set = set(einsum_notation[1])
+    input_idc, output_idc = clean_einsum_notation(einsum_notation)
+    input_sets = [set(indices) for indices in input_idc]
+    output_set = set(output_idc)
 
     ##### INFO ######
 
@@ -274,6 +272,10 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 
     tensor_shapes = [t.shape for t in tensors.values()]
 
+    input_idc, output_idc = clean_einsum_notation(einsum_notation)
+    shapes_dict = get_sizes(input_idc, tensor_shapes)
+    out_shape = tuple([shapes_dict[i] for i in output_idc])
+
     if path_info is None:
         path_info, _, _ = compute_path(
             einsum_notation,
@@ -292,19 +294,23 @@ def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, pa
 
     query += values_query + contraction_query
 
-    return query
+    return query, out_shape
 
 
-def get_matrix_from_sql_response(coo_mat: np.ndarray):
-    if len(coo_mat) == 0:
-        raise ValueError
+def sql_einsum_execute(query, res_shape):
+    sql_result = DB.execute(query)
+    sql_result = get_matrix_from_sql_response(sql_result.fetchall(), res_shape)
 
-    max_dim = ()
-    for i in range(len(coo_mat[0]) - 1):
-        max_dim = max_dim + (max(coo_mat, key=itemgetter(i))[i] + 1,)
+    return sql_result
 
-    mat = np.zeros(tuple([int(i) for i in max_dim]))
 
+def get_matrix_from_sql_response(coo_mat: np.ndarray, res_shape: tuple):
+    if len(coo_mat) == 0 or coo_mat[0][0] is None:
+        return np.zeros(res_shape)
+
+    mat = np.zeros(res_shape)
+
+    # Populate the matrix with non-zero entries
     for entry in coo_mat:
         coords = tuple([int(i) for i in entry[:-1]])
         mat[coords] = entry[-1]

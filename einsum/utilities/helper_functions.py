@@ -1,6 +1,5 @@
 import numpy as np
 import math
-from einsum.utilities.classes.coo_matrix import Coo_tensor
 
 
 def find_idc_types(input_idc, output_idc, shape_left, shape_right):
@@ -101,10 +100,18 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
     return eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB
 
 
-def compare_matrices(mat_a: Coo_tensor, mat_b: np.ndarray):
+def compare_matrices(mat_a, mat_b: np.ndarray):
     mat_a_standard = mat_a.to_numpy()
 
     return (np.allclose(mat_a_standard, mat_b))
+
+
+def clean_einsum_notation(einsum_notation: str):
+    einsum_notation = einsum_notation.replace(" ", "")
+    input_idc = einsum_notation.split("->")[0].split(",")
+    output_idc = einsum_notation.split("->")[1]
+
+    return input_idc, output_idc
 
 
 def get_sizes(input_idc, shapes):
