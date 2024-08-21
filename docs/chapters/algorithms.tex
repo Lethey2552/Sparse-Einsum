@@ -100,8 +100,7 @@ engine follow a pre-defined contraction order. More precisely, using GROUP BY an
 aggregation in intermediate computations enforces query engines to evaluate the query in the
 right order.
 
-% TODO: Edit this section to list the right arguments for calling sql_einsum_query()
-\section{Implementation Details}
+\subsection{Implementation Details}
 We implemented the algorithm for mapping Einsum format strings to SQL queries proposed by Blacher
 et al. in Python 3.11.0 as a small package, only requiring Numpy as a dependency. When
 calling \textit{sql\_einsum\_query()}, an Einsum notation string, the tensor names, and the tensor
@@ -134,7 +133,7 @@ of the two input tensors are grouped as follows:
 % TODO: Right tensor index s_l is wrong in the figure. Change it to s_r.
 \begin{figure}[H]
     \centering
-    \includegraphics[scale=0.45]{gray_bmm_indice_grouping1_edited.pdf}
+    \includegraphics[width=0.9\textwidth]{classification_of_indices.pdf}
     \caption{The figure used by Gray J. \cite{jcmgray}  to describe the classification of indices
         used for the grouping. The left tensor has the index order $(b, k_l, c, s_l)$ and the right
         tensor $(b, c, k_r, s_r)$.}
@@ -145,10 +144,10 @@ of the two input tensors are grouped as follows:
     \item [Batch Indices (b)] All individual batch dimensions have to be combined into a single
           batch dimension.
     \item [Contracted Indices (c)] The dimensions over which the contraction takes place.
-    \item [Summed Indices (s)] All indices that only have a single occurence. This is grouped for
-          both input tensors separately.
+    \item [Summed Indices (s)] All indices that only have a single occurence. Summed indices are 
+          grouped for both input tensors separately.
     \item [Kept Indices (k)] All indices and their dimensions that occur in only a single input
-          tensor and in the output. This is grouped for both input tensors separately.
+          tensor and in the output. Kept indices are grouped for both input tensors separately.
 \end{description}
 %
 For our implementation we treat the removal of the summed indices as part of the pre-processing.
@@ -157,15 +156,16 @@ $(b, c, k_r)$ for the right term. For the COO format, since every index results 
 the index order translates to the columns, followed by a last column for the value. To enable the use
 of this format we apply multiple pre-processing steps. First, the algorithm calculates appropriate
 format strings for the COO tensors. The format strings should align with the requirements of the BMM
-to ensure correctness and efficiency of the subsequent operation.\\
+to ensure correctness and efficiency of the subsequent operation.
+\\
+\\
 Besides computing the format strings, the algorithm computes the new shapes for the tensors.
 In doing so, this step will combine all batch, contracted and kept dimensions into one single dimension
 respectively and ignore dimensions not present in the format string. Precise computation of these new
-shapes is critical to ensure that the tensors are aligned correctly for the BMM.\\
-The computed format strings are used to call a special, single Einsum function. This function performs
+shapes is critical to ensure that the tensors are aligned correctly for the BMM. The computed format strings are used to call a special, single Einsum function. This function performs
 Einstein summation on a single tensor, allowing for the computation of diagonals, summation over
 specified dimensions and the permutation thereof. The new shapes are used to reshape the tensors to
-comply with the dimensional requirements of BMM. Both of these steps are only performed if necessary.
+comply with the dimensional requirements of the BMM. Both of these steps are only performed if necessary.
 The pre-processing will result in a COO tensor, which is suited for batch matrix multiplication.
 
 \subsection{Sparse BMM}
@@ -212,10 +212,10 @@ using the following algorithm:
                   k_l & k_r & v^i \cdot v^j \\
               \end{bmatrix}
           \end{equation*}
-    \item If there are duplicate indices in the resulting matrix, sum their values and store the result.
+          If the same indices already exist in the resulting matrix, sum their values and store the result.
     \item Sort the rows of the resulting matrix first by column $k_l$ and then by $k_r$.
     \item Append the resulting COO matrix to the final tensor $C$ with its batch index added as the
-          first column $[b, k_l, k_r, v]$
+          first column $[b, k_l, k_r, v]$.
     \item Repeat from 2. with next batch until all batches are done.
 \end{enumerate}
 The final tensor is returned and can now be post-processed.
@@ -223,7 +223,7 @@ The final tensor is returned and can now be post-processed.
 % \mathbin{\color{blue}0}
 \begin{figure}[H]
     \begin{alignat*}{5}
-         & Steps \quad &              &                &                                                                                      &                                                                                                       &  &  &  & \\
+         & Step \ &              &                &                                                                                      &                                                                                                       &  &  &  & \\
          & 1.          &              & A(b, k_l, c)   &                                                                                      & = \begin{bmatrix}
                                                                                                                                                       b & k_l & c & v    \\
                                                                                                                                                       0 & 0   & 0 & 2.37 \\
@@ -233,7 +233,7 @@ The final tensor is returned and can now be post-processed.
                                                                                                                                                       1 & 0   & 0 & 1.13 \\
                                                                                                                                                       1 & 0   & 1 & 0.08 \\
                                                                                                                                                   \end{bmatrix} \qquad
-         &             & B(b, c, k_r) &                & = \begin{bmatrix}
+         &             & \qquad \quad B(b, c, k_r) &                & = \begin{bmatrix}
                                                                b & c & k_r & v    \\
                                                                0 & 0 & 0   & 0.32 \\
                                                                0 & 0 & 2   & 2.57 \\
@@ -251,7 +251,7 @@ The final tensor is returned and can now be post-processed.
                                                                                                                                                       1   & 2 & 0.63 \\
                                                                                                                                                       1   & 3 & 1.89 \\
                                                                                                                                                   \end{bmatrix}
-         &             & B'(k_r, c)   &                & = \begin{bmatrix}
+         &             & \qquad \quad B'(k_r, c)   &                & = \begin{bmatrix}
                                                                k_r & c & v    \\
                                                                0   & 0 & 0.32 \\
                                                                0   & 1 & 1.45 \\
@@ -266,7 +266,7 @@ The final tensor is returned and can now be post-processed.
                                                                                                                                                       1                        & 2                        & 0.63                        \\
                                                                                                                                                       \color{blind-purple}1    & \color{blind-purple}3    & \color{blind-purple}1.89    \\
                                                                                                                                                   \end{bmatrix}
-         &             & B'(k_r, c)   &                & = \begin{bmatrix}
+         &             & \qquad \quad B'(k_r, c)   &                & = \begin{bmatrix}
                                                                k_r                      & \textbf{c}               & v                           \\
                                                                \color{blind-blue}0      & \color{blind-blue}0      & \color{blind-blue}0.32      \\
                                                                \color{blind-turquoise}0 & \color{blind-turquoise}1 & \color{blind-turquoise}1.45 \\
@@ -281,22 +281,27 @@ The final tensor is returned and can now be post-processed.
                                                                                                                                                       \color{blind-turquoise}0 & \color{blind-turquoise}0 & \mathcolor{blind-turquoise}{0.45 \cdot 1.45} \\
                                                                                                                                                       \color{blind-purple}1    & \color{blind-purple}1    & \mathcolor{blind-purple}{1.89 \cdot 0.14}    \\
                                                                                                                                                   \end{bmatrix}
-         &             &              &                & = \begin{bmatrix}
-                                                               k_l & k_r & v    \\
-                                                               0   & 0   & 0.76 \\
-                                                               0   & 2   & 6.09 \\
-                                                               0   & 0   & 0.65 \\
-                                                               1   & 1   & 0.26 \\
+         &             & = \begin{bmatrix}
+                               k_l & k_r & v    \\
+                               0   & 0   & 0.76 \\
+                               0   & 2   & 6.09 \\
+                               0   & 0   & 0.65 \\
+                               1   & 1   & 0.26 \\
+                           \end{bmatrix}              &                & = \begin{bmatrix}
+                                                               k_l & k_r & v           \\
+                                                               0   & 0   & 0.76 + 0.65 \\
+                                                               0   & 2   & 6.09        \\
+                                                               1   & 1   & 0.26        \\
                                                            \end{bmatrix}
         \\
-         & 4./5.       &              & C'(k_l, k_r)   &                                                                                      & = \begin{bmatrix}
+         & 4.       &              & C'(k_l, k_r)   &                                                                                      & = \begin{bmatrix}
                                                                                                                                                       k_l & k_r & v    \\
                                                                                                                                                       0   & 0   & 1.41 \\
                                                                                                                                                       0   & 2   & 6.09 \\
                                                                                                                                                       1   & 1   & 0.26 \\
                                                                                                                                                   \end{bmatrix}
         \\
-         & 6.          &              & C(b, k_l, k_r) &                                                                                      & = \begin{bmatrix}
+         & 5.          &              & C(b, k_l, k_r) &                                                                                      & = \begin{bmatrix}
                                                                                                                                                       b & k_l & k_r & v    \\
                                                                                                                                                       0 & 0   & 0   & 1.41 \\
                                                                                                                                                       0 & 0   & 2   & 6.09 \\
@@ -308,8 +313,39 @@ The final tensor is returned and can now be post-processed.
         we color the rows used to compute $C'$ with the same color.}
     \label{fig:bmm:algorithm}
 \end{figure}
-%
 
+\begin{algorithm}[H]
+    \caption{Sparse Batch Matrix Multiplication with COO Tensors}
+    \begin{algorithmic}[1]
+        \REQUIRE Tensors $A$, $B$
+        \ENSURE Tensor $C$
+        \STATE Initialize $C$ as empty
+        \FOR{each unique batch index $b$}
+            \STATE Extract rows from $A$ and $B$ with batch index $b$ as COO matrices $A'$, $B'$
+            \STATE Transpose $B'$:
+            \STATE Swap columns $c$ and $kr$ in $B'$
+            \STATE Sort rows of $B'$ first by $kr$, then by $c$
+            \STATE Initialize a temporary COO matrix $Temp$ as empty
+            \FOR{each row $(k_l^i, c^i, v^i)$ in $A'$}
+                \FOR{each row $(k_r^j, c^j, v^j)$ in $B'$ where $c^i = c^j$}
+                    \IF{row with indices $(k_l^i, k_r^j)$ exists in $Temp$}
+                        \STATE Add $v^i \times v^j$ to the existing rows value
+                    \ELSE
+                        \STATE Store $(k_l^i, k_r^j, v^i \times v^j)$ in $Temp$
+                    \ENDIF
+                \ENDFOR
+            \ENDFOR
+            \STATE Sort $Temp$:
+            \STATE Sort rows of $Temp$ first by $k_l^i$, then by $k_r^j$
+            \STATE Append batch index and values to $C$:
+            \FOR{each row $(k_l^i, k_r^j, v)$ in $Temp$}
+                \STATE Append $(b, k_l^i, k_r^j, v)$ to Tensor $C$
+            \ENDFOR
+        \ENDFOR
+        \RETURN $C$
+    \end{algorithmic}
+\end{algorithm}
+    
 \subsection{Post-Processing}
 The result of the BMM may have to be post-processed to fit the contraction lists output
 specifications. The post-processing includes the reshaping of the three combined dimensions for
@@ -319,10 +355,7 @@ may be permuted by swapping the COO tensors columns to fit the correct output fo
 both of these steps are only performed if necessary.
 
 \subsection{Implementation Details}
-The separation of the computational parts into three distinct steps allows for the simple application
-of the decomposition schema and enables independent debugging, measuring and improvement of each section,
-while giving the benefit of readability. We implemented the algorithm in Python 3.11.0 with the computation
-heavy parts written in C++.
+We implemented the algorithm in Python 3.11.0 with the computation heavy parts written in C++.
 
 % We implemented the algorithm for mapping Einsum format strings to SQL queries proposed by Blacher
 % et al. in Python 3.11.0 as a small package, only requiring Numpy as a dependency. When

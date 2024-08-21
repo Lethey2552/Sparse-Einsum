@@ -1,0 +1,42 @@
+In this chapter, we discuss potential improvements to our algorithm, that could result in 
+a better memory footprint or better performance.
+
+\section{Iterative Approach for Batch Matrix Multiplication (BMM) and Index Reordering}
+The current C++ implementation uses unordered maps to aggregate values from COO tensors. 
+This is an inefficient way and can be slow for big tensors because it involves the 
+maintenance of unordered maps. One such improvement can be using an iterative approach 
+while performing the BMM. Because the contraction path delivers an unambiguous order for 
+tensor operations, reordering indices to process tensors iteratively could grant high 
+performance savings. Index reordering will enable the algorithm to just skip over portions 
+of tensors already processed, hence avoiding useless computation. This approach uses the 
+fact that, after processing a part of the tensor, it need not be visited again, and thus 
+it traverses and processes tensor elements in a more efficient way. Not only does this 
+decrease computational complexity, but it also avoids adding vast quantities of elements 
+to a hash map.
+
+\section{Precomuptation of Diagonal Indices and Summed Indices}
+The existing processing of tensor contractions incorporates all indices, diagonal and summed, 
+during the actual pairwise tensor contractions. Often, this preprocessing is inefficient in 
+that it contains computations for indices which are redundant, sometimes even able to be 
+handled far more effectively before the main phase of contraction. One way of handling this 
+inefficiency could be for the algorithm to traverse the contraction path, that essentially 
+forms a binary tree structure. The tree could be traversed recursively from the root to the 
+leafs to eliminate all diagonal indices and indices to be summed over before the actual 
+computation. Furthermore, the indices could be rearranged to be fit the BMM's format. 
+Such preprocessing makes it possible for the algorithm to handle only the required operations. 
+When the main computation starts the aforementioned indices that can be removed can be 
+processed in the first pass. Hence, extra steps are not required. By rearranging indices 
+such that only required operations are made during the contraction phase, the algorithm can 
+reduce the overall processing time along with the computational overhead.
+
+\section{Memory Footprint Optimization via Multi Index Encoding}
+One of the possible bottlenecks in the current implementation is that it consume a lot of 
+memory while storing and tracking tensor indices in COO format. The current practice is to 
+store each index separately, thus making it expensive in terms of memory usage for large 
+tensors and high-order contractions. Extra performance gains could be attained by compressing 
+a number of indices into a single index through multi-index encoding. For example, four 
+16-bit indices may be combined into a single 64-bit integer. Such compression would reduce 
+the memory footprint and could further improve computational speed by allowing bit-wise 
+operations on the combined index. That would complicate the tracking of the index, but the 
+performance and memory efficiency savings could be quite big. In general, bit manipulation 
+operations are significantly faster than the usual arithmetic operations.

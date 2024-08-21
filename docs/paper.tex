@@ -1,5 +1,7 @@
 \documentclass[12pt]{scrbook}
 \usepackage[utf8]{inputenc}
+\usepackage{algorithm}
+\usepackage{algorithmic}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage[backend=biber,style=numeric,]{biblatex}
@@ -13,24 +15,13 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{listings}
+\usepackage{pgfplots}
 \usepackage{scrhack}
 \usepackage[automark,ilines]{scrlayer-scrpage}
 \usepackage{setspace}
 \usepackage{tikz}
 \usetikzlibrary{positioning, quotes, calc}
-
-% Define the abstract name
-\newcommand{\abstractname}{Abstract}
-
-% Define the abstract environment
-\newenvironment{abstract}{
-    \begin{center}
-    \bfseries \abstractname
-    \end{center}
-    \begin{quote}
-}{
-    \end{quote}
-}
+\pgfplotsset{compat=newest}
 
 % Set the page style and center the page number
 \pagestyle{scrplain}
@@ -106,26 +97,8 @@
 \end{titlepage}
 \cleardoublepage
 
-\begin{abstract}
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce eleifend orci
-    et venenatis cursus. Nullam eget ornare lacus. Donec non dolor non tellus
-    eleifend vehicula. Sed et lorem lectus. Vestibulum sagittis sed nisi ac interdum.
-    Duis nec accumsan velit, hendrerit malesuada magna. Aliquam erat volutpat.
-    Cras eu ante nec est malesuada volutpat. Proin quis posuere quam. Etiam aliquam
-    eros quis dui sagittis, a fermentum lectus rutrum. Nunc tempor mauris vel tellus
-    facilisis rhoncus. Aliquam ut leo eget metus volutpat vestibulum.
-    Nam non consequat ante. In rutrum felis in enim fringilla lacinia.
-    Phasellus ut imperdiet risus. Curabitur tincidunt libero sed urna dignissim,
-    eget rutrum felis scelerisque. Nunc ut convallis neque, non tincidunt nulla.
-    Curabitur quis condimentum leo. Phasellus laoreet ligula vel mi commodo, id
-    accumsan diam tristique. Maecenas euismod lorem in tempor iaculis.
-    Orci varius natoque penatibus et magnis dis parturient montes, nascetur
-    ridiculus mus. Ut eget purus sem. Suspendisse venenatis aliquet dignissim.
-    Integer turpis lorem, tempus non turpis et, gravida aliquet erat. Sed vel
-    neque non ex ultrices vestibulum. Aliquam purus quam, rhoncus non ante at,
-    convallis sagittis erat. Sed justo elit, vulputate vel accumsan non, porta eget
-    turpis. Proin eget ultrices sem. Nunc eu velit.
-\end{abstract}
+\chapter*{Abstract}
+\input{chapters/abstract.tex}
 \thispagestyle{empty}
 
 \chapter*{Zusammenfassung}
@@ -133,9 +106,11 @@
 \thispagestyle{empty}
 
 \tableofcontents
+\thispagestyle{empty}
 
 \newgeometry{top=3.0cm, bottom=3.0cm, left=4cm, right=2cm}
 
+\setcounter{page}{1}
 \chapter{Introduction}
 \input{chapters/introduction_chapter.tex}
 
@@ -147,6 +122,15 @@
 
 \chapter{Algorithms}
 \input{chapters/algorithms.tex}
+
+\chapter{Experiments}
+\input{chapters/experiments.tex}
+
+\chapter{Discussion}
+\input{chapters/discussion.tex}
+
+\chapter{Conclusion}
+\input{chapters/conclusion.tex}
 
 \printbibliography
 
