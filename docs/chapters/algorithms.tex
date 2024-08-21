@@ -355,21 +355,22 @@ may be permuted by swapping the COO tensors columns to fit the correct output fo
 both of these steps are only performed if necessary.
 
 \subsection{Implementation Details}
-We implemented the algorithm in Python 3.11.0 with the computation heavy parts written in C++.
-
-% We implemented the algorithm for mapping Einsum format strings to SQL queries proposed by Blacher
-% et al. in Python 3.11.0 as a small package, only requiring Numpy as a dependency. When
-% calling \textit{sql\_einsum\_query()}, an Einsum notation string, the tensor names, and the tensor
-% data have to be supplied. The path argument is optional. When not supplied with a path, an
-% optimized contraction path is calculated using cgreedy~\cite{cgreedy}. The cgreedy package
-% provides a greedy algorithm approach for finding an efficient contraction order for any given
-% format string and associated tensors, utilizing multiple cost functions. The construction of the
-% query is separated into two parts. The first part creates the tensors in COO format as SQL
-% compatible structures and returns the appropriate query. The second part applies the decomposition
-% schema, more precisely, it uses either the supplied or the calculated contraction path to build a
-% contraction list. The entries of the contraction list dictate the order and the exact pairwise
-% operations necessary to solve the Einstein summation problem. These subproblems are also specified
-% in Einstein notation. To build the second part of the query, we iterate the contraction list and
-% apply the four mapping rules from Subsection \ref{subsec:sql:rules} to assemble the correct SQL
-% strings for the given pairwise contractions. Finally, we merge the two generated query parts and
-% return the complete query.
+We implemented the algorithm in Python 3.11.0 for the workflow control with the computation heavy 
+parts written in C++. The responsibilities of the Python code include managing the calls for 
+tensor contractions with respect to the density and memory characteristics of the tensors. Sparse 
+tensors are represented within a user-defined COO format. The algorithm automatically switches 
+back and forth between dense and sparse based on a set threshold of density and memory limits. 
+Dense operations are done using opt\_einsum with the Torch backend, and sparse operations run using 
+the custom C++ batch matrix multiplication code called through Cython.
+Implementation in the C++ code is done with the help of hash maps to aggregate results in the sparse 
+BMM. If the tensors are batched, it first aligns the entries for each tensor along the batch 
+dimension. In each batch, it multiplies matrices by cycling through the non-zero elements of both 
+tensors, matching indices, and accumulating the products in a hash map (std::unordered\_map). 
+The product values are stored such that the resulting multiplications are stored in a hash map 
+having row and column indices as keys. The result is then sorted and the post-processing is applied 
+to achieve the final output.
+\\
+\\
+When the legacy flag is set, the algorithm resorts to earlier, unparallelized versions of the C++ 
+functions. This can be faster for smaller problems, but lacks in performance when considering very large
+tensors.

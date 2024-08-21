@@ -10,12 +10,12 @@ tensor hypernetworks and then, we evaluate their performance on five instances o
 Benchmark" \cite{einsum_benchmark} dataset.
 
 \section{Random Tensor Hypernetworks}
-In this section, we look at five different methods—Sparse, SQL Einsum, Torch, Legacy Sparse 
-Einsum, and Sparse Einsum—on tensor sizes ranging from small to large. We generate Einsum 
-problems by computing random tensor hypernetworks with a single varying parameter for each 
-experiment. For each change of a parameter the results are evaluated using 10 differently 
-seeded random tensor hypernetworks generated with identical parameters. We then evaluate 
-each methods performance on the problem 10 times to get an average it/s.
+To evaluate the performance of our implementations across a variety of properties, Einsum problems 
+may display, we generate Einsum expressions by computing random tensor hypernetworks 
+\cite{einsum_benchmark} with a single varying parameter for each experiment. For every new 
+parameter the results are evaluated using ten differently seeded random tensor hypernetworks 
+generated with identical parameters. We then evaluate each methods performance on the problem 
+ten times to get an average it/s.
 \\
 \\
 First, we generate problems where we vary the maximum size of dimensions from 2 to 8. 
