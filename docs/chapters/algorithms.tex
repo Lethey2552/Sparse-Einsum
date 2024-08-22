@@ -218,9 +218,10 @@ using the following algorithm:
           first column $[b, k_l, k_r, v]$.
     \item Repeat from 2. with next batch until all batches are done.
 \end{enumerate}
-The final tensor is returned and can now be post-processed.
+The final tensor is returned and can now be post-processed. Figure \ref{fig:bmm:algorithm} provides
+a detailed illustration of Steps 1 through 5 of the algorithm. For the pseudocode of the sparse batch
+matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
 
-% \mathbin{\color{blue}0}
 \begin{figure}[H]
     \begin{alignat*}{5}
          & Step \ &              &                &                                                                                      &                                                                                                       &  &  &  & \\
@@ -316,6 +317,7 @@ The final tensor is returned and can now be post-processed.
 
 \begin{algorithm}[H]
     \caption{Sparse Batch Matrix Multiplication with COO Tensors}
+    \label{alg:bmm}
     \begin{algorithmic}[1]
         \REQUIRE Tensors $A$, $B$
         \ENSURE Tensor $C$
@@ -358,17 +360,16 @@ both of these steps are only performed if necessary.
 We implemented the algorithm in Python 3.11.0 for the workflow control with the computation heavy 
 parts written in C++. The responsibilities of the Python code include managing the calls for 
 tensor contractions with respect to the density and memory characteristics of the tensors. Sparse 
-tensors are represented within a user-defined COO format. The algorithm automatically switches 
-back and forth between dense and sparse based on a set threshold of density and memory limits. 
-Dense operations are done using opt\_einsum with the Torch backend, and sparse operations run using 
-the custom C++ batch matrix multiplication code called through Cython.
-Implementation in the C++ code is done with the help of hash maps to aggregate results in the sparse 
-BMM. If the tensors are batched, it first aligns the entries for each tensor along the batch 
-dimension. In each batch, it multiplies matrices by cycling through the non-zero elements of both 
-tensors, matching indices, and accumulating the products in a hash map (std::unordered\_map). 
-The product values are stored such that the resulting multiplications are stored in a hash map 
-having row and column indices as keys. The result is then sorted and the post-processing is applied 
-to achieve the final output.
+tensors are represented using the COO format. The algorithm automatically switches back and forth 
+between dense and sparse based on a set threshold of density and memory limits. Dense operations 
+are done using opt\_einsum with the Torch backend, and sparse operations run using the custom 
+C++ batch matrix multiplication code called through Cython. Implementation in the C++ code is 
+done with the help of hash maps to aggregate results in the sparse BMM. If the tensors are batched, 
+it first aligns the entries for each tensor along the batch dimension. In each batch, it multiplies 
+matrices by cycling through the non-zero elements of both tensors, matching indices, and accumulating 
+the products in a hash map (std::unordered\_map). The product values are stored such that the 
+resulting multiplications are stored in a hash map having row and column indices as keys. The result 
+is then sorted and the post-processing is applied to achieve the final output.
 \\
 \\
 When the legacy flag is set, the algorithm resorts to earlier, unparallelized versions of the C++ 

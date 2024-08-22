@@ -4,15 +4,15 @@
 \definecolor{plot_green}{rgb}{0, 0.729, 0.22}
 \definecolor{plot_gray}{rgb}{0.4, 0.4, 0.4}
 
-In this chapter, we compare five different methods—Sparse, SQL Einsum, Torch, Legacy Sparse 
-Einsum, and Sparse Einsum—on different problems. First, we compare them on various random
-tensor hypernetworks and then, we evaluate their performance on five instances of the ``Einsum
-Benchmark" \cite{einsum_benchmark} dataset.
+In this chapter, we compare five different methods—Sparse, our SQL Einsum implementation, Torch, 
+our Sparse Einsum, and our Legacy Sparse Einsum—on different problems. First, we compare them on 
+various random tensor hypernetworks and then, we evaluate their performance on three instances of 
+the ``Einsum Benchmark" \cite{einsum_benchmark} dataset.
 
 \section{Random Tensor Hypernetworks}
-To evaluate the performance of our implementations across a variety of properties, Einsum problems 
-may display, we generate Einsum expressions by computing random tensor hypernetworks 
-\cite{einsum_benchmark} with a single varying parameter for each experiment. For every new 
+To evaluate the performance of our implementations across a variety of properties that Einsum 
+problems may exhibit, we generate Einsum expressions representing random tensor hypernetworks 
+\cite{einsum_benchmark}, with each experiment featuring a single varying parameter. For every new 
 parameter the results are evaluated using ten differently seeded random tensor hypernetworks 
 generated with identical parameters. We then evaluate each methods performance on the problem 
 ten times to get an average it/s.
@@ -26,7 +26,7 @@ the rate of this degradation differs significantly between the methods.
 \begin{figure}[H]
     \centering
     \begin{tikzpicture}
-        \begin{axis}[
+        \begin{semilogyaxis}[
             xlabel={Maximum Size of Dimensions},
             ylabel={Iterations per Second (it/s)},
             grid=major,
@@ -36,7 +36,6 @@ the rate of this degradation differs significantly between the methods.
             enlargelimits=0.1,
             xtick style={draw=none},  % Remove x-axis tick marks
             ytick style={draw=none},  % Remove y-axis tick marks
-            ymode=log,                % Logarithmic scale for y-axis
             log basis y=10,           % Set base 10 for y-axis
             legend style={
                 at={(0.5,1.05)}, % Position above the plot
@@ -45,94 +44,100 @@ the rate of this degradation differs significantly between the methods.
                 column sep=1ex, % Space between columns
                 draw=none, % Remove the border
                 fill=none, % Remove the background fill
+                legend cell align=left
             }
         ]
     
-        % Sparse (Square marker)
+        % Sparse_Time (Square marker)
         \addplot[
             color=plot_blue,
             mark=square*,
             thick
         ] coordinates {
-            (2, 373.779) (3, 278.362) (4, 194.133) (5, 94.575)
-            (6, 51.880) (7, 23.436) (8, 11.405)
+            (2, 2949.141) (3, 2728.197) (4, 2514.223) (5, 2130.835) 
+            (6, 1600.128) (7, 1193.220) (8, 833.779) (9, 647.050)
+            (10, 419.688) (11, 286.894) (12, 190.042) (13, 132.532)
+            (14, 92.850) (15, 67.926)
         };
         \addlegendentry{Sparse}
     
-        % SQL (Triangle marker)
+        % SQL_Einsum_Time (Triangle marker)
         \addplot[
             color=plot_green,
             mark=triangle*,
             thick
         ] coordinates {
-            (2, 407.201) (3, 550.046) (4, 732.296) (5, 804.534)
-            (6, 654.144) (7, 442.977) (8, 260.772)
+            (2, 2954.971) (3, 2861.648) (4, 6282.668) (5, 7085.857)
+            (6, 7246.113) (7, 4068.557) (8, 3514.551) (9, 2631.675)
+            (10, 1632.327) (11, 765.026) (12, 482.367) (13, 236.127)
+            (14, 184.713) (15, 113.928)
         };
-        \addlegendentry{SQL}
+        \addlegendentry{SQL Einsum}
     
-        % Torch (Diamond marker)
+        % Torch_Time (Diamond marker)
         \addplot[
             color=plot_red,
             mark=diamond*,
             thick
         ] coordinates {
-            (2, 193.741) (3, 168.812) (4, 155.748) (5, 128.345)
-            (6, 92.042) (7, 60.147) (8, 39.834)
+            (2, 1438.503) (3, 1422.954) (4, 1385.463) (5, 1145.090) 
+            (6, 921.999) (7, 880.472) (8, 705.581) (9, 600.319)
+            (10, 383.697) (11, 298.314) (12, 194.233) (13, 129.782)
+            (14, 96.937) (15, 69.999)
         };
         \addlegendentry{Torch}
     
-        % Legacy_Sparse_Einsum (Pentagon marker)
+        % Legacy_Sparse_Einsum_Time (Pentagon marker)
         \addplot[
             color=plot_gray,
             mark=pentagon*,
             thick
         ] coordinates {
-            (2, 97.820) (3, 96.657) (4, 93.159) (5, 80.838)
-            (6, 63.319) (7, 42.265) (8, 29.298)
+            (2, 558.216) (3, 511.409) (4, 584.589) (5, 594.116) 
+            (6, 536.521) (7, 531.115) (8, 454.884) (9, 409.967)
+            (10, 346.686) (11, 300.110) (12, 270.774) (13, 234.450)
+            (14, 202.283) (15, 164.314)
         };
         \addlegendentry{Legacy Sparse Einsum}
-        
-        % Sparse_Einsum (Circle marker)
+
+        % Sparse_Einsum_Time (Circle marker)
         \addplot[
             color=plot_orange,
             mark=*,
             thick
         ] coordinates {
-            (2, 96.587) (3, 88.914) (4, 82.745) (5, 71.318)
-            (6, 60.150) (7, 44.452) (8, 30.854)
+            (2, 1221.739) (3, 1165.713) (4, 1349.421) (5, 1298.878) 
+            (6, 1199.998) (7, 1027.373) (8, 924.336) (9, 758.730)
+            (10, 625.246) (11, 515.746) (12, 426.570) (13, 341.911)
+            (14, 270.924) (15, 217.710)
         };
         \addlegendentry{Sparse Einsum}
     
-        \end{axis}
+        \end{semilogyaxis}
     \end{tikzpicture}
-    \caption{Performance of different methods vs maximum size of the dimensions. The plot 
-    shows the number of iterations per second for each method across varying dimension sizes.}
+    \caption{Performance of different methods as a function of maximum dimension size. The plot shows the number of iterations per second for each method across varying dimension sizes.}
     \label{fig:exp:max_dim_size}
 \end{figure}
 
 \noindent
 Sparse performance decreases quickly when the maximum number of dimensions that the tensors 
-can have increases. It has the steepest decline of all the methods. In general, SQL Einsum is 
-superior for larger maximum sizes of dimensions, although it also declines more steeply in 
-comparison with both Sparse Einsum implementations and Torch, which are much more constant 
-in performance. The SQL implementations iterations per second rise, when the maximum size 
-of dimensions increases from 2 to 5 and from thereon decreases constantly with rising possible 
-sizes for the dimensions. Sparse Einsum and the legacy version of Sparse Einsum demonstrated 
-very similar trends, though the legacy variant was a little better at most dimension sizes 
-than the newer implementation. This is likely due to the additional overhead introduced by 
-parallelization, which only pays of when computing large, sparse tensors.
+can have increases. It starts of with around the same it/s as SQL but declines faster than 
+the other methods, coming in last with about the same performance as Torch. In general, 
+SQL Einsum is superior for small till medium sizes of dimensions, but it also declines more 
+steeply in comparison all other methods. The SQL implementations iterations per second rise, 
+when the maximum size of dimensions increases from 2 to 6 and from thereon decreases constantly. 
+Sparse Einsum and the legacy version of Sparse Einsum demonstrated very similar trends, 
+though the legacy variant performed worse at all dimension sizes than the newer implementation. 
+\\
 \\
 The results of Figure \ref{fig:exp:max_num_dim} illustrate how the computational performance 
-of each method varies with increasing dimensionality in tensor hypernetworks. Sparse shows a 
-rapid decline as dimensionality increases, becoming inefficient at higher dimensions. SQL 
-Einsum exhibits an unusual pattern, performing poorly at low and high dimensions but peaking 
-in the middle range. Torch remains relatively stable, handling dimensionality increases 
-consistently well. Sparse Einsum initially declines but improves at higher dimensions, 
-indicating resilience to complexity. Legacy Sparse Einsum follows a similar trend, with fairly 
-stable performance across different dimensions, excelling at moderate to high dimensionality. 
-Overall, Torch, Sparse Einsum, and Legacy Sparse Einsum handle the increasing dimensionality 
-best, while SQL Einsum performs optimally at intermediate dimensions, and Sparse struggles the 
-most with larger networks.
+of each method varies with increasing dimensionality in tensor hypernetworks. All of the methods
+it/s decline as dimensionality increases, but start to flatten out at around nine. SQL Einsum 
+starts of with by far the best performance, but declines rapidly, getting surpassed by Sparse Einsum 
+and Legacy Sparse Einsum. Torch and Sparse perform about the same for higher number of dimensions, 
+the only difference being that Sparse performs better than Torch for low numbers of dimensions. 
+Overall, Sparse Einsum and Legacy Sparse Einsum handle the increasing dimensionality best, with 
+Sparse Einsum displaying the highest iterations per second for problems with higher dimensionality. 
 
 \begin{figure}[H]
     \centering
@@ -147,8 +152,7 @@ most with larger networks.
             enlargelimits=0.1,
             xtick style={draw=none},  % Remove x-axis tick marks
             ytick style={draw=none},  % Remove y-axis tick marks
-            ymode=log,                % Logarithmic scale for y-axis
-            log basis y=10,           % Set base 10 for y-axis
+            ymin=0, ymax=1200,        % Set limits to ensure proper visualization
             legend style={
                 at={(0.5,1.05)}, % Position above the plot
                 anchor=south, % Anchor to the south of the legend
@@ -156,6 +160,7 @@ most with larger networks.
                 column sep=1ex, % Space between columns
                 draw=none, % Remove the border
                 fill=none, % Remove the background fill
+                legend cell align=left
             }
         ]
     
@@ -165,21 +170,21 @@ most with larger networks.
             mark=square*,
             thick
         ] coordinates {
-            (6, 19.042) (7, 8.157) (8, 3.065) (9, 1.785) (10, 1.554)
-            (11, 1.762) (12, 1.344) (13, 1.449) (14, 1.593)
+            (6, 477.020) (7, 146.725) (8, 116.174) (9, 67.275) 
+            (10, 66.349) (11, 65.991) (12, 62.998) (13, 49.544) (14, 67.529)
         };
         \addlegendentry{Sparse}
     
-        % SQL_Time (Triangle marker)
+        % SQL_Einsum_Time (Triangle marker)
         \addplot[
             color=plot_green,
             mark=triangle*,
             thick
         ] coordinates {
-            (6, 9.566) (7, 0.559) (8, 0.306) (9, 0.256) (10, 25.985)
-            (11, 19.361) (12, 21.572) (13, 15.773) (14, 15.464)
+            (6, 1136.583) (7, 250.692) (8, 266.833) (9, 114.571) 
+            (10, 102.055) (11, 105.546) (12, 103.656) (13, 123.441) (14, 117.988)
         };
-        \addlegendentry{SQL}
+        \addlegendentry{SQL Einsum}
     
         % Torch_Time (Diamond marker)
         \addplot[
@@ -187,37 +192,36 @@ most with larger networks.
             mark=diamond*,
             thick
         ] coordinates {
-            (6, 46.602) (7, 33.894) (8, 23.399) (9, 20.497) (10, 18.177)
-            (11, 16.834) (12, 18.184) (13, 18.909) (14, 19.625)
+            (6, 361.691) (7, 127.232) (8, 107.009) (9, 62.497) 
+            (10, 61.353) (11, 65.995) (12, 65.120) (13, 69.146) (14, 65.189)
         };
         \addlegendentry{Torch}
     
-        % Legacy_Sparse_Einsum_Time (Pentagon marker)
+        % Legacy_Sparse_Einsum_Time (Star marker)
         \addplot[
             color=plot_gray,
             mark=pentagon*,
             thick
         ] coordinates {
-            (6, 26.457) (7, 21.267) (8, 15.515) (9, 13.920) (10, 21.946)
-            (11, 20.780) (12, 23.553) (13, 19.427) (14, 17.876)
+            (6, 327.207) (7, 214.516) (8, 158.049) (9, 159.632) 
+            (10, 160.321) (11, 161.135) (12, 163.633) (13, 163.505) (14, 160.476)
         };
         \addlegendentry{Legacy Sparse Einsum}
-        
+
         % Sparse_Einsum_Time (Circle marker)
         \addplot[
             color=plot_orange,
             mark=*,
             thick
         ] coordinates {
-            (6, 26.151) (7, 21.004) (8, 15.809) (9, 13.802) (10, 21.840)
-            (11, 19.967) (12, 22.961) (13, 19.494) (14, 19.137)
+            (6, 502.425) (7, 317.017) (8, 225.428) (9, 208.049) 
+            (10, 214.421) (11, 212.171) (12, 219.846) (13, 209.382) (14, 202.798)
         };
         \addlegendentry{Sparse Einsum}
     
         \end{axis}
     \end{tikzpicture}
-    \caption{Performance of different methods as a function of the maximum number of 
-    dimensions. The plot shows the number of iterations per second for each method.}
+    \caption{Performance of different methods as a function of the maximum number of dimensions. The plot shows the number of iterations per second for each method.}
     \label{fig:exp:max_num_dim}
 \end{figure}
 
@@ -245,15 +249,16 @@ SQL and Sparse show by far the largest performance degradation.
             enlargelimits=0.1,
             xtick style={draw=none},
             ytick style={draw=none},
-            xtick={50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300},
-            xticklabels={50, 75, 100, 125, 150, 175, 200, 225, 250, 275, 300},
+            xtick={10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30}, % Correct x-ticks
+            xticklabels={10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30}, % Correct labels for x-ticks
             legend style={
                 at={(0.5,1.05)}, % Position above the plot
                 anchor=south, % Anchor to the south of the legend
-                legend columns=4, % Arrange entries side by side
+                legend columns=3, % Arrange entries side by side
                 column sep=1ex, % Space between columns
                 draw=none, % Remove the border
                 fill=none, % Remove the background fill
+                legend cell align=left
             }
         ]
     
@@ -263,9 +268,9 @@ SQL and Sparse show by far the largest performance degradation.
             mark=square*,
             thick
         ] coordinates {
-            (50, 421.397) (75, 243.002) (100, 163.534) (125, 98.735)
-            (150, 51.171) (175, 27.372) (200, 8.103) (225, 2.608) 
-            (250, 0.937) (275, 0.079)
+            (10, 476.545) (12, 263.609) (14, 213.613) (16, 89.564)
+            (18, 74.276) (20, 76.383) (22, 61.785) (24, 53.520) 
+            (26, 41.633) (28, 7.829) (30, 4.485)
         };
         \addlegendentry{Sparse}
     
@@ -275,10 +280,11 @@ SQL and Sparse show by far the largest performance degradation.
             mark=triangle*,
             thick
         ] coordinates {
-            (50, 306.391) (75, 174.003) (100, 99.646) (125, 58.171)
-            (150, 16.880) (175, 10.975) (200, 1.923) (225, 0.431) (250, 0.073)
+            (10, 2284.108) (12, 1294.497) (14, 731.881) (16, 1061.477)
+            (18, 548.178) (20, 772.391) (22, 597.661) (24, 533.237) 
+            (26, 669.754) (28, 344.313) (30, 569.061)
         };
-        \addlegendentry{SQL}
+        \addlegendentry{SQL Einsum}
     
         % Torch_Time (Diamond marker)
         \addplot[
@@ -286,9 +292,9 @@ SQL and Sparse show by far the largest performance degradation.
             mark=diamond*,
             thick
         ] coordinates {
-            (50, 252.421) (75, 170.495) (100, 127.919) (125, 87.753)
-            (150, 62.042) (175, 42.147) (200, 25.338) (225, 11.279) 
-            (250, 4.282) (275, 0.910) (300, 0.213)
+            (10, 404.718) (12, 236.199) (14, 195.213) (16, 167.394)
+            (18, 142.753) (20, 171.697) (22, 116.004) (24, 135.279)
+            (26, 91.784) (28, 69.143) (30, 61.248)
         };
         \addlegendentry{Torch}
     
@@ -298,9 +304,9 @@ SQL and Sparse show by far the largest performance degradation.
             mark=pentagon*,
             thick
         ] coordinates {
-            (50, 111.878) (75, 74.319) (100, 56.124) (125, 41.069)
-            (150, 30.887) (175, 22.307) (200, 14.387) (225, 7.829) 
-            (250, 3.128) (275, 0.754) (300, 0.235)
+            (10, 266.300) (12, 214.103) (14, 179.091) (16, 151.105)
+            (18, 143.827) (20, 145.156) (22, 120.983) (24, 122.016) 
+            (26, 114.738) (28, 94.909) (30, 94.717)
         };
         \addlegendentry{Legacy Sparse Einsum}
         
@@ -310,15 +316,117 @@ SQL and Sparse show by far the largest performance degradation.
             mark=*,
             thick
         ] coordinates {
-            (50, 116.182) (75, 79.501) (100, 60.205) (125, 44.611)
-            (150, 31.703) (175, 23.280) (200, 15.195) (225, 7.810) 
-            (250, 3.105) (275, 0.774) (300, 0.256)
+            (10, 492.369) (12, 382.741) (14, 326.109) (16, 268.279)
+            (18, 249.704) (20, 257.161) (22, 213.647) (24, 200.779) 
+            (26, 210.283) (28, 173.847) (30, 171.929)
         };
         \addlegendentry{Sparse Einsum}
     
         \end{semilogyaxis}
     \end{tikzpicture}
-    \caption{Performance of different methods as a function of the number of tensors. We stop 
-    the calculation early when a methods last data point is at less than 0.1 it/s.}
+    \caption{Performance of different methods as a function of the number of tensors.}
     \label{fig:exp:num_tensors}
+\end{figure}
+
+Figure \ref{fig:exp:density} shows the trends for performance of the different methods with 
+decreasing density. We decrease the same tensor hypernetworks density for each step. Some methods 
+improve drastically as the density decreases, while others remain about the same. In particular, 
+SQL Einsum shows a dramatic improvement with lower densities, quickly accelerating from low 
+performance at high densities to exceptional performance at the sparsest levels, generating an
+S-curve. Sparse Einsum Legacy and Sparse Einsum both exhibit strong performance improvements as density decreases. That being said, 
+Sparse Einsum tends to perform better than its legacy Sparse Einsum variant, especially at 
+lower densities. On the other hand, the Torch method is quite stable across different densities, 
+only showing minor fluctuations as the density decreases. The same can also be said for the 
+Sparse method, which shows very little change across the density spectrum. The contrast 
+emphasizes that some methods perform much better on dense data, while others are specialized 
+for sparse data; the efficiency gains grow more dramatic as the data gets sparser.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \begin{semilogyaxis}[
+            xlabel={Density},
+            ylabel={Iterations per Second (it/s)},
+            grid=major,
+            mark size=2.5pt,
+            width=12cm,
+            height=6cm,
+            enlargelimits=0.1,
+            xtick style={draw=none},  % Remove x-axis tick marks
+            ytick style={draw=none},  % Remove y-axis tick marks
+            xtick={0.1, 0.01, 0.001, 0.0001, 0.00001}, % Specify custom x-axis ticks
+            xticklabels={0.1, 0.01, 0.001, 0.0001, 0.00001}, % Set custom labels
+            xmode=log,                % Logarithmic scale for x-axis
+            log basis x=10,           % Set base 10 for x-axis
+            x dir=reverse,
+            legend style={
+                at={(0.5,1.05)}, % Position above the plot
+                anchor=south, % Anchor to the south of the legend
+                legend columns=3, % Arrange entries side by side
+                column sep=1ex, % Space between columns
+                draw=none, % Remove the border
+                fill=none, % Remove the background fill
+                legend cell align=left
+            }
+        ]
+    
+        % Sparse_Time (Square marker)
+        \addplot[
+            color=plot_blue,
+            mark=square*,
+            thick
+        ] coordinates {
+            (0.1, 103.350) (0.01, 101.109) (0.001, 108.362) 
+            (0.0001, 106.939) (0.00001, 104.600)
+        };
+        \addlegendentry{Sparse}
+    
+        % SQL_Time (Triangle marker)
+        \addplot[
+            color=plot_green,
+            mark=triangle*,
+            thick
+        ] coordinates {
+            (0.1, 0.046) (0.01, 0.929) (0.001, 108.230) 
+            (0.0001, 3952.256) (0.00001, 23169.600)
+        };
+        \addlegendentry{SQL Einsum}
+    
+        % Torch_Time (Diamond marker)
+        \addplot[
+            color=plot_red,
+            mark=diamond*,
+            thick
+        ] coordinates {
+            (0.1, 67.884) (0.01, 70.186) (0.001, 68.328) 
+            (0.0001, 59.668) (0.00001, 67.295)
+        };
+        \addlegendentry{Torch}
+    
+        % Sparse Einsum Legacy (Star marker)
+        \addplot[
+            color=plot_gray,
+            mark=pentagon*,
+            thick
+        ] coordinates {
+            (0.1, 8.646) (0.01, 35.231) (0.001, 174.506) 
+            (0.0001, 298.441) (0.00001, 385.398)
+        };
+        \addlegendentry{Legacy Sparse Einsum}
+        
+        % Sparse_Einsum_Time (Circle marker)
+        \addplot[
+            color=plot_orange,
+            mark=*,
+            thick
+        ] coordinates {
+            (0.1, 7.789) (0.01, 40.1406) (0.001, 156.571) 
+            (0.0001, 560.104) (0.00001, 706.623)
+        };
+        \addlegendentry{Sparse Einsum}
+
+        \end{semilogyaxis}
+    \end{tikzpicture}
+    \caption{Performance comparison of different methods for varying densities on a logarithmic scale.}
+    \label{fig:exp:density}
 \end{figure}
