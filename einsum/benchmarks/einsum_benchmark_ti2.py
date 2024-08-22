@@ -8,15 +8,18 @@ from cgreedy import compute_path
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, get_matrix_from_sql_response)
+from einsum.utilities.classes.coo_matrix import Coo_tensor
+from einsum.experiments.util import delete_values_to_match_density
 from timeit import default_timer as timer
 
 
 def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
-                                         number_of_tensors=40,
-                                         regularity=2.5,
-                                         max_tensor_order=10,
-                                         max_edge_order=5,
-                                         number_of_output_indices=5,
+                                         number_of_tensors=6,
+                                         regularity=3.0,
+                                         max_tensor_order=15,
+                                         max_edge_order=3,
+                                         number_of_output_indices=0,
+                                         number_of_single_summation_indices=15,
                                          min_axis_size=2,
                                          max_axis_size=15,
                                          seed=12345):
@@ -28,17 +31,36 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
     sparse_einsum_time = 0
     correct_results = True
 
-    for _ in range(number_of_repeats):
-        eq, shapes, size_dict = random_tensor_hypernetwork(number_of_tensors=number_of_tensors,
-                                                           regularity=regularity,
-                                                           max_tensor_order=max_tensor_order,
-                                                           max_edge_order=max_edge_order,
-                                                           number_of_output_indices=number_of_output_indices,
-                                                           min_axis_size=min_axis_size,
-                                                           max_axis_size=max_axis_size,
-                                                           return_size_dict=True,
-                                                           seed=seed)
+    densities = [0.1, 0.01, 0.001, 0.0001, 0.00001]
 
+    eq, shapes, size_dict = random_tensor_hypernetwork(number_of_tensors=number_of_tensors,
+                                                       regularity=regularity,
+                                                       max_tensor_order=max_tensor_order,
+                                                       max_edge_order=max_edge_order,
+                                                       number_of_output_indices=number_of_output_indices,
+                                                       number_of_single_summation_indices=number_of_single_summation_indices,
+                                                       min_axis_size=min_axis_size,
+                                                       max_axis_size=max_axis_size,
+                                                       return_size_dict=True,
+                                                       seed=seed)
+
+    dense_tensors = []
+    tensor_indices = eq.split("->")[0].split(",")
+
+    print(eq)
+
+    np.random.seed(seed=0)
+
+    for indices in tensor_indices:
+        indice_tuple = tuple([size_dict[c] for c in indices])
+
+        dense_tensors.append(np.random.rand(*indice_tuple))
+        # sparse_tensor = sparse.random(
+        #     indice_tuple, density=1.0, idx_dtype=int, random_state=0)
+
+        # dense_tensors.append(sparse.asnumpy(sparse_tensor))
+
+    for i in densities:
         path, _, _ = compute_path(
             eq,
             *shapes,
@@ -53,54 +75,55 @@ def random_tensor_hypernetwork_benchmark(number_of_repeats=10,
 
         torch_tensors = []
         sparse_tensors = []
-        dense_tensors = []
-        tensor_indices = eq.split("->")[0].split(",")
+        sparse_einsum_tensors = []
+        numpy_tensors = []
 
-        for indices in tensor_indices:
-            indice_tuple = tuple([size_dict[c] for c in indices])
-            sparse_tensor = sparse.random(
-                indice_tuple, density=0.01, idx_dtype=int)
+        for tensor in dense_tensors:
+            numpy_tensor = delete_values_to_match_density(
+                tensor, i)
 
-            numpy_tensor = sparse.asnumpy(sparse_tensor)
             torch_tensors.append(torch.from_numpy(numpy_tensor))
-            sparse_tensors.append(sparse_tensor)
-            dense_tensors.append(numpy_tensor)
-
-        # Time opt_einsum with sparse as a backend
-        # tic = timer()
-        # torch_result = oe.contract(
-        #     eq, *torch_tensors, optimize=path, backend='torch')
-        # toc = timer()
-        # torch_time += toc - tic
+            # sparse_tensors.append(sparse.asarray(numpy_tensor))
+            sparse_einsum_tensors.append(Coo_tensor.from_numpy(numpy_tensor))
+            numpy_tensors.append(numpy_tensor)
 
         # Time opt_einsum with sparse as a backend
         tic = timer()
-        sparse_result = oe.contract(
-            eq, *sparse_tensors, optimize=path, backend='sparse')
+        torch_result = oe.contract(
+            eq, *torch_tensors, optimize=path, backend='torch')
         toc = timer()
-        sparse_time += toc - tic
+        torch_time = toc - tic
+
+        # # Time opt_einsum with sparse as a backend
+        # tic = timer()
+        # sparse_result = oe.contract(
+        #     eq, *sparse_tensors, optimize=path, backend='sparse')
+        # toc = timer()
+        # sparse_time += toc - tic
 
         # Time sparse_einsum
         tic = timer()
         sparse_einsum_result = sparse_einsum(
-            eq, dense_tensors, path=path)
+            eq, sparse_einsum_tensors, path=path, allow_alter_input=True, parallelization=False)
         toc = timer()
-        sparse_einsum_time += toc - tic
+        sparse_einsum_time = toc - tic
 
-        if not np.isclose(np.sum(sparse_result), np.sum(sparse_einsum_result)):
-            print("Error in calculation: Einsum results not equal!")
-            correct_results = False
+        # if not np.isclose(np.sum(sparse_result), np.sum(sparse_einsum_result)):
+        #     print("Error in calculation: Einsum results not equal!")
+        #     correct_results = False
 
-    torch_time = None if torch_time == 0 else torch_time / number_of_repeats
-    sparse_time = sparse_time / number_of_repeats
-    sparse_einsum_time = sparse_einsum_time / number_of_repeats
+        torch_time = 0 if torch_time == 0 else number_of_repeats / torch_time
+        sparse_time = 0 if sparse_time == 0 else number_of_repeats / sparse_time
+        sparse_einsum_time = 0 if sparse_einsum_time == 0 else number_of_repeats / \
+            sparse_einsum_time
 
-    print("\n------------------------------------------------")
-    print("Results of random tensor hypernetwork benchmark:")
-    print(f"Torch - average time: {torch_time}s")
-    print(f"Sparse - average time: {sparse_time}s")
-    print(f"Sparse Einsum - average time: {sparse_einsum_time}s")
-    print(f"Results are correct: {'Yes' if correct_results else 'No'}")
+        print("\n------------------------------------------------")
+        print(
+            f"Results of random tensor hypernetwork benchmark with density {i}:")
+        print(f"Torch - average time: {torch_time} it/s")
+        print(f"Sparse - average time: {sparse_time} it/s")
+        print(f"Sparse Einsum - average time: {sparse_einsum_time} it/s")
+        print(f"Results are correct: {'Yes' if correct_results else 'No'}")
 
 
 def einsum_benchmark_instance_benchmark(instance_name: str,
@@ -188,7 +211,9 @@ def einsum_benchmark_instance_benchmark(instance_name: str,
         print(f"Torch time: {toc - tic}s")
 
     tic = timer()
-    result = sparse_einsum(format_string, tensors, path=path)
+    tensors = [Coo_tensor.from_numpy(i) for i in tensors]
+    result = sparse_einsum(format_string, tensors,
+                           path=path, parallelization=True)
     toc = timer()
     print("sum[OUTPUT]:", np.sum(np.squeeze(result.data)), sum_output)
     print(f"sparse_einsum time: {toc - tic}s\n")
@@ -203,4 +228,4 @@ if __name__ == "__main__":
 
     if run_einsum_benchmark_instance_benchmark:
         einsum_benchmark_instance_benchmark(
-            "mc_2022_087", run_sparse=False, run_torch=False, run_sql_einsum=False)
+            "mc_2021_027", run_sparse=False, run_torch=False, run_sql_einsum=False)

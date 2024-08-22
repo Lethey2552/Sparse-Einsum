@@ -184,15 +184,9 @@ void coo_bmm_test(const double *A_data, int A_rows, int A_cols,
 
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
-             double **C_data, int *C_rows, int *C_cols)
+             double **C_data, int *C_rows, int *C_cols,
+             const bool legacy)
 {
-    clock_t start, end;
-    // double cpu_time_used = 0;
-    // start = clock();
-    // end = clock();
-    // cpu_time_used += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "BMM Time: " << cpu_time_used << "s" << std::endl;
-
     // Check if A_data and B_data are batched
     // If batched extract batches else, treat as single matrices
     bool is_batched = (A_cols > 3 && B_cols > 3);
@@ -279,12 +273,14 @@ void coo_bmm(const double *A_data, int A_rows, int A_cols,
         }
     }
 
-    // start = clock();
-    std::sort(std::execution::par, result_data.begin(), result_data.end());
-    // std::sort(result_data.begin(), result_data.end());
-    // end = clock();
-    // bmm_sort_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "bmm_sort_time: " << bmm_sort_time << "s" << std::endl;
+    if (legacy)
+    {
+        std::sort(result_data.begin(), result_data.end());
+    }
+    else
+    {
+        std::sort(std::execution::par, result_data.begin(), result_data.end());
+    }
 
     *C_rows = static_cast<int>(result_data.size());
     *C_cols = is_batched ? 4 : 3; // 4 columns if batched (batch, row, col, value); otherwise 3 (row, col, value)
@@ -621,46 +617,6 @@ bool compare_entries(const Entry &a, const Entry &b, const std::vector<int> &dim
         dimensions.begin() + b.offset, dimensions.begin() + b.offset + b.num_idx);
 }
 
-void parallel_sort(std::vector<Entry> &entries, const std::vector<int> &dimensions)
-{
-    int num_threads = omp_get_max_threads();
-    size_t n = entries.size();
-    size_t chunk_size = (n + num_threads - 1) / num_threads;
-
-// Sort chunks in parallel
-#pragma omp parallel
-    {
-        int tid = omp_get_thread_num();
-        int64_t start = tid * chunk_size;
-        int64_t end = std::min(start + chunk_size, n);
-
-        if (start < end)
-        {
-            std::sort(entries.begin() + start, entries.begin() + end,
-                      [&dimensions](const Entry &a, const Entry &b)
-                      {
-                          return compare_entries(a, b, dimensions);
-                      });
-        }
-    }
-
-    // Merge sorted chunks
-    for (size_t step = chunk_size; step < n; step *= 2)
-    {
-#pragma omp parallel for
-        for (int64_t start = 0; static_cast<size_t>(start) < n; start += 2 * step)
-        {
-            int64_t mid = std::min(start + step, n);
-            int64_t end = std::min(start + 2 * step, n);
-            std::inplace_merge(entries.begin() + start, entries.begin() + mid, entries.begin() + end,
-                               [&dimensions](const Entry &a, const Entry &b)
-                               {
-                                   return compare_entries(a, b, dimensions);
-                               });
-        }
-    }
-}
-
 void single_einsum(const double *data, int rows, int cols,
                    const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
@@ -699,19 +655,6 @@ void single_einsum(const double *data, int rows, int cols,
     // Convert shape array to vector for easier manipulation
     std::vector<int> shape_vec(shape, shape + input_chars.size());
 
-    if (debug)
-    {
-        std::cout << "UTF-8 STRINGS:" << std::endl;
-        std::cout << "Input Notation: ";
-        for (const auto &ch : input_chars)
-            std::cout << ch << ", ";
-        std::cout << std::endl;
-        std::cout << "Output Notation: ";
-        for (const auto &ch : output_chars)
-            std::cout << ch << ", ";
-        std::cout << std::endl;
-    }
-
     assert(input_notation.find(',') == std::string::npos);
 
     std::vector<int> dimensions;
@@ -724,79 +667,20 @@ void single_einsum(const double *data, int rows, int cols,
     find_diag_indices(input_chars, diag_indices, shape_vec);
     find_sum_indices(input_chars, output_chars, sum_indices, shape_vec);
     find_perm_indices(input_chars, output_chars, perm_indices, shape_vec);
-
-    // Debug notation changes
-    if (debug)
-    {
-        std::cout << "diag_indices: " << std::endl;
-        for (auto i : diag_indices)
-        {
-            std::cout << i << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << "New notation: " << input_notation << "\n"
-                  << std::endl;
-    }
-    if (debug)
-    {
-        std::cout << "Sum indices: " << std::endl;
-        for (auto i : sum_indices)
-        {
-            std::cout << i << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << "New notation: " << input_notation << "\n"
-                  << std::endl;
-    }
-    if (debug)
-    {
-        std::cout << "perm_indices: " << std::endl;
-        for (auto i : perm_indices)
-        {
-            std::cout << i << ", ";
-        }
-        std::cout << std::endl;
-    }
-
-    // clock_t start, end;
-    // start = clock();
-
     fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
 
-    // end = clock();
-    // single_setup_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "single_setup_time: " << single_setup_time << "s" << std::endl;
-
-    // start = clock();
     if (diag_indices.size() != 0)
     {
         remove_non_diag_indices(dimensions, entries, diag_indices, cols);
     }
-    // end = clock();
-    // diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "diagonal_time: " << diagonal_time << "s" << std::endl;
-
-    // start = clock();
     if (sum_indices.size() != 0)
     {
         sum_over_trivial_indices(dimensions, entries, sum_indices, cols);
     }
-    // end = clock();
-    // sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "sum_time: " << sum_time << "s" << std::endl;
-
-    // start = clock();
     if (perm_indices.size() != 0)
     {
         apply_permutation(dimensions, entries, perm_indices);
     }
-    // end = clock();
-    // permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "permute_time: " << permute_time << "s" << std::endl;
-
-    // parallel_sort(entries, dimensions);
-
-    // start = clock();
 
     // Prepare the output data
     *result_rows = static_cast<int>(entries.size());
@@ -835,13 +719,9 @@ void single_einsum(const double *data, int rows, int cols,
             row_ptr[c] = dimensions[entry.offset + c];
         }
 
-        // Set the value at the last column of the row
+        // Set value at the last column of the row
         row_ptr[*result_cols - 1] = entry.value;
     }
-
-    // end = clock();
-    // writeback_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "writeback_time: " << writeback_time << "s" << std::endl;
 }
 
 // Function to calculate flat index for a single set of indices
@@ -861,15 +741,12 @@ int ravel_single_index(const std::vector<int> &indices, const std::vector<int> &
     }
     return flat_index;
 }
-//
+
 void reshape(const double *data, int data_rows, int data_cols,
              const int *shape, const int shape_length,
              const int *new_shape, const int new_shape_length,
              double **result_data, int *result_rows, int *result_cols)
 {
-    // clock_t start, end;
-    // start = clock();
-
     // Check if the total number of elements is the same
     int total_elements_old = std::accumulate(shape, shape + shape_length, 1, std::multiplies<int>());
     int total_elements_new = std::accumulate(new_shape, new_shape + new_shape_length, 1, std::multiplies<int>());
@@ -881,17 +758,13 @@ void reshape(const double *data, int data_rows, int data_cols,
     std::vector<int> shape_vec(shape, shape + shape_length);
     std::vector<int> new_shape_vec(new_shape, new_shape + new_shape_length);
 
-    // Precompute the number of result rows and columns
     *result_rows = data_rows;
     *result_cols = new_shape_length + 1;
-
-    // Allocate memory for the result_data
     *result_data = new double[*result_rows * *result_cols];
 
-    // Pre-allocate space for indices
     std::vector<int> flat_indices(data_rows);
 
-// Calculate flat indices in parallel using OpenMP
+// Calculate flat indices
 #pragma omp parallel for
     for (int i = 0; i < data_rows; ++i)
     {
@@ -905,7 +778,7 @@ void reshape(const double *data, int data_rows, int data_cols,
         flat_indices[i] = flat_index;
     }
 
-// Unravel flat indices into result_data in parallel using OpenMP
+// Unravel flat indices into result_data
 #pragma omp parallel for
     for (int i = 0; i < *result_rows; ++i)
     {
@@ -917,10 +790,6 @@ void reshape(const double *data, int data_rows, int data_cols,
         }
         (*result_data)[i * *result_cols + (*result_cols - 1)] = data[i * data_cols + (data_cols - 1)];
     }
-
-    // end = clock();
-    // reshape_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "reshape_time: " << reshape_time << "s" << std::endl;
 }
 
 // Function to encode multi-dimensional indices into a single 64-bit integer
@@ -1135,11 +1004,89 @@ void einsum_dim_2(
     }
 }
 
-//////// LEGACY FUNCTIONS ////////
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
+//////////////// LEGACY FUNCTIONS ////////////////
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////
 
-/*
-void fill_dimensions_and_entries(const double *data, int rows, int cols,
-                                 std::vector<int> &dimensions, std::vector<Entry> &entries)
+void legacy_sum_over_trivial_indices(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &sum_indices, int cols)
+{
+    std::unordered_set<int> sum_indices_set(sum_indices.begin(), sum_indices.end());
+    std::vector<Entry> new_entries;
+    std::vector<int> new_dimensions;
+    std::vector<int> temp_key;
+    std::unordered_map<std::vector<int>, int, ArrayHash> key_to_entry_index;
+
+    // Reserve to avoid repeated reallocations
+    new_dimensions.reserve(dimensions.size());
+
+    for (const auto &entry : entries)
+    {
+        int offset = entry.offset;
+        int num_idx = entry.num_idx;
+        double value = entry.value;
+
+        // Construct new key excluding sum indices
+        temp_key.clear();
+        for (int i = 0; i < num_idx; ++i)
+        {
+            if (sum_indices_set.find(i) == sum_indices_set.end())
+            {
+                temp_key.push_back(dimensions[offset + i]);
+            }
+        }
+
+        // Check if the new key already exists
+        auto it = key_to_entry_index.find(temp_key);
+        if (it != key_to_entry_index.end())
+        {
+            new_entries[it->second].value += value;
+        }
+        else
+        {
+            // Key not found, create new entry
+            Entry new_entry;
+            new_entry.offset = static_cast<uint32_t>(new_dimensions.size());
+            new_entry.num_idx = static_cast<uint16_t>(temp_key.size());
+            new_entry.value = value;
+
+            key_to_entry_index[temp_key] = static_cast<int>(new_entries.size());
+
+            new_dimensions.insert(new_dimensions.end(), temp_key.begin(), temp_key.end());
+            new_entries.push_back(new_entry);
+        }
+    }
+
+    entries = std::move(new_entries);
+    dimensions = std::move(new_dimensions);
+}
+
+void legacy_apply_permutation(std::vector<int> &dimensions, std::vector<Entry> &entries, const std::vector<int> &perm_indices)
+{
+    for (int i = 0; i < entries.size(); ++i)
+    {
+        int offset = entries[i].offset;
+        int num_idx = entries[i].num_idx;
+
+        std::vector<int> new_dimensions(num_idx);
+
+        // Apply permutation to create new_dimensions
+        for (size_t j = 0; j < perm_indices.size(); ++j)
+        {
+            new_dimensions[perm_indices[j]] = dimensions[offset + j];
+        }
+
+        // Update dimensions with new_dimensions
+        for (size_t j = 0; j < perm_indices.size(); ++j)
+        {
+            dimensions[offset + j] = new_dimensions[j];
+        }
+    }
+}
+
+void legacy_fill_dimensions_and_entries(const double *data, int rows, int cols,
+                                        std::vector<int> &dimensions, std::vector<Entry> &entries)
 {
     dimensions.reserve(rows * (cols - 1));
 
@@ -1160,14 +1107,11 @@ void fill_dimensions_and_entries(const double *data, int rows, int cols,
     }
 }
 
-void single_einsum(const double *data, int rows, int cols,
-                   const char *notation, const int *shape,
-                   double **result_data, int *result_rows, int *result_cols,
-                   int **new_shape, int *new_shape_size)
+void legacy_single_einsum(const double *data, int rows, int cols,
+                          const char *notation, const int *shape,
+                          double **result_data, int *result_rows, int *result_cols,
+                          int **new_shape, int *new_shape_size)
 {
-
-    bool debug = false;
-
     std::string notation_str(notation);
     auto arrow_pos = notation_str.find("->");
     std::string input_notation = notation_str.substr(0, arrow_pos);
@@ -1198,19 +1142,6 @@ void single_einsum(const double *data, int rows, int cols,
     // Convert shape array to vector for easier manipulation
     std::vector<int> shape_vec(shape, shape + input_chars.size());
 
-    if (debug)
-    {
-        std::cout << "UTF-8 STRINGS:" << std::endl;
-        std::cout << "Input Notation: ";
-        for (const auto &ch : input_chars)
-            std::cout << ch << ", ";
-        std::cout << std::endl;
-        std::cout << "Output Notation: ";
-        for (const auto &ch : output_chars)
-            std::cout << ch << ", ";
-        std::cout << std::endl;
-    }
-
     assert(input_notation.find(',') == std::string::npos);
 
     std::vector<int> dimensions;
@@ -1223,79 +1154,20 @@ void single_einsum(const double *data, int rows, int cols,
     find_diag_indices(input_chars, diag_indices, shape_vec);
     find_sum_indices(input_chars, output_chars, sum_indices, shape_vec);
     find_perm_indices(input_chars, output_chars, perm_indices, shape_vec);
+    legacy_fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
 
-    // Debug notation changes
-    if (debug)
-    {
-        std::cout << "diag_indices: " << std::endl;
-        for (auto i : diag_indices)
-        {
-            std::cout << i << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << "New notation: " << input_notation << "\n"
-                  << std::endl;
-    }
-    if (debug)
-    {
-        std::cout << "Sum indices: " << std::endl;
-        for (auto i : sum_indices)
-        {
-            std::cout << i << ", ";
-        }
-        std::cout << std::endl;
-        std::cout << "New notation: " << input_notation << "\n"
-                  << std::endl;
-    }
-    if (debug)
-    {
-        std::cout << "perm_indices: " << std::endl;
-        for (auto i : perm_indices)
-        {
-            std::cout << i << ", ";
-        }
-        std::cout << std::endl;
-    }
-
-    clock_t start, end;
-    start = clock();
-
-    fill_dimensions_and_entries(data, rows, cols, dimensions, entries);
-
-    end = clock();
-    single_setup_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "single_setup_time: " << single_setup_time << "s" << std::endl;
-
-    start = clock();
     if (diag_indices.size() != 0)
     {
         remove_non_diag_indices(dimensions, entries, diag_indices, cols);
     }
-    end = clock();
-    diagonal_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "diagonal_time: " << diagonal_time << "s" << std::endl;
-
-    start = clock();
     if (sum_indices.size() != 0)
     {
-        sum_over_trivial_indices(dimensions, entries, sum_indices, cols);
+        legacy_sum_over_trivial_indices(dimensions, entries, sum_indices, cols);
     }
-    end = clock();
-    sum_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "sum_time: " << sum_time << "s" << std::endl;
-
-    start = clock();
     if (perm_indices.size() != 0)
     {
-        apply_permutation(dimensions, entries, perm_indices);
+        legacy_apply_permutation(dimensions, entries, perm_indices);
     }
-    end = clock();
-    permute_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "permute_time: " << permute_time << "s" << std::endl;
-
-    // parallel_sort(entries, dimensions);
-
-    start = clock();
 
     // Prepare the output data
     *result_rows = static_cast<int>(entries.size());
@@ -1334,19 +1206,13 @@ void single_einsum(const double *data, int rows, int cols,
         (*result_data)[r * *result_cols + (*result_cols - 1)] = entry.value;
         ++r;
     }
-
-    end = clock();
-    writeback_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    std::cout << "writeback_time: " << writeback_time << "s" << std::endl;
 }
 
-void reshape(const double *data, int data_rows, int data_cols,
-             const int *shape, const int shape_length,
-             const int *new_shape, const int new_shape_length,
-             double **result_data, int *result_rows, int *result_cols)
+void legacy_reshape(const double *data, int data_rows, int data_cols,
+                    const int *shape, const int shape_length,
+                    const int *new_shape, const int new_shape_length,
+                    double **result_data, int *result_rows, int *result_cols)
 {
-    // clock_t start, end;
-    // start = clock();
     // Check if the total number of elements is the same
     if (std::accumulate(shape, shape + shape_length, 1, std::multiplies<int>()) !=
         std::accumulate(new_shape, new_shape + new_shape_length, 1, std::multiplies<int>()))
@@ -1359,9 +1225,6 @@ void reshape(const double *data, int data_rows, int data_cols,
     std::vector<int> new_shape_vec(new_shape, new_shape + new_shape_length);
     std::vector<double> coo_values(data_rows);
     std::vector<int> original_flat_indices;
-
-    // TODO: tbb sorting works on this vector!!!!!!
-    // tbb::parallel_sort(original_flat_indices.begin(), original_flat_indices.end());
 
     original_flat_indices.reserve(data_cols - 1);
     for (int i = 0; i < data_rows; ++i)
@@ -1389,9 +1252,4 @@ void reshape(const double *data, int data_rows, int data_cols,
         }
         (*result_data)[i * *result_cols + (*result_cols - 1)] = data[i * data_cols + (data_cols - 1)];
     }
-
-    // end = clock();
-    // reshape_time += ((double)(end - start)) / CLOCKS_PER_SEC;
-    // std::cout << "reshape_time: " << reshape_time << "s" << std::endl;
 }
-*/

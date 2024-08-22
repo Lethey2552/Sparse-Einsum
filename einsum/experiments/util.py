@@ -4,6 +4,7 @@ import torch
 from einsum.backends.BMM.bmm_sparse_einsum import sparse_einsum
 from einsum.backends.SQL.sql_sparse_einsum import (
     sql_einsum_query, sql_einsum_execute)
+from einsum.utilities.classes.coo_matrix import Coo_tensor
 from timeit import default_timer as timer
 import traceback
 
@@ -72,8 +73,7 @@ def get_sparse_performance(n, format_string, tensors, path):
 
 
 def get_sql_performance(n, query, res_shape, sparse_result=False):
-
-    # Error: Does not work for our nor for Blachers sql_einsum_query function
+    # DOES NOT WORK IF A TENSOR HAS ONLY ZEROs
     try:
         sql_result = sql_einsum_execute(query, res_shape)
 
@@ -97,16 +97,20 @@ def get_sql_performance(n, query, res_shape, sparse_result=False):
 
 def get_torch_performance(n, format_string, tensors, path, sparse_result):
     try:
+        total_time = 0
+
         torch_tensors = [torch.from_numpy(i) for i in tensors]
         torch_result = oe.contract(format_string, *torch_tensors,
                                    optimize=path, backend='torch')
 
-        tic = timer()
         for _ in range(n):
             torch_tensors = [torch.from_numpy(i) for i in tensors]
+
+            tic = timer()
             torch_result = oe.contract(format_string, *torch_tensors,
                                        optimize=path, backend='torch')
-        toc = timer()
+            toc = timer()
+            total_time += toc - tic
 
         if not sparse_result is False:
             assert np.allclose(torch_result, sparse_result)
@@ -115,28 +119,41 @@ def get_torch_performance(n, format_string, tensors, path, sparse_result):
 
         return 0
 
-    return 1 / ((toc-tic) / n)
+    return n / total_time
 
 
-def get_sparse_einsum_performance(n, format_string, tensors, path, sparse_result):
+def get_sparse_einsum_performance(n, format_string, tensors, path, sparse_result, run_parallel=False, run_density=False):
     try:
-        arrays = [torch.from_numpy(i) for i in tensors]
+        total_time = 0
+
+        if run_density:
+            arrays = [Coo_tensor.from_numpy(i) for i in tensors]
+        else:
+            arrays = [torch.from_numpy(i) for i in tensors]
         sparse_einsum_result = sparse_einsum(format_string, arrays,
                                              path=path, show_progress=False,
-                                             allow_alter_input=True)
+                                             allow_alter_input=True,
+                                             parallelization=run_parallel)
 
-        tic = timer()
         for _ in range(n):
-            arrays = [torch.from_numpy(i) for i in tensors]
+            if run_density:
+                arrays = [Coo_tensor.from_numpy(i) for i in tensors]
+            else:
+                arrays = [torch.from_numpy(i) for i in tensors]
+
+            tic = timer()
             sparse_einsum_result = sparse_einsum(format_string, arrays,
-                                                 path=path, show_progress=False, allow_alter_input=True)
-        toc = timer()
+                                                 path=path, show_progress=False,
+                                                 allow_alter_input=True,
+                                                 parallelization=run_parallel)
+            toc = timer()
+            total_time += toc - tic
 
         if not sparse_result is False:
             assert np.allclose(sparse_einsum_result, sparse_result)
-    except Exception as e:
-        print(e)
+    except Exception:
+        print(traceback.format_exc())
 
         return 0
 
-    return 1 / ((toc-tic) / n)
+    return n / total_time

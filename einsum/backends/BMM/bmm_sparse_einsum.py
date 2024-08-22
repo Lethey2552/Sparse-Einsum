@@ -8,6 +8,8 @@ from einsum.utilities.helper_functions import find_idc_types, clean_einsum_notat
 from einsum.utilities.classes.coo_matrix import Coo_tensor
 from timeit import default_timer as timer
 
+legacy = False
+
 handle_idx_time = 0
 fit_tensor_time = 0
 bmm_time = 0
@@ -18,14 +20,18 @@ dense_time = 0
 
 def fit_tensor_to_bmm(mat: Coo_tensor, eq: str | None, shape: tuple | None):
     if eq:
-        mat.single_einsum(eq)
+        mat.single_einsum(eq, legacy)
     if shape:
-        mat.reshape(shape)
+        mat.reshape(shape, legacy)
 
     return mat
 
 
-def calculate_contractions(cl: list, arrays: list, show_progress: bool, density_threshold=0.01, memory_limit_gb=4):
+def calculate_contractions(cl: list,
+                           arrays: list,
+                           show_progress: bool,
+                           density_threshold=0.01,
+                           memory_limit_gb=4):
     global handle_idx_time
     global fit_tensor_time
     global bmm_time
@@ -92,12 +98,12 @@ def calculate_contractions(cl: list, arrays: list, show_progress: bool, density_
 
             # Perform scalar multiplication or COO batch matrix multiplication
             if scalar_mul:
-                AB = torch.tensor(
-                    [[0.0, current_arrays[1].data[0][1] * current_arrays[0].data[0][1]]])
+                AB = np.array([[0.0, current_arrays[1].data[0][1]
+                                * current_arrays[0].data[0][1]]])
                 arrays.append(Coo_tensor(AB, current_arrays[1].shape))
             else:
                 arrays.append(Coo_tensor.coo_bmm(
-                    current_arrays[1], current_arrays[0]))
+                    current_arrays[1], current_arrays[0], legacy))
 
             # Reshape output if needed
             if shape_out is not None:
@@ -185,7 +191,8 @@ def sparse_einsum(einsum_notation: str,
                   arrays: list,
                   path=None,
                   show_progress=True,
-                  allow_alter_input=False):
+                  allow_alter_input=False,
+                  parallelization=True):
     """
     Perform sparse tensor contraction using the Einstein summation convention.
 
@@ -218,6 +225,9 @@ def sparse_einsum(einsum_notation: str,
         The result of the Einstein summation operation, returned as a NumPy array.
 
     """
+    global legacy
+    legacy = not parallelization
+
     # dim_size_two = False
 
     in_out_idc = clean_einsum_notation(einsum_notation)
@@ -248,19 +258,8 @@ def sparse_einsum(einsum_notation: str,
     #     res = Coo_matrix.coo_einsum_dim_2(arrays, in_out_idc, path)
     #     return res
 
-    # tic = timer()
     cl = generate_contraction_list_with_code_points(in_out_idc, path)
-    # toc = timer()
-    # generate_contraction_list_time = toc - tic
-
-    # tic = timer()
     res = calculate_contractions(cl, tensors, show_progress)
-    # toc = timer()
-    # calculate_contractions_time = toc - tic
-
-    # print(f"GENERATE CONTRACTION LIST TIME: {generate_contraction_list_time}s")
-    # print(f"CALCULATE CONTRACTIONS TIME: {calculate_contractions_time}s")
-    # print()
 
     if isinstance(res, Coo_tensor):
         res = res.to_numpy()

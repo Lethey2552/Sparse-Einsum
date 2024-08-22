@@ -59,8 +59,10 @@ struct Entry
 
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
-             double **C_data, int *C_rows, int *C_cols);
-void single_einsum(const double *data, int rows, int cols, const char *notation, const int *shape,
+             double **C_data, int *C_rows, int *C_cols,
+             const bool legacy);
+void single_einsum(const double *data, int rows, int cols,
+                   const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
                    int **new_shape, int *new_shape_size);
 void reshape(const double *data, int data_rows, int data_cols,
@@ -76,5 +78,16 @@ void einsum_dim_2(
     uint64_t *values_sizes,
     int32_t *path,
     double *arrays);
+
+//////////////// LEGACY FUNCTIONS ////////////////
+
+void legacy_single_einsum(const double *data, int rows, int cols,
+                          const char *notation, const int *shape,
+                          double **result_data, int *result_rows, int *result_cols,
+                          int **new_shape, int *new_shape_size);
+void legacy_reshape(const double *data, int data_rows, int data_cols,
+                    const int *shape, const int shape_length,
+                    const int *new_shape, const int new_shape_length,
+                    double **result_data, int *result_rows, int *result_cols);
 
 #endif // COO_MATMUL_H

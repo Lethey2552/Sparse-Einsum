@@ -3,7 +3,7 @@ from util import (get_sql_query, get_sql_performance, get_sparse_performance,
                   get_torch_performance, get_sparse_einsum_performance)
 
 
-def run_instance_experiment(instance_name, iterations=10, run_sparse=True, run_sql_einsum=True, run_torch=False):
+def run_instance_experiment(instance_name, iterations=10, run_sparse=True, run_sql_einsum=True, run_torch=False, run_legacy=False):
     import einsum_benchmark
 
     instance = einsum_benchmark.instances[instance_name]
@@ -23,7 +23,6 @@ def run_instance_experiment(instance_name, iterations=10, run_sparse=True, run_s
     if run_sparse:
         sparse_time, sparse_result = get_sparse_performance(
             iterations, format_string, tensors, path)
-        print(f"Sparse time: {sparse_time} iterations per second")
 
     # Generate SQL einsum query and time average execution
     if run_sql_einsum:
@@ -39,15 +38,33 @@ def run_instance_experiment(instance_name, iterations=10, run_sparse=True, run_s
 
         sql_time = get_sql_performance(iterations, query, sparse_result)
 
-        print(f"SQL Einsum time: {sql_time} iterations per second")
-
     # Time opt_einsum torch backend average execution
     if run_torch:
         torch_time = get_torch_performance(
             iterations, format_string, tensors, path, sparse_result)
-        print(f"Torch time: {torch_time} iterations per second")
+
+    sparse_einsum_time = get_sparse_einsum_performance(
+        iterations, format_string, tensors, path, sparse_result,  run_density=True)
 
     # Time our sparse_einsum function
-    sparse_einsum_time = get_sparse_einsum_performance(
-        iterations, format_string, tensors, path, sparse_result)
-    print(f"Sparse_Einsum time: {sparse_einsum_time} iterations per second")
+    if run_legacy:
+        legacy_sparse_einsum_time = get_sparse_einsum_performance(
+            iterations, format_string, tensors, path, sparse_result, run_parallel=True, run_density=True)
+
+    output = f"{f'{instance_name}':<30}"
+
+    if run_sparse:
+        output += f"{f'{sparse_time:.3f} it/s':<15}"
+
+    if run_sql_einsum:
+        output += f"{f'{sql_time:.3f} it/s':<18}"
+
+    if run_torch:
+        output += f"{f'{torch_time:.3f} it/s':<15}"
+
+    output += f"{f'{sparse_einsum_time:.3f} it/s':<21}"
+
+    if run_legacy:
+        output += f"{f'{legacy_sparse_einsum_time:.3f} it/s'}"
+
+    print(output)

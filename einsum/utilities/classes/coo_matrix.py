@@ -123,27 +123,15 @@ class Coo_tensor:
         return cls(C_data, AB_shape)
 
     @classmethod
-    def coo_bmm(cls, A: "Coo_tensor", B: "Coo_tensor"):
-        # global time_bmm
-        # tic = timer()
-
-        # Ensure the input matrices have compatible dimensions
-        if A.shape[-1] != B.shape[-2]:
-            raise ValueError(
-                "Inner dimensions of A and B must match for multiplication.")
-
+    def coo_bmm(cls, A: "Coo_tensor", B: "Coo_tensor", legacy: bool = False):
         A_rows, A_cols = A.data.shape
         B_rows, B_cols = B.data.shape
 
         C_data = c_coo_bmm(A.data.flatten(), A_rows, A_cols,
-                           B.data.flatten(), B_rows, B_cols)
+                           B.data.flatten(), B_rows, B_cols,
+                           legacy)
 
         new_shape = tuple(list(A.shape[:-1]) + list(B.shape[-1:]))
-
-        # toc = timer()
-        # time_bmm += toc - tic
-        # print("BMM TIME: ")
-        # print(time_bmm)
 
         return cls(C_data, new_shape)
 
@@ -205,24 +193,28 @@ class Coo_tensor:
     def __str__(self):
         return np.array2string(self.data)
 
-    def single_einsum(self, notation: str):
-        self.data, self.shape = c_single_einsum(self.data.flatten(),
-                                                self.data.shape[0],
-                                                self.data.shape[1],
-                                                np.array(
-            self.shape, dtype=np.int32),
-            notation.encode('utf-8')
-        )
+    def single_einsum(self, notation: str, legacy=False):
+        self.data, self.shape = c_single_einsum(
+            self.data.flatten(),
+            self.data.shape[0],
+            self.data.shape[1],
+            np.array(
+                self.shape,
+                dtype=np.int32
+            ),
+            notation.encode('utf-8'),
+            legacy)
 
-    def reshape(self, new_shape):
-        self.data = c_reshape(self.data.flatten(),
-                              self.data.shape[0],
-                              self.data.shape[1],
-                              np.array(self.shape, dtype=np.int32),
-                              len(self.shape),
-                              np.array(new_shape, dtype=np.int32),
-                              len(new_shape)
-                              )
+    def reshape(self, new_shape, legacy=False):
+        self.data = c_reshape(
+            self.data.flatten(),
+            self.data.shape[0],
+            self.data.shape[1],
+            np.array(self.shape, dtype=np.int32),
+            len(self.shape),
+            np.array(new_shape, dtype=np.int32),
+            len(new_shape),
+            legacy)
         self.shape = new_shape
 
     def swap_cols(self, idc: tuple | list):
