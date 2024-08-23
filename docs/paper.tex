@@ -23,7 +23,7 @@
 \usepackage{soul}
 \usepackage{tabularx}
 \usepackage{tikz}
-\usetikzlibrary{positioning, quotes, calc}
+\usetikzlibrary{positioning, quotes, calc, patterns}
 \pgfplotsset{compat=newest}
 
 % Set the page style and center the page number
@@ -102,18 +102,14 @@
 
 \chapter*{Abstract}
 \input{chapters/abstract.tex}
-\thispagestyle{empty}
 
 \chapter*{Zusammenfassung}
 \input{chapters/zusammenfassung.tex}
-\thispagestyle{empty}
 
 \tableofcontents
-\thispagestyle{empty}
 
 \newgeometry{top=3.0cm, bottom=3.0cm, left=4cm, right=2cm}
 
-\setcounter{page}{1}
 \chapter{Introduction}
 \input{chapters/introduction_chapter.tex}
 

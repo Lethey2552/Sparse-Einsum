@@ -8,7 +8,9 @@ Compared to the well-established methods for Einsum with dense tensors, Einstein
 sparse tensors has received relatively little attention in the scientific community.
 Due to various tensor operations that can be expressed using Einsum notation, the
 underlying algorithms need to be able to handle many distinct computations. Here we
-introduce multiple approaches and ideas, contributing to the field of sparse Einsum.\\
+introduce multiple approaches and ideas, contributing to the field of sparse Einsum.
+\\
+\\
 Recent developments in integrating machine learning and linear algebra routines into
 databases have gained significant attention
 ~\cite{Machine_Learning_LinA_and_More, du2020inmachinelearningdatabasereimaginingdeep,
@@ -18,7 +20,7 @@ One such approach is the translation of sparse Einsum problems into SQL queries
 in which large Einsum operations are split into multiple smaller Einsum operations.
 In contrast to SQL-based approaches, the TACO compiler can translate known sparse linear
 algebra and tensor operations into optimized code directly~\cite{taco}. While this produces
-optimized code for predefined problems with trivial contraction paths, it faces limitations 
+optimized code for predefined problems with trivial contraction paths, it faces limitations
 in handling dynamic problems that are not known at compile time. TACO does not calculate
 an efficient contraction path, nor does it allow for the application of previously computed
 contraction paths. As a result other methods, capable of using optimized contraction paths
@@ -27,10 +29,10 @@ Gray J. developed an Einsum function that calculates tensor expressions via a ba
 multiplication (BMM) approach~\cite{jcmgray}. This method allows for the computation of pairwise
 tensor expressions by mapping them to BMMs, using summation over indices, transposition
 and reshaping of the tensors. A BMM approach for evaluating Einstein summation expressions
-is also employed by Torch within its tensor library Aten. Sparse, a library designed for 
-operations on sparse tensors, implements an Einsum function~\cite{sparse}. However, when used 
-alone, Sparse struggles with large tensor expressions due to its limitations in handling a high 
-number of different indices. This limitation can be overcome by using Sparse as a backend for 
+is also employed by Torch within its tensor library Aten. Sparse, a library designed for
+operations on sparse tensors, implements an Einsum function~\cite{sparse}. However, when used
+alone, Sparse struggles with large tensor expressions due to its limitations in handling a high
+number of different indices. This limitation can be overcome by using Sparse as a backend for
 opt\_einsum, a package that optimizes tensor contraction orders. Sparse utilizes Numba
-~\cite{lam2015numba} to accelerate calculations; Numba is a just-in-time compiler that generates 
+~\cite{lam2015numba} to accelerate calculations; Numba is a just-in-time compiler that generates
 machine code from Python syntax.

@@ -1,11 +1,12 @@
 In this chapter, we discuss potential improvements to our C++ algorithm that could
-may enhance both memory footprint and execution speed.
+improve both the memory footprint and execution speed.
 
-\section{Iterative Approach for Batch Matrix Multiplication (BMM) and Index Reordering}
+\section{Iterative Approach for Batch Matrix Multiplication and Index Reordering}
 The current C++ implementation uses unordered maps to aggregate values from COO tensors.
 This is an inefficient way and can be slow for big tensors because it involves the
 maintenance of unordered maps. One such improvement can be using an iterative approach
-while performing the BMM. Here we could ensure the indices for the BMM are ordered as
+for the sparse batch matrix multiplication. Here we could ensure the indices for the batch
+matrix multiplication are ordered as
 \begin{equation*}
     bik, bjk \rightarrow bij.
 \end{equation*}
@@ -13,33 +14,31 @@ By processing indices from left to right, we can ensure that we handle each uniq
 only once, thus avoiding redundant computations and making better use of memory and
 computational resources. Because the contraction path delivers an unambiguous order for
 tensor operations, reordering indices to process tensors iteratively could grant high
-performance savings. Index reordering will enable the algorithm to just skip over portions
-of tensors already processed, hence avoiding useless computation. This approach uses the
-fact that, after processing a part of the tensor, it need not be visited again, and thus
-it traverses and processes tensor elements in a more efficient way. Not only does this
-decrease computational complexity, but it also avoids adding vast quantities of elements
-to a hash map.
+performance savings. Index reordering will enable the algorithm to skip over portions
+of tensors that have already been processed, hence avoiding useless computations. This
+approach uses the fact that, after processing a part of the tensor, it need not be visited
+again, and thus it traverses and processes tensor elements in a more efficient way. Not
+only does this decrease computational complexity, but it also avoids adding vast quantities
+of elements to a hash map.
 
 \section{Precomuptation of Diagonal Indices and Summed Indices}
 The existing processing of tensor contractions incorporates all indices, diagonal and summed,
 during the actual pairwise tensor contractions. Often, this preprocessing is inefficient in
 that it contains computations for indices which are redundant, sometimes even able to be
-handled far more effectively before the main phase of contraction.
-\\
-\\
-One way of handling this inefficiency could be for the algorithm to traverse the contraction
-path, that essentially forms a binary tree structure. For example, say we have the Einsum
+handled far more effectively before the main phase of contraction. One way of handling this
+inefficiency could be for the algorithm to traverse the contraction path, that essentially
+forms a binary tree structure. For example, say we have the Einsum
 expression
 \begin{equation*}
     ifbk, cjhb, ckkah \rightarrow bij
 \end{equation*}
 and we evaluate it by computing
 \begin{equation*}
-    cjhb, ckkah \rightarrow cbjka
+    cjhb, ckkah \rightarrow bjk
 \end{equation*}
 first, followed by
 \begin{equation*}
-    ifbk, cbjka \rightarrow bij.
+    ifbk, bjk \rightarrow bij.
 \end{equation*}
 Figure \ref{fig:traverse_tree} illustrates how we can traverse the binary tree from the root to the leafs and
 check which indices the corresponding parent requires. All diagonal indices and indices to be
@@ -61,9 +60,9 @@ summed over can be removed and if possible, we can permute the indices to fit ou
         % Root
         \node {bij}
         child {node {ifbk}}
-        child {node {cbjka}
+        child {node {bjk}
                 child {node {cjhb}}
-                child {node {ckah}}
+                child {node {ckkah}}
             };
 
     \end{tikzpicture}
@@ -82,9 +81,9 @@ summed over can be removed and if possible, we can permute the indices to fit ou
         % Root
         \node {bij}
         child {node {\st{f}bik}}
-        child {node {\st{ac}bkj}
+        child {node {bkj}
                 child {node {cjhb}}
-                child {node {ckah}}
+                child {node {ckkah}}
             };
 
     \end{tikzpicture}
@@ -103,7 +102,7 @@ summed over can be removed and if possible, we can permute the indices to fit ou
         % Root
         \node {bij}
         child {node {\st{f}bik}}
-        child {node {\st{ac}bkj}
+        child {node {bkj}
                 child {node {\st{c}bjh}}
                 child {node {\st{ack}hk}}
             };
@@ -131,4 +130,4 @@ a number of indices into a single index through multi-index encoding. For exampl
 the memory footprint and could further improve computational speed by allowing bit-wise
 operations on the combined index. This would complicate the tracking of the indices, but the
 improvement of memory efficiency and the likely following performance gains, due to more efficient
-memory utilization, could be quite big.
+memory utilization, could be substantial.

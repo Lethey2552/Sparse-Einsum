@@ -5,13 +5,139 @@
 \definecolor{plot_gray}{rgb}{0.4, 0.4, 0.4}
 
 In this chapter, we compare five different methods—Sparse, our SQL Einsum implementation, Torch,
-our Sparse Einsum, and our Legacy Sparse Einsum—on different problems. First, we compare them on
-various random tensor hypernetworks and then, we evaluate their performance on three instances of
-the ``Einsum Benchmark" \cite{einsum_benchmark} dataset. The experiments are performed on a machine
-with an Intel i5-9600K 6-core processor running Windows 11 Pro with 16 GB of RAM and an NVIDIA
-RTX 2070 graphics card with 8 GB VRAM. Each core has a base frequency of 3.7 GHz and a max boost
-frequency of 4.6 GHz. To compile the algorithm, we use MSVC 14.34.31931. The evaluation is done
-in Python 3.11.0.
+our Sparse Einsum, and our Legacy Sparse Einsum—on different problems. In the plots, we will mark
+our implementations, SQL Einsum, Sparse Einsum and Legacy Sparse Einsum with an asterisk (*). In the
+first experiment, we evaluate their performance on three real-world instances of the
+``Einsum Benchmark"~\cite{einsum_benchmark} dataset, which consists of real problems with complex
+tensor computations. In the second experiment, we asses their performance on various random tensor
+hypernetworks. For all computations, every method receives the same contraction path, which is computed
+before measuring the methods performance. It should be noted that we use Torch 2.0.1+cu118 as well
+as Sparse 0.15.4 as backends for opt\_einsum 3.3.0. The SQL queries to evaluate the Einsum problems
+are computed using the Python module sqlite3 2.6.0, which uses SQLite 3.38.4 as the database engine.
+This allows us to compute Einsum expressions with UTF-8 characters using Torch and Sparse. The
+experiments are performed on a machine with an Intel i5-9600K 6-core processor running Windows 11
+Pro with 16 GB of RAM. Each core has a base frequency of 3.7 GHz and a max boost frequency of 4.6 GHz.
+To compile the algorithm, we use MSVC 14.34.31931. The evaluation is done in Python 3.11.0.
+
+\section{Einsum Benchmark Instances}
+In the following section, we discuss the results of the methods on three real model counting problems.
+We chose these instances because they lead to sparse intermediate tensors and they are small enough
+to fit into memory on the machine we are benchmarking on. For each instance, Table \ref{tab:instance:data}
+lists the name, the number of input tensors, and the average density of the tensors after optimizing
+the contraction path for size.
+\begin{table}[hbp]
+    \caption{Instance Data with Tensor Count and Average Density}
+    \label{tab:instance:data}
+    \centering
+    \begin{tabularx}{0.8\textwidth}{l  >{\raggedleft\arraybackslash}X  >{\raggedleft\arraybackslash}X}
+        \toprule
+        \textbf{Instance} & \textbf{Tensors} & \textbf{Average Density} \\
+        \midrule
+        mc\_2021\_027     & 331              & 0.021689                 \\
+        mc\_2021\_036     & 9553             & 0.000545                 \\
+        mc\_2022\_087     & 7345             & 0.001138                 \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+\\
+Figure \ref{fig:exp:instances} shows each method's iterations per second (it/s) on a logarithmic scale,
+highlighting the disparities in performance. Our two implementations, Sparse Einsum and Legacy Sparse
+Einsum, show consistently strong performance on the first instance, mc\_2021\_027, with Sparse Einsum
+achieving the highest it/s, closely followed by Legacy Sparse Einsum. As we move to the more challenging
+second instance, mc\_2021\_036, Sparse Einsum and Legacy Sparse Einsum perform the best out of all methods,
+with Sparse and SQL not being able to compute the result due to a limit for the number of dimensions
+for Sparse and SQL running out of memory. Torch is much slower than our methods. On the final instance,
+mc\_2022\_087, Sparse Einsum and Legacy Sparse Einsum continue to outperform the other methods. SQL is
+again, not capable of finishing the computation. Compared to the others, Sparse shows the lowest it/s.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+                ybar, axis on top,
+                height=8cm, width=12cm,
+                bar width=0.4cm,
+                ymajorgrids, tick align=inside,
+                enlarge y limits={value=.1,upper},
+                enlarge x limits=0.3, % Reduce this value to bring the groups closer
+                ymode=log, % Use logarithmic scale for the y-axis
+                log origin=infty, % Start the log scale at the smallest positive value
+                ymin=1e-3, ymax=12, % Adjust the minimum and maximum y-axis values
+                axis x line*=bottom,
+                axis y line*=left,
+                y axis line style={opacity=0},
+                tickwidth=0pt,
+                legend style={
+                        at={(0.5,1.05)}, % Position above the plot
+                        anchor=south, % Anchor to the south of the legend
+                        legend columns=3, % Arrange entries side by side
+                        column sep=1ex, % Space between columns
+                        draw=none, % Remove the border
+                        fill=none, % Remove the background fill
+                        legend cell align=left
+                    },
+                legend image code/.code={
+                        \draw [#1] (0cm,-0.1cm) rectangle (0.28cm,0.25cm); },
+                ylabel={Iterations per Second (it/s)},
+                symbolic x coords={
+                        mc\_2021\_027, mc\_2021\_036, mc\_2022\_087},
+                xtick=data,
+            ]
+            \addplot [draw=none, fill=plot_blue] coordinates {
+                    (mc\_2021\_027, 0.613)
+                    (mc\_2021\_036, 0.00001)
+                    (mc\_2022\_087, 0.005)};
+            \addplot [
+                draw=none,
+                fill=plot_green,
+                postaction={
+                        pattern=crosshatch,
+                        pattern color=plot_green!30
+                    }
+            ] coordinates {
+                    (mc\_2021\_027, 0.632)
+                    (mc\_2021\_036, 0.00001)
+                    (mc\_2022\_087, 0.000)};
+            \addplot [
+                draw=none,
+                fill=plot_red,
+                postaction={
+                        pattern=grid,
+                        pattern color=plot_red!30
+                    }
+            ] coordinates {
+                    (mc\_2021\_027, 3.258)
+                    (mc\_2021\_036, 0.009)
+                    (mc\_2022\_087, 0.056)};
+            \addplot [
+                draw=none,
+                fill=plot_gray,
+                postaction={
+                        pattern=horizontal lines,
+                        pattern color=plot_gray!30
+                    }
+            ] coordinates {
+                    (mc\_2021\_027, 7.339)
+                    (mc\_2021\_036, 0.056)
+                    (mc\_2022\_087, 0.154)};
+            \addplot [
+                draw=none,
+                fill=plot_orange,
+                postaction={
+                        pattern=vertical lines,
+                        pattern color=plot_gray
+                    }
+            ] coordinates {
+                    (mc\_2021\_027, 10.052)
+                    (mc\_2021\_036, 0.074)
+                    (mc\_2022\_087, 0.167)};
+
+            \legend{Sparse, SQL Einsum*, Torch, Legacy Sparse Einsum*, Sparse Einsum*}
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Performance comparison of different methods for multiple instances.}
+    \label{fig:exp:instances}
+\end{figure}
 
 \section{Random Tensor Hypernetworks}
 To evaluate the performance of our implementations across a variety of properties that Einsum
@@ -19,7 +145,7 @@ problems may exhibit, we generate Einsum expressions representing random tensor 
 \cite{einsum_benchmark}, with each experiment featuring a single varying parameter. For every new
 parameter the results are evaluated using ten differently seeded random tensor hypernetworks
 generated with identical parameters. We then evaluate each methods performance on the problem
-ten times to get an average it/s. To generate the random tensor hypernetworks, we used the following
+ten times to get an average it/s. To generate the random tensor hypernetworks, we use the following
 parameters as a basis, varying one for each experiment:
 \begin{description}[leftmargin=!,labelwidth=\widthof{\textbf{single\_summation\_indices = 15:}}]
     \item [number\_of\_tensors = 6:] Specifies the total number of tensors in the hypernetwork.
@@ -40,12 +166,26 @@ parameters as a basis, varying one for each experiment:
     \item [min\_axis\_size = 2:] Sets the minimum size of an axis/index (dimension) of the tensors.
 
     \item [max\_axis\_size = 15:] Sets the maximum size of an axis/index (dimension) of the tensors.
+
+    \item [density = 0.001:] Indicates how many elements are non-zero compared to the total number of
+          elements in the tensor. It is calculated as
+          \begin{equation*}
+              \frac{Number\ of\ non\text{-}zero\ elements}{Number\ of\ total\ elements}.
+          \end{equation*}
 \end{description}
 \noindent
-First, we generate problems where we vary the maximum size of dimensions from 2 to 8.
-Figure \ref{fig:exp:max_dim_size} shows the performance for the different dimension sizes.
-The performance of all methods naturally decreases when the size of dimensions grows. However,
-the rate of this degradation differs significantly between the methods.
+First, we generate problems where we vary the maximum size of dimensions (max\_ax-is\_size)
+from 2 to 15. Figure \ref{fig:exp:max_dim_size} shows the performance for the different
+dimension sizes. The performance of all methods naturally decreases when the size of dimensions
+grows. However, the rate of this degradation differs significantly between the methods.
+Sparse performance decreases quickly when the maximum number of dimensions that the tensors
+can have increases. It starts of with around the same it/s as SQL but declines faster than
+the other methods, coming in last with about the same performance as Torch. In general,
+SQL Einsum is superior for small till medium sizes of dimensions, but it also declines more
+steeply in comparison all other methods. The SQL implementations iterations per second rise,
+when the maximum size of dimensions increases from 2 to 6 and from thereon decreases constantly.
+Sparse Einsum and the legacy version of Sparse Einsum demonstrated very similar trends,
+though the legacy variant performed worse at all dimension sizes than the newer implementation.
 
 \begin{figure}[H]
     \centering
@@ -96,7 +236,7 @@ the rate of this degradation differs significantly between the methods.
                     (10, 1632.327) (11, 765.026) (12, 482.367) (13, 236.127)
                     (14, 184.713) (15, 113.928)
                 };
-            \addlegendentry{SQL Einsum}
+            \addlegendentry{SQL Einsum*}
 
             % Torch_Time (Diamond marker)
             \addplot[
@@ -122,7 +262,7 @@ the rate of this degradation differs significantly between the methods.
                     (10, 346.686) (11, 300.110) (12, 270.774) (13, 234.450)
                     (14, 202.283) (15, 164.314)
                 };
-            \addlegendentry{Legacy Sparse Einsum}
+            \addlegendentry{Legacy Sparse Einsum*}
 
             % Sparse_Einsum_Time (Circle marker)
             \addplot[
@@ -135,7 +275,7 @@ the rate of this degradation differs significantly between the methods.
                     (10, 625.246) (11, 515.746) (12, 426.570) (13, 341.911)
                     (14, 270.924) (15, 217.710)
                 };
-            \addlegendentry{Sparse Einsum}
+            \addlegendentry{Sparse Einsum*}
 
         \end{semilogyaxis}
     \end{tikzpicture}
@@ -145,14 +285,15 @@ the rate of this degradation differs significantly between the methods.
 \end{figure}
 
 \noindent
-Sparse performance decreases quickly when the maximum number of dimensions that the tensors
-can have increases. It starts of with around the same it/s as SQL but declines faster than
-the other methods, coming in last with about the same performance as Torch. In general,
-SQL Einsum is superior for small till medium sizes of dimensions, but it also declines more
-steeply in comparison all other methods. The SQL implementations iterations per second rise,
-when the maximum size of dimensions increases from 2 to 6 and from thereon decreases constantly.
-Sparse Einsum and the legacy version of Sparse Einsum demonstrated very similar trends,
-though the legacy variant performed worse at all dimension sizes than the newer implementation.
+The results of Figure \ref{fig:exp:max_num_dim} illustrate how the computational performance
+of each method varies with increasing dimensionality (max\_tensor\_order) in tensor hypernetworks.
+All of the methods it/s decline as dimensionality increases, but start to flatten out at around nine.
+SQL Einsum starts of with by far the best performance, but declines rapidly, getting surpassed by
+Sparse Einsum and Legacy Sparse Einsum. Torch and Sparse perform about the same for higher number
+of dimensions, the only difference being that Sparse performs better than Torch for low numbers
+of dimensions. Overall, Sparse Einsum and Legacy Sparse Einsum handle the increasing dimensionality
+best, with Sparse Einsum displaying the highest iterations per second for problems with higher
+dimensionality.
 
 \begin{figure}[H]
     \centering
@@ -199,7 +340,7 @@ though the legacy variant performed worse at all dimension sizes than the newer 
                     (6, 1136.583) (7, 250.692) (8, 266.833) (9, 114.571)
                     (10, 102.055) (11, 105.546) (12, 103.656) (13, 123.441) (14, 117.988)
                 };
-            \addlegendentry{SQL Einsum}
+            \addlegendentry{SQL Einsum*}
 
             % Torch_Time (Diamond marker)
             \addplot[
@@ -221,7 +362,7 @@ though the legacy variant performed worse at all dimension sizes than the newer 
                     (6, 327.207) (7, 214.516) (8, 158.049) (9, 159.632)
                     (10, 160.321) (11, 161.135) (12, 163.633) (13, 163.505) (14, 160.476)
                 };
-            \addlegendentry{Legacy Sparse Einsum}
+            \addlegendentry{Legacy Sparse Einsum*}
 
             % Sparse_Einsum_Time (Circle marker)
             \addplot[
@@ -232,23 +373,25 @@ though the legacy variant performed worse at all dimension sizes than the newer 
                     (6, 502.425) (7, 317.017) (8, 225.428) (9, 208.049)
                     (10, 214.421) (11, 212.171) (12, 219.846) (13, 209.382) (14, 202.798)
                 };
-            \addlegendentry{Sparse Einsum}
+            \addlegendentry{Sparse Einsum*}
 
         \end{axis}
     \end{tikzpicture}
-    \caption{Performance of different methods as a function of the maximum number of dimensions. The plot shows the number of iterations per second for each method.}
+    \caption{Performance of different methods as a function of the maximum number of dimensions.
+        The plot shows the number of iterations per second for each method.}
     \label{fig:exp:max_num_dim}
 \end{figure}
 
 \noindent
-The results of Figure \ref{fig:exp:max_num_dim} illustrate how the computational performance
-of each method varies with increasing dimensionality in tensor hypernetworks. All of the methods
-it/s decline as dimensionality increases, but start to flatten out at around nine. SQL Einsum
-starts of with by far the best performance, but declines rapidly, getting surpassed by Sparse Einsum
-and Legacy Sparse Einsum. Torch and Sparse perform about the same for higher number of dimensions,
-the only difference being that Sparse performs better than Torch for low numbers of dimensions.
-Overall, Sparse Einsum and Legacy Sparse Einsum handle the increasing dimensionality best, with
-Sparse Einsum displaying the highest iterations per second for problems with higher dimensionality.
+Figure \ref{fig:exp:num_tensors} show each method's performance as the number
+of tensors (number\_of\_ten-sors) increases. We set max\_tensor\_order and max\_axis\_size to nine,
+to be able to fit the generated tensors into memory. Sparse displays a decent performance to start with but
+drops off significantly as tensor count increases being by far the slowest method for larger numbers of
+tensors. SQL Einsum starts off strongly, and while it gets slower with the rising number of tensors, it
+still outperforms the other methods. Torch is rather stable but decreasing and remains more efficient than
+Sparse at higher tensor counts. Sparse Einsum and Legacy Sparse Einsum decline in nearly identical
+fashion, with Sparse Einsum constantly performing better than Legacy Sparse Einsum. Legacy Sparse Einsum
+manages to outperform Torch in iterations per second with larger numbers of tensors.
 
 \begin{figure}[H]
     \centering
@@ -298,7 +441,7 @@ Sparse Einsum displaying the highest iterations per second for problems with hig
                     (18, 548.178) (20, 772.391) (22, 597.661) (24, 533.237)
                     (26, 669.754) (28, 344.313) (30, 569.061)
                 };
-            \addlegendentry{SQL Einsum}
+            \addlegendentry{SQL Einsum*}
 
             % Torch_Time (Diamond marker)
             \addplot[
@@ -322,7 +465,7 @@ Sparse Einsum displaying the highest iterations per second for problems with hig
                     (18, 143.827) (20, 145.156) (22, 120.983) (24, 122.016)
                     (26, 114.738) (28, 94.909) (30, 94.717)
                 };
-            \addlegendentry{Legacy Sparse Einsum}
+            \addlegendentry{Legacy Sparse Einsum*}
 
             % Sparse_Einsum_Time (Circle marker)
             \addplot[
@@ -334,31 +477,20 @@ Sparse Einsum displaying the highest iterations per second for problems with hig
                     (18, 249.704) (20, 257.161) (22, 213.647) (24, 200.779)
                     (26, 210.283) (28, 173.847) (30, 171.929)
                 };
-            \addlegendentry{Sparse Einsum}
+            \addlegendentry{Sparse Einsum*}
 
         \end{semilogyaxis}
     \end{tikzpicture}
     \caption{Performance of different methods as a function of the number of tensors. Here, we set
-        \textit{max\_tensor\_order} = \textit{max\_axis\_size} = 9, because for larger values,
-        the tensors would not fit into memory upon generation.}
+        max\_tensor\_order = max\_axis\_size = 9, because for larger values, the tensors may not
+        fit into memory upon generation.}
     \label{fig:exp:num_tensors}
 \end{figure}
 
 \noindent
-The plots in Figure \ref{fig:exp:num_tensors} show each method's performance as the number
-of tensors increases. Sparse starts off highest but declines sharply as the number of tensors
-grows, eventually becoming among the slowest methods. SQL Einsum is competitive at the start
-but also has a large drop-off. However, Torch displays stable performance, gradually
-decreasing but remaining more efficient at higher tensor counts than Sparse and SQL.
-Sparse Einsum and Legacy Sparse Einsum started of lower than the other methods but perform
-much better than the others as the number of tensors increases. Both Sparse Einsum versions
-end up with slightly more iterations per second than Torch for larger number of tensors.
-SQL and Sparse show by far the largest performance degradation.
-\\
-\\
 Figure \ref{fig:exp:density} shows the trends for performance of the different methods with
-decreasing density. We decrease the same tensor hypernetworks density for each step. Some methods
-improve drastically as the density decreases, while others remain about the same. In particular,
+decreasing density (density). We decrease the same tensor hypernetworks density for each step. Some
+methods improve drastically as the density decreases, while others remain about the same. In particular,
 SQL Einsum shows a dramatic improvement with lower densities, quickly accelerating from low
 performance at high densities to exceptional performance at the sparsest levels, generating an
 S-curve. Sparse Einsum Legacy and Sparse Einsum both exhibit strong performance improvements as
@@ -398,7 +530,6 @@ for sparse data; the efficiency gains grow more dramatic as the data gets sparse
                     }
             ]
 
-            % Sparse_Time (Square marker)
             \addplot[
                 color=plot_blue,
                 mark=square*,
@@ -409,7 +540,6 @@ for sparse data; the efficiency gains grow more dramatic as the data gets sparse
                 };
             \addlegendentry{Sparse}
 
-            % SQL_Time (Triangle marker)
             \addplot[
                 color=plot_green,
                 mark=triangle*,
@@ -418,9 +548,8 @@ for sparse data; the efficiency gains grow more dramatic as the data gets sparse
                     (0.1, 0.046) (0.01, 0.929) (0.001, 108.230)
                     (0.0001, 3952.256) (0.00001, 23169.600)
                 };
-            \addlegendentry{SQL Einsum}
+            \addlegendentry{SQL Einsum*}
 
-            % Torch_Time (Diamond marker)
             \addplot[
                 color=plot_red,
                 mark=diamond*,
@@ -431,7 +560,6 @@ for sparse data; the efficiency gains grow more dramatic as the data gets sparse
                 };
             \addlegendentry{Torch}
 
-            % Sparse Einsum Legacy (Star marker)
             \addplot[
                 color=plot_gray,
                 mark=pentagon*,
@@ -440,9 +568,8 @@ for sparse data; the efficiency gains grow more dramatic as the data gets sparse
                     (0.1, 8.646) (0.01, 35.231) (0.001, 174.506)
                     (0.0001, 298.441) (0.00001, 385.398)
                 };
-            \addlegendentry{Legacy Sparse Einsum}
+            \addlegendentry{Legacy Sparse Einsum*}
 
-            % Sparse_Einsum_Time (Circle marker)
             \addplot[
                 color=plot_orange,
                 mark=*,
@@ -451,104 +578,10 @@ for sparse data; the efficiency gains grow more dramatic as the data gets sparse
                     (0.1, 7.789) (0.01, 40.1406) (0.001, 156.571)
                     (0.0001, 560.104) (0.00001, 706.623)
                 };
-            \addlegendentry{Sparse Einsum}
+            \addlegendentry{Sparse Einsum*}
 
         \end{semilogyaxis}
     \end{tikzpicture}
     \caption{Performance comparison of different methods for varying densities on a logarithmic scale.}
     \label{fig:exp:density}
 \end{figure}
-
-\section{Einsum Benchmark Instances}
-Figure \ref{fig:exp:instances} illustrates the performance of our methods across three model
-counting instances. We chose these instances because they lead to sparse intermediate tensors
-and they are small enough to fit into memory on the machine we are benchmarking on. Table
-\ref{tab:instance:data} shows the name of the instances along with the number of input tensors
-and the average density of tensors after optimizing the contraction path for size.
-\begin{table}[hbp]
-    \caption{Instance Data with Tensor Count and Average Density}
-    \label{tab:instance:data}
-    \centering
-    \begin{tabularx}{0.8\textwidth}{lXlX}
-        \toprule
-        \textbf{Instance} & \textbf{Tensors} & \textbf{Average Density} \\
-        \midrule
-        mc\_2021\_027     & 331              & 0.021689                 \\
-        mc\_2021\_036     & 9553             & 0.000545                 \\
-        mc\_2022\_087     & 7345             & 0.001138                 \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-Each method's iterations per second (it/s) are shown on a logarithmic scale,
-highlighting the disparities in performance. The Torch and Legacy Sparse Einsum methods show
-consistently strong performance on the first instance mc\_2021\_027, with Sparse Einsum achieving
-the highest it/s, closely followed by Legacy Sparse Einsum. As we move to the more challenging second
-instance mc\_2021\_036, performance drops significantly for all methods, with Sparse and SQL not being
-able to compute the result due to a limit for the number of dimensions for Sparse and SQL running out
-of memory. Sparse Einsum and Legacy Sparse Einsum, still manage a decent performance.
-
-\begin{figure}[H]
-    \centering
-    \begin{tikzpicture}
-        \begin{axis}[
-                ybar, axis on top,
-                height=8cm, width=12cm,
-                bar width=0.4cm,
-                ymajorgrids, tick align=inside,
-                enlarge y limits={value=.1,upper},
-                enlarge x limits=0.3, % Reduce this value to bring the groups closer
-                ymode=log, % Use logarithmic scale for the y-axis
-                log origin=infty, % Start the log scale at the smallest positive value
-                ymin=1e-3, ymax=12, % Adjust the minimum and maximum y-axis values
-                axis x line*=bottom,
-                axis y line*=left,
-                y axis line style={opacity=0},
-                tickwidth=0pt,
-                legend style={
-                        at={(0.5,1.05)}, % Position above the plot
-                        anchor=south, % Anchor to the south of the legend
-                        legend columns=3, % Arrange entries side by side
-                        column sep=1ex, % Space between columns
-                        draw=none, % Remove the border
-                        fill=none, % Remove the background fill
-                    },
-                legend image code/.code={
-                        \draw [#1] (0cm,-0.1cm) rectangle (0.2cm,0.25cm); },
-                ylabel={Iterations per Second (it/s)},
-                symbolic x coords={
-                        mc\_2021\_027, mc\_2021\_036, mc\_2022\_087},
-                xtick=data,
-            ]
-            \addplot [draw=none, fill=plot_blue] coordinates {
-                    (mc\_2021\_027, 0.613)
-                    (mc\_2021\_036, 0.00001)
-                    (mc\_2022\_087, 0.005)};
-            \addplot [draw=none,fill=plot_green] coordinates {
-                    (mc\_2021\_027, 0.632)
-                    (mc\_2021\_036, 0.00001)
-                    (mc\_2022\_087, 0.000)};
-            \addplot [draw=none, fill=plot_red] coordinates {
-                    (mc\_2021\_027, 3.258)
-                    (mc\_2021\_036, 0.009)
-                    (mc\_2022\_087, 0.056)};
-            \addplot [draw=none, fill=plot_orange] coordinates {
-                    (mc\_2021\_027, 10.052)
-                    (mc\_2021\_036, 0.074)
-                    (mc\_2022\_087, 0.167)};
-            \addplot [draw=none, fill=plot_gray] coordinates {
-                    (mc\_2021\_027, 7.339)
-                    (mc\_2021\_036, 0.056)
-                    (mc\_2022\_087, 0.154)};
-
-            \legend{Sparse, SQL, Torch, Sparse Einsum, Legacy Sparse Einsum}
-        \end{axis}
-    \end{tikzpicture}
-    \caption{Performance comparison of different methods for multiple instances.}
-    \label{fig:exp:instances}
-\end{figure}
-
-\noindent
-On the final instance mc\_2022\_087, Sparse Einsum and Legacy Sparse Einsum
-outperform the other methods, though their performance remains much lower than in the first
-instance. SQL is again, not capable of finishing the computation. Compare to the others,
-Sparse shows the lowest it/s.
