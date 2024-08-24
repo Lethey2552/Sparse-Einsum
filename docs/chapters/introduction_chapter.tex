@@ -13,12 +13,12 @@ reason for the adoption of Einsum notation in numerous applications, ranging fro
 learning to scientific computing, is its conciseness.
 \\\\
 In many practical applications, especially in machine learning and scientific computing,
-the data involved is often sparse. In sparse tensors most values are zero. Handling sparse
+the data involved can be sparse. In sparse tensors most values are zero. Handling sparse
 tensors efficiently requires specialized algorithms and data structures to avoid
 unnecessary computations and to save memory. Traditional libraries like NumPy~\cite{numpy}
 and other major artificial intelligence frameworks~\cite{tensorflow, pytorch} typically
-support Einstein summation for dense tensors, but not for sparse tensors. The only known
-library that aims to support Einsum operations on sparse tensors is Sparse~\cite{sparse}.
+support Einstein summation for dense tensors, but lack support for sparse tensors. The only
+known library that aims to support Einsum operations on sparse tensors is Sparse~\cite{sparse}.
 However, like NumPy, Sparse only allows for a limited number of symbols to be used as
 indices, which is why we use opt\_einsum~\cite{opt_einsum}. opt\_einsum is a package for
 optimizing the contraction order of Einsum expressions. More importantly for us though,

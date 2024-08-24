@@ -108,7 +108,7 @@ summed over can be removed and if possible, we can permute the indices to fit ou
             };
 
     \end{tikzpicture}
-    \caption{An example for the removal of diagonal indices and indices to be summed over, as well
+    \caption{An example for the removal of diagonal indices and indices to be summed over, as well as
         the permutation of indices by traversing the binary tree given by the contraction path.}
     \label{fig:traverse_tree}
 \end{figure}
@@ -125,7 +125,7 @@ One of the possible bottlenecks in the current implementation is that it consume
 memory while storing and tracking tensor indices in COO format. The current practice is to
 store each index separately, thus making it expensive in terms of memory usage for large
 tensors and high-order contractions. Extra performance gains could be attained by compressing
-a number of indices into a single index through multi-index encoding. For example, four
+a number of indices into a single index through a multi-index encoding. For example, four
 16-bit indices may be combined into a single 64-bit integer. Such compression would reduce
 the memory footprint and could further improve computational speed by allowing bit-wise
 operations on the combined index. This would complicate the tracking of the indices, but the
