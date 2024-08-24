@@ -4,8 +4,8 @@
 \definecolor{plot_green}{rgb}{0, 0.729, 0.22}
 \definecolor{plot_gray}{rgb}{0.4, 0.4, 0.4}
 
-In this chapter, we compare five different methods—Sparse, our SQL Einsum implementation, Torch,
-our Sparse Einsum, and our Legacy Sparse Einsum—on different problems. In the plots, we will mark
+In this chapter, we compare five different methods - Sparse, our SQL Einsum implementation, Torch,
+our Sparse Einsum, and our Legacy Sparse Einsum - on different problems. In the plots, we will mark
 our implementations, SQL Einsum, Sparse Einsum and Legacy Sparse Einsum with an asterisk (*). In the
 first experiment, we evaluate their performance on three real-world instances of the
 ``Einsum Benchmark"~\cite{einsum_benchmark} dataset, which consists of real problems with complex
@@ -168,10 +168,7 @@ parameters as a basis, varying one for each experiment:
     \item [max\_axis\_size = 15:] Sets the maximum size of an axis/index (dimension) of the tensors.
 
     \item [density = 0.001:] Indicates how many elements are non-zero compared to the total number of
-          elements in the tensor. It is calculated as
-          \begin{equation*}
-              \frac{Number\ of\ non\text{-}zero\ elements}{Number\ of\ total\ elements}.
-          \end{equation*}
+          elements in the tensor.
 \end{description}
 \noindent
 First, we generate problems where we vary the maximum size of dimensions (max\_ax-is\_size)
@@ -182,7 +179,7 @@ Sparse performance decreases quickly when the maximum number of dimensions that 
 can have increases. It starts of with around the same it/s as SQL but declines faster than
 the other methods, coming in last with about the same performance as Torch. In general,
 SQL Einsum is superior for small till medium sizes of dimensions, but it also declines more
-steeply in comparison all other methods. The SQL implementations iterations per second rise,
+steeply in comparison to all other methods. The SQL implementations iterations per second rise,
 when the maximum size of dimensions increases from 2 to 6 and from thereon decreases constantly.
 Sparse Einsum and the legacy version of Sparse Einsum demonstrated very similar trends,
 though the legacy variant performed worse at all dimension sizes than the newer implementation.
@@ -285,9 +282,9 @@ though the legacy variant performed worse at all dimension sizes than the newer 
 \end{figure}
 
 \noindent
-The results of Figure \ref{fig:exp:max_num_dim} illustrate how the computational performance
+The results illustrated in Figure \ref{fig:exp:max_num_dim} show how the computational performance
 of each method varies with increasing dimensionality (max\_tensor\_order) in tensor hypernetworks.
-All of the methods it/s decline as dimensionality increases. SQL Einsum starts of with by far the
+All of the methods it/s decline as dimensionality increases. SQL Einsum starts off with the
 best performance, but declines rapidly, getting surpassed by our Sparse Einsum and our Legacy Sparse
 Einsum as well as Sparse. Torch's performance starts of slightly higher than Legacy Sparse Einsum's,
 but quickly recedes with the growing number of dimensions. Overall, Sparse Einsum and Legacy Sparse
@@ -383,10 +380,10 @@ per second for problems with higher dimensionality.
 \end{figure}
 
 \noindent
-Figure \ref{fig:exp:num_tensors} show each method's performance as the number
-of tensors (number\_of\_ten-sors) increases. We set max\_tensor\_order and max\_axis\_size to nine,
+Figure \ref{fig:exp:num_tensors} shows each method's performance with increasing number of tensors
+(number\_of\_tensors). We set max\_tensor\_order and max\_axis\_size to nine,
 to be able to fit the generated tensors into memory. Sparse displays a decent performance to start with but
-drops off significantly as tensor count increases being by far the slowest method for larger numbers of
+drops off significantly as tensor count increases, being by far the slowest method for larger numbers of
 tensors. SQL Einsum starts off strongly, and while it gets slower with the rising number of tensors, it
 still outperforms the other methods. Torch is rather stable but decreasing and remains more efficient than
 Sparse at higher tensor counts. Sparse Einsum and Legacy Sparse Einsum decline in nearly identical
@@ -488,10 +485,10 @@ manages to outperform Torch in iterations per second with larger numbers of tens
 \end{figure}
 
 \noindent
-Figure \ref{fig:exp:density} shows the trends for performance of the different methods with
-decreasing density (density). We decrease the same tensor hypernetworks density for each step. Some
-methods improve drastically as the density decreases, while others remain about the same. In particular,
-SQL Einsum shows a dramatic improvement with lower densities, quickly accelerating from low
+Figure \ref{fig:exp:density} shows the performance trends of the different methods with
+decreasing density (density). We decrease the density of the same tensor hypernetworks for each step.
+Some methods improve drastically as the density decreases, while others remain about the same. In
+particular, SQL Einsum shows a dramatic improvement with lower densities, quickly accelerating from low
 performance at high densities to exceptional performance at the sparsest levels, generating an
 S-curve. Sparse Einsum Legacy and Sparse Einsum both exhibit strong performance improvements as
 density decreases. That being said, Sparse Einsum tends to perform better than its legacy Sparse

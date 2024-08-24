@@ -8,10 +8,12 @@ and expanding it to meet our specific research requirements.
 Tensors are algebraic objects and a fundamental concept in mathematics, physics
 and computer science. They extend the idea of scalars, vectors and matrices to
 higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary
-number of dimensions. Each dimension of a tensor is represented by an index with its
-own range. The number of indices is commonly referred to as the tensor's ``rank" or
-``order." The size of a tensor is determined by the product of the maximum values of
-each index's range.\\
+number of dimensions. Each dimension of a tensor is represented by an index that spans
+the size of the dimension. The number of indices is commonly referred to as the
+tensor's ``rank" or ``order." The size of a tensor is determined by the product
+of the maximum values of each index's range.
+\\
+\\
 For example, consider a tensor $T$ with indices $i,j,k$ and corresponding ranges
 $i \in \{1,2\},\ j \in \{1,2,3,4,5,6\}$ and $k \in \{1,2,3,4\}$. The size of
 tensor $T$ is calculated as follows: $2 \cdot 6 \cdot 4 = 48$. This means tensor
@@ -57,7 +59,7 @@ A with indices i, j, k, both represented as a graph, can be seen in Figure
         \draw[-] (B_3.east) -- (I_3_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
     \end{tikzpicture}
     \caption{A matrix, a tensor and a tensor network visualized as a graph. Each index is represented
-        by an edge. Shared indices in a tensor network are edges between nodes.}
+        by an edge. Shared indices in a tensor network are represented by edges between nodes.}
 \end{figure}
 
 \noindent
@@ -66,7 +68,12 @@ primitive type. We differentiate between dense and sparse tensors.
 
 \paragraph{Dense Tensors.}
 Dense tensors have a significant number of non-zero entries. However, there is no
-exact threshold which determines whether a tensor is dense or sparse.
+exact threshold which determines whether a tensor is dense or sparse. The density
+of a tensor, a metric indicating how many elements are non-zero compated to the total
+number of elements, is calculated as
+\begin{equation*}
+    \frac{Number\ of\ non\text{-}zero\ elements}{Number\ of\ total\ elements}.
+\end{equation*}
 
 \paragraph{Sparse Tensors.}
 In Sparse tensors most values are zero. They can greatly profit from specialized
@@ -74,8 +81,12 @@ formats. For our tensor $T \in \mathbb{R}^{I \times J \times K}$ in dense format
 we need to save $I \cdot J \cdot K$ values no matter whether they are zero or not.
 Now consider that, if the vast majority of $T$'s values are zero, we could only save
 the coordinates of the non-zero values, that is the index of the value for each
-dimension. This is what we call the coordinate (COO) format. A sparse tensor could
-be reduced to the COO format as follows:
+dimension. This is what we call the coordinate (COO) format. Each row of the COO
+representation encodes a single value of the tensor with each column holding the
+position of the value for the corresponding dimension and the last column giving
+the actual value. This can be done for an arbitrary number of dimensions by simply
+adding more columns for their respective coordinates. A sparse tensor could be
+reduced to the COO format as follows:
 
 \begin{equation*}
     \begin{bmatrix}
@@ -94,24 +105,20 @@ be reduced to the COO format as follows:
         2 & 3 & 10
     \end{bmatrix}
 \end{equation*}
-%
-Each row of the COO representation encodes a single value of the tensor with each
-column holding the position of the value for the corresponding dimension and the last
-column giving the actual value. This can be done for an arbitrary number of dimensions
-by simply adding more columns for their respective coordinates.
 
 \section{Einstein Notation and Einstein Summation}
 In 1916, Albert Einstein introduced the so called Einstein notation, also known as
 Einstein summation convention or Einstein summation notation, for the sake of
-representing tensor expressions in a concise manner. As an example, the contraction of tensors
-$A \in \mathbb{R}^{I \times J \times K}$ and $B \in \mathbb{R}^{K \times M \times N}$
-in Figure \ref{fig:tensor:vec_mat_ten},
+representing tensor expressions in a concise manner. As an example, the following
+operation on the tensors $A \in \mathbb{R}^{I \times J \times K}$ and
+$B \in \mathbb{R}^{K \times M \times N}$ from Figure \ref{fig:tensor:vec_mat_ten},
 
 \[C_{ijmn} = \sum_{k}A_{ijk} \cdot B_{kmn}\]
 \noindent
 \\
 can be simplified by making the assumption that pairs of repeated indices in the expression
-are to be summed over. Consequently, the contraction can be rewritten as:
+are to be summed over, as is the rule for tensor contractions. Consequently, the contraction
+can be rewritten as:
 
 \[C_{ijmn} = A_{ijk} \cdot B_{kmn}\]
 \noindent
@@ -172,13 +179,31 @@ tensor operations using a concise and readable notation, expressed as a format s
 Note that while the examples provided are relatively simple, real-world Einstein
 summation problems may include thousands of tensors.
 
-\section{Tensor Contractions}
+\section{Contraction of Tensor Hypernetworks}
 \label{sec:tensor:contractions}
 Tensor contraction is the process of reducing one or multiple tensor's orders by summing
 over pairs of matching indices. Tensor networks where more than two tensors share an index
-are called tensor hypernetworks.
+are called tensor hypernetworks. The contraction of the tensor hypernetwork
+$A \in \mathbb{R}^{I \times J \times K}, B \in \mathbb{R}^{K \times M \times N}$ and
+$C \in \mathbb{R}^{K \times L}$ in Figure \ref{fig:tensor:hypernetwork},
 
-\begin{figure}
+\[T_{ijmnl} = \sum_{k}A_{ijk} \cdot B_{kmn} \cdot C_{kl}\]
+\noindent
+\\
+in modern Einstein notation written as
+
+\[ijk,kmn,kl \rightarrow ijmnl\]
+\noindent
+\\
+can be calculated in different orders. Either way, it is possible to get the same result by
+contracting $A$ and $B$ first, followed by $(AB) \cdot C$, by contracting $B$ and $C$
+and then $A \cdot (BC)$ or by contracting $A$ and $C$, followed by $(AC) \cdot B$.
+While the result of the contraction orders will be the same, the underlying number of
+operations may differ vastly. As a result, the order in which tensors are contracted
+can drastically change the performance of an algorithm. We call this order the contraction
+path.
+
+\begin{figure}[H]
     \centering
     \begin{tikzpicture}[
             node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
@@ -212,24 +237,3 @@ are called tensor hypernetworks.
     \caption{A tensor hypernetwork.}
     \label{fig:tensor:hypernetwork}
 \end{figure}
-
-\noindent
-The contraction of the tensor hypernetwork $A \in \mathbb{R}^{I \times J \times K}, B \in
-    \mathbb{R}^{K \times M \times N}$ and $C \in \mathbb{R}^{K \times L}$ in Figure
-\ref{fig:tensor:hypernetwork},
-
-\[T_{ijmnl} = \sum_{k}A_{ijk} \cdot B_{kmn} \cdot C_{kl}\]
-\noindent
-\\
-in modern Einstein notation written as
-
-\[ijk,kmn,kl \rightarrow ijmnl\]
-\noindent
-\\
-can be calculated in different orders. Either way, it is possible to get the same result by
-contracting $A$ and $B$ first, followed by $(AB) \cdot C$, by contracting $B$ and $C$
-and then $A \cdot (BC)$ or by contracting $A$ and $C$, followed by $(AC) \cdot B$.
-While the result of the contraction orders will be the same, the underlying number of
-operations may differ vastly. As a result, the order in which tensors are contracted
-can drastically change the performance of an algorithm. We call this order the contraction
-path.

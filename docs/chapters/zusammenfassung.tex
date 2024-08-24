@@ -1,12 +1,13 @@
-Die Einstein-Notation hat sich zu einem mächtigen Werkzeug zur Darstellung von Tensor-Ausdrücken in vielen
-wissenschaftlichen und maschinellen Lernanwendungen entwickelt. Für viele dieser Anwendungen sind
-Operationen mit dünnbesetzten (spars)en Tensoren entscheidend, doch überraschenderweise gibt es nur
-wenige Algorithmen, die speziell für die Lösung von Einstein-Summationsproblemen mit dünn-besetzten
-Tensoren ausgelegt sind. Um diesem Mangel zu begegnen, stellen wir einen neuen Ansatz vor, der auf dem
-Algorithmus von Torch basiert und paarweise Kontraktionen auf eine Batch-Matrix-Multiplikation für
-dünnbesetzte Tensoren abbildet. Wir haben unsere Methode mit drei etablierten Ansätzen verglichen: der
-Sparse-Bibliothek für dünnbesetzte Tensoren, Torch und einem auf SQL basierenden Ansatz. Unsere Experimente
-mit realen und synthetischen Benchmarks zeigen, dass unser Algorithmus Einstein-Summationsprobleme mit
-dünnbesetzten Tensoren schneller berechnet, höherdimensionale Tensoren bewältigt und größere Probleme löst,
-bei denen andere Methoden scheitern. Diese Ergebnisse unterstreichen das Potenzial unseres Algorithmus
-zur Effizienzsteigerung bei der Einstein-Summation für dünnbesetzte Tensoren.
+Die Einstein-Notation ist ein mächtiges Werkzeug, das vermehrt zur Darstellung von Tensor-Ausdrücken
+in diversen wissenschaftlichen Kontexten sowie im maschinellen Lernen verwendet wird. Viele dieser
+Anwendungen operieren auf dünnbesetzten Tensoren (auch sparse Tensoren genannt). Trotzdem existieren wenige
+Algorithmen, die speziell für die Lösung von Einstein-Summationsproblemen mit dünnbesetzten Tensoren
+entwickelt wurden. Der von uns in dieser Arbeit vorgestellte Algorithmus adressiert dieses Problem und
+bildet basierend auf dem Algorithmus von Torch paarweise Kontraktionen auf eine Batch-Matrix-Multiplikation
+für dünnbesetzte Tensoren ab. Vergleiche mit Sparse, einer Bibliothek für dünnbesetzte Tensoren, Torch und
+einem auf SQL basierenden Ansatz zeigen, dass unsere Methode effizienter arbeitet als diese drei bereits
+etablierten Methoden. Experimente mit aus realen Problemen entnommenen sowie synthetischen Benchmarks
+ergaben, dass unser Algorithmus Einstein-Summations-Probleme für dünnbesetzte Tensoren schneller berechnet
+und höherdimensionale Tensoren sowie größere Probleme lösen kann als die eben genannten drei Methoden.
+Diese Ergebnisse unterstreichen das Potenzial unseres Algorithmus, maßgeblich zur Effizienzsteigerung
+bei Einstein-Summations-Problemen für dünnbesetzte Tensoren beitragen zu können.

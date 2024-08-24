@@ -20,13 +20,13 @@ and other major artificial intelligence frameworks~\cite{tensorflow, pytorch} ty
 support Einstein summation for dense tensors, but lack support for sparse tensors. The only
 known library that aims to support Einsum operations on sparse tensors is Sparse~\cite{sparse}.
 However, like NumPy, Sparse only allows for a limited number of symbols to be used as
-indices, which is why we use opt\_einsum~\cite{opt_einsum}. opt\_einsum is a package for
-optimizing the contraction order of Einsum expressions. More importantly for us though,
-opt\_einsum can handle UTF-8 symbols and use Sparse and other libraries like Torch
-as a backend. Real Einstein summation problems often include expressions with hundreds or
-even thousands of higher order tensors. In order to express the aforementioned operations
-we require a large set of unique symbols. Thus, our approaches, just like opt\_einsum, are
-capable of handling all symbols in the UTF-8 encoding.
+indices, which is why we use opt\_einsum~\cite{opt_einsum}, a package for optimizing the
+contraction order of Einsum expressions. More importantly for us though, opt\_einsum can
+handle UTF-8 symbols and use Sparse and other libraries like Torch as a backend. Real Einstein
+summation problems often include expressions with hundreds or even thousands of higher order
+tensors. In order to express the aforementioned operations we require a large set of unique
+indices. Thus, our approaches, just like opt\_einsum, are capable of handling all symbols
+in the UTF-8 encoding.
 \\\\
 This thesis explores the implementation and performance of Einstein summation
 across different computing paradigms, with a particular focus on sparse tensors.
@@ -40,8 +40,8 @@ to multiple libraries:
             It constructs SQL queries dynamically using Python. While SQL is
             traditionally used for database operations, this approach demonstrates
             the ability of SQL in performing tensor operations.
-      \item C++ Implementation: The second implementation is written in C++, with multiple
-            versions ranging from naive to optimized approaches. The different versions
+      \item C++ Implementation: The second implementation is written in C++, with two
+            versions, one naive and one optimized approach. The different versions
             aim to explore the performance trade-offs between simplicity and optimization,
             offering insights into how different coding strategies affect computational
             efficiency.
@@ -50,17 +50,18 @@ to multiple libraries:
 % Write about some of the results of the paper. I.e. we were able to outperform
 % this and that library and we accept more different indices as input.
 %
-By comparing these implementations, we aim to provide a comprehensive analysis of
+By comparing these implementations, our goal is to provide a comprehensive analysis of
 the performance and scalability of sparse Einstein summation in diverse computing
-environments. The SQL-based implementation serves as a baseline for our implementations.
-It showcases the potential of database query languages for tensor operations.
+environments. The SQL-based implementation serves as a baseline for comparing all
+approaches. It showcases the potential of database query languages for tensor operations.
 Furthermore, the C++ implementations show how low-level optimizations impact
 computational performance. The code for our implementations is available on
 GitHub at: https://github.com/Lethey2552/Sparse-Einsum.
 \\
+\\
 We aim to determine the advantages and disadvantages of each approach by comparing
 our implementations against the sparse library Sparse and highly performance-tuned
-dense tensor libraries like Torch. This will help determine which approach is best
+dense tensor libraries like Torch. This will help identify which approach is best
 for a given set of use cases and computational requirements. The goal of this effort
 is to provide researchers and practitioners in disciplines that significantly rely
 on tensor calculations with practical insights by expanding the understanding of

@@ -103,14 +103,14 @@ right order.
 \subsection{Implementation Details}
 We implemented the algorithm for mapping Einsum format strings to SQL queries proposed by Blacher
 et al. in Python 3.11.0 as a small package, only requiring Numpy as a dependency. When
-calling \textit{sql\_einsum\_query()}, an Einsum notation string, the tensor names, and the tensor
+calling \textit{sql\_einsum\_query()}, an Einsum notation string, the tensor names and the tensor
 data have to be supplied. The path argument is optional. When not supplied with a path, an
 optimized contraction path is calculated using cgreedy~\cite{cgreedy}. The cgreedy package
 provides a greedy algorithm approach for finding an efficient contraction order for any given
 format string and associated tensors, utilizing multiple cost functions. The construction of the
 query is separated into two parts. The first part creates the tensors in COO format as SQL
 compatible structures and returns the appropriate query. The second part applies the decomposition
-schema, more precisely, it uses either the supplied or the calculated contraction path to build a
+schema. More precisely, it uses either the supplied or the calculated contraction path to build a
 contraction list. The entries of the contraction list dictate the order and the exact pairwise
 operations necessary to solve the Einstein summation problem. These subproblems are also specified
 in Einstein notation. To build the second part of the query, we iterate the contraction list and
@@ -130,10 +130,9 @@ The preprocessing phase of the algorithm is critical for aligning the tensors in
 computations with the BMM, we apply the template seen in Figure \ref{fig:bmm:template}. The indices
 of the two input tensors are grouped as follows:
 
-% TODO: Right tensor index s_l is wrong in the figure. Change it to s_r.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.9\textwidth]{classification_of_indices.pdf}
+    \includegraphics[width=0.8\textwidth]{classification_of_indices.pdf}
     \caption{The figure used by Gray J. \cite{jcmgray}  to describe the classification of indices
         used for the grouping. The left tensor has the index order $(b, k_l, c, s_l)$ and the right
         tensor $(b, c, k_r, s_r)$.}
