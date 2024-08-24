@@ -27,7 +27,8 @@ def run_hypernetwork_experiment(iterations_per_network=10,
                                 },
                                 density=0.001,
                                 change="",
-                                run_density=True):
+                                run_density=True,
+                                run_max_num_dim=False):
 
     sparse_time = 0
     sql_time = 0
@@ -39,8 +40,13 @@ def run_hypernetwork_experiment(iterations_per_network=10,
         print(f"Running iteration {i}/{iterations}...", end="\r")
         print(f"{f'{change}':<15}", end="")
 
+        seed = i
+
+        if run_max_num_dim:
+            seed = i + random_hypernetwork_params["max_tensor_order"] * 2
+
         format_string, shapes, size_dict = random_tensor_hypernetwork(
-            seed=i, **random_hypernetwork_params)
+            seed=seed, **random_hypernetwork_params)
 
         path, _, _ = compute_path(
             format_string,
@@ -53,6 +59,9 @@ def run_hypernetwork_experiment(iterations_per_network=10,
             is_outer_optimal=False,
             threshold_optimal=12
         )
+
+        # print(format_string)
+        # print(shapes)
 
         tensors = []
         tensor_indices = format_string.split("->")[0].split(",")
@@ -79,6 +88,10 @@ def run_hypernetwork_experiment(iterations_per_network=10,
                     numpy_tensor[idx_1[1]] = np.random.rand()
 
             tensors.append(numpy_tensor)
+
+        #     print(np.count_nonzero(numpy_tensor))
+
+        # print()
 
         sparse_result = False
         # Time opt_einsum sparse backend average execution

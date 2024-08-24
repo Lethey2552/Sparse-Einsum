@@ -3,7 +3,7 @@ from hypernetwork_experiment import run_hypernetwork_experiment, random_hypernet
 
 if __name__ == "__main__":
     NUMBER_OF_RUNS = 10
-    ITERATIONS_PER_NETWORK = 10
+    ITERATIONS_PER_NETWORK = 1
     RUN_SPARSE = True
     RUN_SQL_EINSUM = True
     RUN_TORCH = True
@@ -141,7 +141,8 @@ if __name__ == "__main__":
                                     RUN_TORCH,
                                     RUN_LEGACY,
                                     random_hypernetwork_params,
-                                    change=i)
+                                    change=i,
+                                    run_max_num_dim=True)
     print()
 
 ########    RESULTS     ########
@@ -197,14 +198,12 @@ Max dim size   Sparse time    SQL Einsum time   Torch time     Sparse Einsum tim
 
 Experiment - Max Number of Dimensions:
 Max Num Dim    Sparse time    SQL Einsum time   Torch time     Sparse Einsum time   Legacy Sparse Einsum time
-6              477.020 it/s   1136.583 it/s     361.691 it/s   502.425 it/s         327.207 it/s
-7              146.725 it/s   250.692 it/s      127.232 it/s   317.017 it/s         214.516 it/s
-8              116.174 it/s   266.833 it/s      107.009 it/s   225.428 it/s         158.049 it/s
-9              67.275 it/s    114.571 it/s      62.497 it/s    208.049 it/s         159.632 it/s
-10             66.349 it/s    102.055 it/s      61.353 it/s    214.421 it/s         160.321 it/s
-11             65.991 it/s    105.546 it/s      65.995 it/s    212.171 it/s         161.135 it/s
-12             62.998 it/s    103.656 it/s      65.120 it/s    219.846 it/s         163.633 it/s
-13             49.544 it/s    123.441 it/s      69.146 it/s    209.382 it/s         163.505 it/s
-14             67.529 it/s    117.988 it/s      65.189 it/s    202.798 it/s         160.476 it/s
+6              656.079 it/s   2500.888 it/s     407.781 it/s   611.765 it/s         337.235 it/s
+7              127.233 it/s   346.885 it/s      119.323 it/s   344.672 it/s         225.109 it/s
+8              109.917 it/s   153.930 it/s      93.899 it/s    231.014 it/s         156.957 it/s
+9              61.866 it/s    113.701 it/s      59.792 it/s    176.694 it/s         126.146 it/s
+10             61.965 it/s    110.663 it/s      44.990 it/s    179.796 it/s         111.298 it/s
+11             87.939 it/s    59.971 it/s       35.300 it/s    143.914 it/s         103.061 it/s
+12             100.175 it/s   63.598 it/s       24.798 it/s    142.225 it/s         98.580 it/s
 
 """
