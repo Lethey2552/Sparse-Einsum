@@ -1,12 +1,10 @@
-% We have constructed two new algorithms to solve sparse Einstein summation 
-% problems for tensor networks, one that generates SQL queries to solve Einsum 
-% problems and another one mapping the pairwise contraction operations into 
-% batch matrix multiplication with an efficient C++ backend. Our design shows 
-% significant improvements in solution for large and complex Einsum problems 
-% by utilizing sparse data structures along with their corresponding optimized 
-% strategies of computation. We have compared our methods through experiments 
-% against existing contraction algorithms, which show that they are very competitive, 
-% particularly for sparsity and computation time. We will further improve our 
-% C++ implementation and memory efficiency and include the ability to treat 
-% even larger tensor networks by higher-order contractions and denser tensors 
-% in the future.  
+We have constructed a new algorithm to solve Einstein summation problems for sparse tensor networks.
+Our algorithm maps the pairwise contraction operations onto a sparse batch matrix multiplication kernel
+by preprocessing and postprocessing the tensors. We have compared our methods against the commonly used
+and supported Einsum library Sparse CITE, the well known machine learning library Torch CITE, and an
+approach that maps Einsum problems to SQL. Our experiments involved real-world problems and generated
+Einsum expressions that mimic a wide range of tensor properties. In doing so, we found that our approach
+can compute sparse Einstein summation problems in less time, support tensors with higher dimensionality
+than other specialized libraries and solve larger problems where other approaches fail. In the future,
+we plan to further improve the memory efficiency and memory access pattern of our C++ implementation,
+streamline the preprocessing and improve upon the sparse batch matrix multiplication kernel.

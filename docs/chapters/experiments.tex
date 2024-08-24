@@ -287,13 +287,12 @@ though the legacy variant performed worse at all dimension sizes than the newer 
 \noindent
 The results of Figure \ref{fig:exp:max_num_dim} illustrate how the computational performance
 of each method varies with increasing dimensionality (max\_tensor\_order) in tensor hypernetworks.
-All of the methods it/s decline as dimensionality increases, but start to flatten out at around nine.
-SQL Einsum starts of with by far the best performance, but declines rapidly, getting surpassed by
-Sparse Einsum and Legacy Sparse Einsum. Torch and Sparse perform about the same for higher number
-of dimensions, the only difference being that Sparse performs better than Torch for low numbers
-of dimensions. Overall, Sparse Einsum and Legacy Sparse Einsum handle the increasing dimensionality
-best, with Sparse Einsum displaying the highest iterations per second for problems with higher
-dimensionality.
+All of the methods it/s decline as dimensionality increases. SQL Einsum starts of with by far the
+best performance, but declines rapidly, getting surpassed by our Sparse Einsum and our Legacy Sparse
+Einsum as well as Sparse. Torch's performance starts of slightly higher than Legacy Sparse Einsum's,
+but quickly recedes with the growing number of dimensions. Overall, Sparse Einsum and Legacy Sparse
+Einsum handle the increasing dimensionality best, with Sparse Einsum displaying the highest iterations
+per second for problems with higher dimensionality.
 
 \begin{figure}[H]
     \centering
@@ -306,16 +305,17 @@ dimensionality.
                 width=12cm,
                 height=6cm,
                 enlargelimits=0.1,
-                xtick style={draw=none},  % Remove x-axis tick marks
-                ytick style={draw=none},  % Remove y-axis tick marks
-                ymin=0, ymax=1200,        % Set limits to ensure proper visualization
+                xtick style={draw=none},
+                ytick style={draw=none},
+                ymode=log,
+                log basis y=10,           % Set base 10 for y-axis
                 legend style={
-                        at={(0.5,1.05)}, % Position above the plot
-                        anchor=south, % Anchor to the south of the legend
-                        legend columns=3, % Arrange entries side by side
-                        column sep=1ex, % Space between columns
-                        draw=none, % Remove the border
-                        fill=none, % Remove the background fill
+                        at={(0.5,1.05)},
+                        anchor=south,
+                        legend columns=3,
+                        column sep=1ex,
+                        draw=none,
+                        fill=none,
                         legend cell align=left
                     }
             ]
@@ -326,8 +326,8 @@ dimensionality.
                 mark=square*,
                 thick
             ] coordinates {
-                    (6, 477.020) (7, 146.725) (8, 116.174) (9, 67.275)
-                    (10, 66.349) (11, 65.991) (12, 62.998) (13, 49.544) (14, 67.529)
+                    (6, 656.079) (7, 127.233) (8, 109.917) (9, 61.866)
+                    (10, 61.965) (11, 87.939) (12, 100.175)
                 };
             \addlegendentry{Sparse}
 
@@ -337,8 +337,8 @@ dimensionality.
                 mark=triangle*,
                 thick
             ] coordinates {
-                    (6, 1136.583) (7, 250.692) (8, 266.833) (9, 114.571)
-                    (10, 102.055) (11, 105.546) (12, 103.656) (13, 123.441) (14, 117.988)
+                    (6, 2500.888) (7, 346.885) (8, 153.930) (9, 113.701)
+                    (10, 110.663) (11, 59.971) (12, 63.598)
                 };
             \addlegendentry{SQL Einsum*}
 
@@ -348,19 +348,19 @@ dimensionality.
                 mark=diamond*,
                 thick
             ] coordinates {
-                    (6, 361.691) (7, 127.232) (8, 107.009) (9, 62.497)
-                    (10, 61.353) (11, 65.995) (12, 65.120) (13, 69.146) (14, 65.189)
+                    (6, 407.781) (7, 119.323) (8, 93.899) (9, 59.792)
+                    (10, 44.990) (11, 35.300) (12, 24.798)
                 };
             \addlegendentry{Torch}
 
-            % Legacy_Sparse_Einsum_Time (Star marker)
+            % Legacy_Sparse_Einsum_Time (Pentagon marker)
             \addplot[
                 color=plot_gray,
                 mark=pentagon*,
                 thick
             ] coordinates {
-                    (6, 327.207) (7, 214.516) (8, 158.049) (9, 159.632)
-                    (10, 160.321) (11, 161.135) (12, 163.633) (13, 163.505) (14, 160.476)
+                    (6, 337.235) (7, 225.109) (8, 156.957) (9, 126.146)
+                    (10, 111.298) (11, 103.061) (12, 98.580)
                 };
             \addlegendentry{Legacy Sparse Einsum*}
 
@@ -370,8 +370,8 @@ dimensionality.
                 mark=*,
                 thick
             ] coordinates {
-                    (6, 502.425) (7, 317.017) (8, 225.428) (9, 208.049)
-                    (10, 214.421) (11, 212.171) (12, 219.846) (13, 209.382) (14, 202.798)
+                    (6, 611.765) (7, 344.672) (8, 231.014) (9, 176.694)
+                    (10, 179.796) (11, 143.914) (12, 142.225)
                 };
             \addlegendentry{Sparse Einsum*}
 

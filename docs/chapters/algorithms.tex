@@ -96,7 +96,7 @@ therefore incapable of effectively breaking down the query into smaller parts to
 contraction paths as described in Section \ref{sec:tensor:contractions}.\\
 One can get around this using intermediate tensors via subqueries or common table expressions,
 which decomposes one large Einstein summation query into smaller pieces and lets the database
-engine follow a pre-defined contraction order. More precisely, using GROUP BY and SUM
+engine follow a predefined contraction order. More precisely, using GROUP BY and SUM
 aggregation in intermediate computations enforces query engines to evaluate the query in the
 right order.
 
@@ -120,12 +120,12 @@ return the complete query.
 
 \section{The C++ Algorithm}
 Our method expands on Torch's strategy of mapping the Einstein summation problems to batch matrix
-multiplication (BMM). We give an overview of our approach that pre-processes tensors for pairwise
-operations, calculates the result via a sparse BMM and finally post-processes the result to fit the
+multiplication (BMM). We give an overview of our approach that preprocesses tensors for pairwise
+operations, calculates the result via a sparse BMM and finally postprocesses the result to fit the
 expected output format.
 
-\subsection{Pre-Processing}
-The pre-processing phase of the algorithm is critical for aligning the tensors in Coordinate List
+\subsection{Preprocessing}
+The preprocessing phase of the algorithm is critical for aligning the tensors in Coordinate List
 (COO) format with the requirements of batch matrix multiplication. In order to achieve predictable
 computations with the BMM, we apply the template seen in Figure \ref{fig:bmm:template}. The indices
 of the two input tensors are grouped as follows:
@@ -144,17 +144,17 @@ of the two input tensors are grouped as follows:
     \item [Batch Indices (b)] All individual batch dimensions have to be combined into a single
           batch dimension.
     \item [Contracted Indices (c)] The dimensions over which the contraction takes place.
-    \item [Summed Indices (s)] All indices that only have a single occurence. Summed indices are 
+    \item [Summed Indices (s)] All indices that only have a single occurence. Summed indices are
           grouped for both input tensors separately.
     \item [Kept Indices (k)] All indices and their dimensions that occur in only a single input
           tensor and in the output. Kept indices are grouped for both input tensors separately.
 \end{description}
 %
-For our implementation we treat the removal of the summed indices as part of the pre-processing.
+For our implementation we treat the removal of the summed indices as part of the preprocessing.
 This means the input tensors for the BMM only have index order $(b, k_l, c)$ for the left term and
 $(b, c, k_r)$ for the right term. For the COO format, since every index results in a column,
 the index order translates to the columns, followed by a last column for the value. To enable the use
-of this format we apply multiple pre-processing steps. First, the algorithm calculates appropriate
+of this format we apply multiple preprocessing steps. First, the algorithm calculates appropriate
 format strings for the COO tensors. The format strings should align with the requirements of the BMM
 to ensure correctness and efficiency of the subsequent operation.
 \\
@@ -166,7 +166,7 @@ shapes is critical to ensure that the tensors are aligned correctly for the BMM.
 Einstein summation on a single tensor, allowing for the computation of diagonals, summation over
 specified dimensions and the permutation thereof. The new shapes are used to reshape the tensors to
 comply with the dimensional requirements of the BMM. Both of these steps are only performed if necessary.
-The pre-processing will result in a COO tensor, which is suited for batch matrix multiplication.
+The preprocessing will result in a COO tensor, which is suited for batch matrix multiplication.
 
 \subsection{Sparse BMM}
 The BMM computes the results in batches. In our case a batch only contains two elements. A COO tensors
@@ -218,96 +218,96 @@ using the following algorithm:
           first column $[b, k_l, k_r, v]$.
     \item Repeat from 2. with next batch until all batches are done.
 \end{enumerate}
-The final tensor is returned and can now be post-processed. Figure \ref{fig:bmm:algorithm} provides
+The final tensor is returned and can now be postprocessed. Figure \ref{fig:bmm:algorithm} provides
 a detailed illustration of Steps 1 through 5 of the algorithm. For the pseudocode of the sparse batch
 matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
 
 \begin{figure}[H]
     \begin{alignat*}{5}
-         & Step \ &              &                &                                                                                      &                                                                                                       &  &  &  & \\
-         & 1.          &              & A(b, k_l, c)   &                                                                                      & = \begin{bmatrix}
-                                                                                                                                                      b & k_l & c & v    \\
-                                                                                                                                                      0 & 0   & 0 & 2.37 \\
-                                                                                                                                                      0 & 0   & 1 & 0.45 \\
-                                                                                                                                                      0 & 1   & 2 & 0.63 \\
-                                                                                                                                                      0 & 1   & 3 & 1.89 \\
-                                                                                                                                                      1 & 0   & 0 & 1.13 \\
-                                                                                                                                                      1 & 0   & 1 & 0.08 \\
-                                                                                                                                                  \end{bmatrix} \qquad
-         &             & \qquad \quad B(b, c, k_r) &                & = \begin{bmatrix}
-                                                               b & c & k_r & v    \\
-                                                               0 & 0 & 0   & 0.32 \\
-                                                               0 & 0 & 2   & 2.57 \\
-                                                               0 & 1 & 0   & 1.45 \\
-                                                               0 & 3 & 1   & 0.14 \\
-                                                               1 & 0 & 0   & 0.81 \\
-                                                           \end{bmatrix}
+         & Step \  &                           &                &                                                                                      &                                                                                                       &  &  &  & \\
+         & 1.      &                           & A(b, k_l, c)   &                                                                                      & = \begin{bmatrix}
+                                                                                                                                                               b & k_l & c & v    \\
+                                                                                                                                                               0 & 0   & 0 & 2.37 \\
+                                                                                                                                                               0 & 0   & 1 & 0.45 \\
+                                                                                                                                                               0 & 1   & 2 & 0.63 \\
+                                                                                                                                                               0 & 1   & 3 & 1.89 \\
+                                                                                                                                                               1 & 0   & 0 & 1.13 \\
+                                                                                                                                                               1 & 0   & 1 & 0.08 \\
+                                                                                                                                                           \end{bmatrix} \qquad
+         &         & \qquad \quad B(b, c, k_r) &                & = \begin{bmatrix}
+                                                                        b & c & k_r & v    \\
+                                                                        0 & 0 & 0   & 0.32 \\
+                                                                        0 & 0 & 2   & 2.57 \\
+                                                                        0 & 1 & 0   & 1.45 \\
+                                                                        0 & 3 & 1   & 0.14 \\
+                                                                        1 & 0 & 0   & 0.81 \\
+                                                                    \end{bmatrix}
         \\
         %  &             &              &                &                                   & \text{Transpose } B'              &  &  &  &
         % \\
-         & 2.          &              & A'(k_l, c)     &                                                                                      & = \begin{bmatrix}
-                                                                                                                                                      k_l & c & v    \\
-                                                                                                                                                      0   & 0 & 2.37 \\
-                                                                                                                                                      0   & 1 & 0.45 \\
-                                                                                                                                                      1   & 2 & 0.63 \\
-                                                                                                                                                      1   & 3 & 1.89 \\
-                                                                                                                                                  \end{bmatrix}
-         &             & \qquad \quad B'(k_r, c)   &                & = \begin{bmatrix}
-                                                               k_r & c & v    \\
-                                                               0   & 0 & 0.32 \\
-                                                               0   & 1 & 1.45 \\
-                                                               1   & 3 & 0.14 \\
-                                                               2   & 0 & 2.57 \\
-                                                           \end{bmatrix}
+         & 2.      &                           & A'(k_l, c)     &                                                                                      & = \begin{bmatrix}
+                                                                                                                                                               k_l & c & v    \\
+                                                                                                                                                               0   & 0 & 2.37 \\
+                                                                                                                                                               0   & 1 & 0.45 \\
+                                                                                                                                                               1   & 2 & 0.63 \\
+                                                                                                                                                               1   & 3 & 1.89 \\
+                                                                                                                                                           \end{bmatrix}
+         &         & \qquad \quad B'(k_r, c)   &                & = \begin{bmatrix}
+                                                                        k_r & c & v    \\
+                                                                        0   & 0 & 0.32 \\
+                                                                        0   & 1 & 1.45 \\
+                                                                        1   & 3 & 0.14 \\
+                                                                        2   & 0 & 2.57 \\
+                                                                    \end{bmatrix}
         \\
-         & 3.          &              & A'(k_l, c)     &                                                                                      & = \begin{bmatrix}
-                                                                                                                                                      k_l                      & \textbf{c}               & v                           \\
-                                                                                                                                                      \color{blind-blue}0      & \color{blind-blue}0      & \color{blind-blue}2.37      \\
-                                                                                                                                                      \color{blind-turquoise}0 & \color{blind-turquoise}1 & \color{blind-turquoise}0.45 \\
-                                                                                                                                                      1                        & 2                        & 0.63                        \\
-                                                                                                                                                      \color{blind-purple}1    & \color{blind-purple}3    & \color{blind-purple}1.89    \\
-                                                                                                                                                  \end{bmatrix}
-         &             & \qquad \quad B'(k_r, c)   &                & = \begin{bmatrix}
-                                                               k_r                      & \textbf{c}               & v                           \\
-                                                               \color{blind-blue}0      & \color{blind-blue}0      & \color{blind-blue}0.32      \\
-                                                               \color{blind-turquoise}0 & \color{blind-turquoise}1 & \color{blind-turquoise}1.45 \\
-                                                               \color{blind-purple}1    & \color{blind-purple}3    & \color{blind-purple}0.14    \\
-                                                               \color{blind-blue}2      & \color{blind-blue}0      & \color{blind-blue}2.57      \\
-                                                           \end{bmatrix}
+         & 3.      &                           & A'(k_l, c)     &                                                                                      & = \begin{bmatrix}
+                                                                                                                                                               k_l                      & \textbf{c}               & v                           \\
+                                                                                                                                                               \color{blind-blue}0      & \color{blind-blue}0      & \color{blind-blue}2.37      \\
+                                                                                                                                                               \color{blind-turquoise}0 & \color{blind-turquoise}1 & \color{blind-turquoise}0.45 \\
+                                                                                                                                                               1                        & 2                        & 0.63                        \\
+                                                                                                                                                               \color{blind-purple}1    & \color{blind-purple}3    & \color{blind-purple}1.89    \\
+                                                                                                                                                           \end{bmatrix}
+         &         & \qquad \quad B'(k_r, c)   &                & = \begin{bmatrix}
+                                                                        k_r                      & \textbf{c}               & v                           \\
+                                                                        \color{blind-blue}0      & \color{blind-blue}0      & \color{blind-blue}0.32      \\
+                                                                        \color{blind-turquoise}0 & \color{blind-turquoise}1 & \color{blind-turquoise}1.45 \\
+                                                                        \color{blind-purple}1    & \color{blind-purple}3    & \color{blind-purple}0.14    \\
+                                                                        \color{blind-blue}2      & \color{blind-blue}0      & \color{blind-blue}2.57      \\
+                                                                    \end{bmatrix}
         \\
-         &             &              & C'(k_l, k_r)   &                                                                                      & = \begin{bmatrix}
-                                                                                                                                                      k_l                      & k_r                      & v^i \cdot v^j                                \\
-                                                                                                                                                      \color{blind-blue}0      & \color{blind-blue}0      & \mathcolor{blind-blue}{2.37 \cdot 0.32}      \\
-                                                                                                                                                      \color{blind-blue}0      & \color{blind-blue}2      & \mathcolor{blind-blue}{2.37 \cdot 2.57}      \\
-                                                                                                                                                      \color{blind-turquoise}0 & \color{blind-turquoise}0 & \mathcolor{blind-turquoise}{0.45 \cdot 1.45} \\
-                                                                                                                                                      \color{blind-purple}1    & \color{blind-purple}1    & \mathcolor{blind-purple}{1.89 \cdot 0.14}    \\
-                                                                                                                                                  \end{bmatrix}
-         &             & = \begin{bmatrix}
-                               k_l & k_r & v    \\
-                               0   & 0   & 0.76 \\
-                               0   & 2   & 6.09 \\
-                               0   & 0   & 0.65 \\
-                               1   & 1   & 0.26 \\
-                           \end{bmatrix}              &                & = \begin{bmatrix}
-                                                               k_l & k_r & v           \\
-                                                               0   & 0   & 0.76 + 0.65 \\
-                                                               0   & 2   & 6.09        \\
-                                                               1   & 1   & 0.26        \\
-                                                           \end{bmatrix}
+         &         &                           & C'(k_l, k_r)   &                                                                                      & = \begin{bmatrix}
+                                                                                                                                                               k_l                      & k_r                      & v^i \cdot v^j                                \\
+                                                                                                                                                               \color{blind-blue}0      & \color{blind-blue}0      & \mathcolor{blind-blue}{2.37 \cdot 0.32}      \\
+                                                                                                                                                               \color{blind-blue}0      & \color{blind-blue}2      & \mathcolor{blind-blue}{2.37 \cdot 2.57}      \\
+                                                                                                                                                               \color{blind-turquoise}0 & \color{blind-turquoise}0 & \mathcolor{blind-turquoise}{0.45 \cdot 1.45} \\
+                                                                                                                                                               \color{blind-purple}1    & \color{blind-purple}1    & \mathcolor{blind-purple}{1.89 \cdot 0.14}    \\
+                                                                                                                                                           \end{bmatrix}
+         &         & = \begin{bmatrix}
+                           k_l & k_r & v    \\
+                           0   & 0   & 0.76 \\
+                           0   & 2   & 6.09 \\
+                           0   & 0   & 0.65 \\
+                           1   & 1   & 0.26 \\
+                       \end{bmatrix}       &                & = \begin{bmatrix}
+                                                                    k_l & k_r & v           \\
+                                                                    0   & 0   & 0.76 + 0.65 \\
+                                                                    0   & 2   & 6.09        \\
+                                                                    1   & 1   & 0.26        \\
+                                                                \end{bmatrix}
         \\
-         & 4.       &              & C'(k_l, k_r)   &                                                                                      & = \begin{bmatrix}
-                                                                                                                                                      k_l & k_r & v    \\
-                                                                                                                                                      0   & 0   & 1.41 \\
-                                                                                                                                                      0   & 2   & 6.09 \\
-                                                                                                                                                      1   & 1   & 0.26 \\
-                                                                                                                                                  \end{bmatrix}
+         & 4.      &                           & C'(k_l, k_r)   &                                                                                      & = \begin{bmatrix}
+                                                                                                                                                               k_l & k_r & v    \\
+                                                                                                                                                               0   & 0   & 1.41 \\
+                                                                                                                                                               0   & 2   & 6.09 \\
+                                                                                                                                                               1   & 1   & 0.26 \\
+                                                                                                                                                           \end{bmatrix}
         \\
-         & 5.          &              & C(b, k_l, k_r) &                                                                                      & = \begin{bmatrix}
-                                                                                                                                                      b & k_l & k_r & v    \\
-                                                                                                                                                      0 & 0   & 0   & 1.41 \\
-                                                                                                                                                      0 & 0   & 2   & 6.09 \\
-                                                                                                                                                      0 & 1   & 1   & 0.26 \\
-                                                                                                                                                  \end{bmatrix}
+         & 5.      &                           & C(b, k_l, k_r) &                                                                                      & = \begin{bmatrix}
+                                                                                                                                                               b & k_l & k_r & v    \\
+                                                                                                                                                               0 & 0   & 0   & 1.41 \\
+                                                                                                                                                               0 & 0   & 2   & 6.09 \\
+                                                                                                                                                               0 & 1   & 1   & 0.26 \\
+                                                                                                                                                           \end{bmatrix}
     \end{alignat*}
     \caption{An example of the sparse BMM algorithm for two tensors $A$ and $B$ for batch index $0$.
         Since, in step 2 and 5, the tensors are already sorted, no additional sorting is required. For step 3
@@ -323,55 +323,55 @@ matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
         \ENSURE Tensor $C$
         \STATE Initialize $C$ as empty
         \FOR{each unique batch index $b$}
-            \STATE Extract rows from $A$ and $B$ with batch index $b$ as COO matrices $A'$, $B'$
-            \STATE Transpose $B'$:
-            \STATE Swap columns $c$ and $kr$ in $B'$
-            \STATE Sort rows of $B'$ first by $kr$, then by $c$
-            \STATE Initialize a temporary COO matrix $Temp$ as empty
-            \FOR{each row $(k_l^i, c^i, v^i)$ in $A'$}
-                \FOR{each row $(k_r^j, c^j, v^j)$ in $B'$ where $c^i = c^j$}
-                    \IF{row with indices $(k_l^i, k_r^j)$ exists in $Temp$}
-                        \STATE Add $v^i \times v^j$ to the existing rows value
-                    \ELSE
-                        \STATE Store $(k_l^i, k_r^j, v^i \times v^j)$ in $Temp$
-                    \ENDIF
-                \ENDFOR
-            \ENDFOR
-            \STATE Sort $Temp$:
-            \STATE Sort rows of $Temp$ first by $k_l^i$, then by $k_r^j$
-            \STATE Append batch index and values to $C$:
-            \FOR{each row $(k_l^i, k_r^j, v)$ in $Temp$}
-                \STATE Append $(b, k_l^i, k_r^j, v)$ to Tensor $C$
-            \ENDFOR
+        \STATE Extract rows from $A$ and $B$ with batch index $b$ as COO matrices $A'$, $B'$
+        \STATE Transpose $B'$:
+        \STATE Swap columns $c$ and $kr$ in $B'$
+        \STATE Sort rows of $B'$ first by $kr$, then by $c$
+        \STATE Initialize a temporary COO matrix $Temp$ as empty
+        \FOR{each row $(k_l^i, c^i, v^i)$ in $A'$}
+        \FOR{each row $(k_r^j, c^j, v^j)$ in $B'$ where $c^i = c^j$}
+        \IF{row with indices $(k_l^i, k_r^j)$ exists in $Temp$}
+        \STATE Add $v^i \times v^j$ to the existing rows value
+        \ELSE
+        \STATE Store $(k_l^i, k_r^j, v^i \times v^j)$ in $Temp$
+        \ENDIF
+        \ENDFOR
+        \ENDFOR
+        \STATE Sort $Temp$:
+        \STATE Sort rows of $Temp$ first by $k_l^i$, then by $k_r^j$
+        \STATE Append batch index and values to $C$:
+        \FOR{each row $(k_l^i, k_r^j, v)$ in $Temp$}
+        \STATE Append $(b, k_l^i, k_r^j, v)$ to Tensor $C$
+        \ENDFOR
         \ENDFOR
         \RETURN $C$
     \end{algorithmic}
 \end{algorithm}
-    
-\subsection{Post-Processing}
-The result of the BMM may have to be post-processed to fit the contraction lists output
-specifications. The post-processing includes the reshaping of the three combined dimensions for
+
+\subsection{Postprocessing}
+The result of the BMM may have to be postprocessed to fit the contraction lists output
+specifications. The postprocessing includes the reshaping of the three combined dimensions for
 the batch, contracted and summed indices into the required number of dimensions by treating
 each combined dimension as a multi-index and unraveling it. Furthermore, the final dimensions
 may be permuted by swapping the COO tensors columns to fit the correct output format. Again,
 both of these steps are only performed if necessary.
 
 \subsection{Implementation Details}
-We implemented the algorithm in Python 3.11.0 for the workflow control with the computation heavy 
-parts written in C++. The responsibilities of the Python code include managing the calls for 
-tensor contractions with respect to the density and memory characteristics of the tensors. Sparse 
-tensors are represented using the COO format. The algorithm automatically switches back and forth 
-between dense and sparse based on a set threshold of density and memory limits. Dense operations 
-are done using opt\_einsum with the Torch backend, and sparse operations run using the custom 
-C++ batch matrix multiplication code called through Cython. Implementation in the C++ code is 
-done with the help of hash maps to aggregate results in the sparse BMM. If the tensors are batched, 
-it first aligns the entries for each tensor along the batch dimension. In each batch, it multiplies 
-matrices by cycling through the non-zero elements of both tensors, matching indices, and accumulating 
-the products in a hash map (std::unordered\_map). The product values are stored such that the 
-resulting multiplications are stored in a hash map having row and column indices as keys. The result 
-is then sorted and the post-processing is applied to achieve the final output.
+We implemented the algorithm in Python 3.11.0 for the workflow control with the computation heavy
+parts written in C++. The responsibilities of the Python code include managing the calls for
+tensor contractions with respect to the density and memory characteristics of the tensors. Sparse
+tensors are represented using the COO format. The algorithm automatically switches back and forth
+between dense and sparse based on a set threshold of density and memory limits. Dense operations
+are done using opt\_einsum with the Torch backend, and sparse operations run using the custom
+C++ batch matrix multiplication code called through Cython. Implementation in the C++ code is
+done with the help of hash maps to aggregate results in the sparse BMM. If the tensors are batched,
+it first aligns the entries for each tensor along the batch dimension. In each batch, it multiplies
+matrices by cycling through the non-zero elements of both tensors, matching indices, and accumulating
+the products in a hash map (std::unordered\_map). The product values are stored such that the
+resulting multiplications are stored in a hash map having row and column indices as keys. The result
+is then sorted and the postprocessing is applied to achieve the final output.
 \\
 \\
-When the legacy flag is set, the algorithm resorts to earlier, unparallelized versions of the C++ 
+When the legacy flag is set, the algorithm resorts to earlier, unparallelized versions of the C++
 functions. This can be faster for smaller problems, but lacks in performance when considering very large
 tensors.
