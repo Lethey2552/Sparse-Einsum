@@ -85,8 +85,8 @@ dimension. This is what we call the coordinate (COO) format. Each row of the COO
 representation encodes a single value of the tensor with each column holding the
 position of the value for the corresponding dimension and the last column giving
 the actual value. This can be done for an arbitrary number of dimensions by simply
-adding more columns for their respective coordinates. A sparse tensor could be
-reduced to the COO format as follows:
+adding more columns for their respective coordinates. An example of a dense tensor
+(left) and its COO representation (right) could be the following:
 
 \begin{equation*}
     \begin{bmatrix}
@@ -128,8 +128,10 @@ notation was introduced. This notation is used by most linear algebra and machin
 learning libraries supporting Einstein summation, that is, the evaluation of the actual
 tensor expressions. Modern Einstein notation explicitly states the indices for the
 output tensor, enabling further operations like transpositions, traces or summation
-over non shared indices. In modern Einstein notation, the expression from the previous
-example would be written as:
+over non shared indices. 
+\\
+\\
+In modern Einstein notation, the expression from the previous example would be written as:
 
 \[A_{ijk}B_{kmn} \rightarrow C_{ijmn}\]
 \noindent
@@ -181,7 +183,10 @@ summation problems may include thousands of tensors.
 \label{sec:tensor:contractions}
 Tensor contraction is the process of reducing one or multiple tensor's orders by summing
 over pairs of matching indices. Tensor networks where more than two tensors share an index
-are called tensor hypernetworks. The contraction of the tensor hypernetwork
+are called tensor hypernetworks. 
+\\
+\\
+The contraction of the tensor hypernetwork
 $A \in \mathbb{R}^{I \times J \times K}, B \in \mathbb{R}^{K \times M \times N}$ and
 $C \in \mathbb{R}^{K \times L}$ in Figure \ref{fig:tensor:hypernetwork},
 
