@@ -208,7 +208,7 @@ using the following algorithm:
           Now, iterate through the rows of $A'$ and $B'$. If $c^i = c^j$, compute and store:
           \begin{equation*}
               \begin{bmatrix}
-                  k_l & k_r & v^i \cdot v^j \\
+                  k_l^i & k_r^j & v^i \cdot v^j \\
               \end{bmatrix}
           \end{equation*}
           If the same indices already exist in the resulting matrix, sum their values and store the result.
@@ -218,7 +218,7 @@ using the following algorithm:
     \item Repeat from 2. with next batch until all batches are done.
 \end{enumerate}
 The final tensor is returned and can now be postprocessed. Figure \ref{fig:bmm:algorithm} provides
-a detailed illustration of Steps 1 through 5 of the algorithm. For the pseudocode of the sparse batch
+a detailed illustration of the first iteration of Steps 1 through 5 of the algorithm. For the pseudocode of the sparse batch
 matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
 
 \begin{figure}[H]
@@ -324,15 +324,15 @@ matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
         \FOR{each unique batch index $b$}
         \STATE Extract rows from $A$ and $B$ with batch index $b$ as COO matrices $A'$, $B'$
         \STATE Transpose $B'$:
-        \STATE Swap columns $c$ and $kr$ in $B'$
-        \STATE Sort rows of $B'$ first by $kr$, then by $c$
+        \STATE Swap columns $c$ and $k_r$ in $B'$
+        \STATE Sort rows of $B'$ first by $k_r$, then by $c$
         \STATE Initialize a temporary COO matrix $Temp$ as empty
         \FOR{each row $(k_l^i, c^i, v^i)$ in $A'$}
         \FOR{each row $(k_r^j, c^j, v^j)$ in $B'$ where $c^i = c^j$}
         \IF{row with indices $(k_l^i, k_r^j)$ exists in $Temp$}
-        \STATE Add $v^i \times v^j$ to the existing rows value
+        \STATE Add $v^i \cdot v^j$ to the existing rows value
         \ELSE
-        \STATE Store $(k_l^i, k_r^j, v^i \times v^j)$ in $Temp$
+        \STATE Store $(k_l^i, k_r^j, v^i \cdot v^j)$ in $Temp$
         \ENDIF
         \ENDFOR
         \ENDFOR
@@ -350,7 +350,7 @@ matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
 \subsection{Postprocessing}
 The result of the BMM may have to be postprocessed to fit the contraction lists output
 specifications. The postprocessing includes the reshaping of the three combined dimensions for
-the batch, contracted and summed indices into the required number of dimensions by treating
+the batch indices and the kept indices for the left and right tensor into the required number of dimensions by treating
 each combined dimension as a multi-index and unraveling it. Furthermore, the final dimensions
 may be permuted by swapping the COO tensors columns to fit the correct output format. Again,
 both of these steps are only performed if necessary.

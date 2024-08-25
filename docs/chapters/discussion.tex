@@ -5,7 +5,7 @@ improve both the memory footprint and execution speed.
 The current C++ implementation uses unordered maps to aggregate values from COO tensors.
 This is an inefficient way and can be slow for big tensors because it involves the
 maintenance of unordered maps. One such improvement can be using an iterative approach
-for the sparse batch matrix multiplication. Here we could ensure the indices for the batch
+for the sparse batch matrix multiplication. Here we could guarantee the indices for the batch
 matrix multiplication are ordered as
 \begin{equation*}
     bik, bjk \rightarrow bij.
@@ -22,8 +22,8 @@ only does this decrease computational complexity, but it also avoids adding vast
 of elements to a hash map.
 
 \section{Precomputation of Diagonal Indices and Summed Indices}
-The existing processing of tensor contractions incorporates all indices, diagonal and summed,
-during the actual pairwise tensor contractions. Often, this preprocessing is inefficient in
+The existing algorithm processes the diagonal and summed indices right before the actual pairwise 
+tensor contractions. Often, this preprocessing is inefficient in
 that it contains redundant computations for indices, which can sometimes be handled far more
 effectively before the main phase of contraction. One way of handling this inefficiency could
 be to traverse the contraction path, that essentially forms a binary tree structure and compute
@@ -129,5 +129,5 @@ a number of indices into a single index through a multi-index encoding. For exam
 16-bit indices may be combined into a single 64-bit integer. Such compression would reduce
 the memory footprint and could further improve computational speed by allowing bit-wise
 operations on the combined index. This would complicate the tracking of the indices, but the
-improvement of memory efficiency and the likely following performance gains, due to more efficient
-memory utilization, could be substantial.
+improvement of memory efficiency and the likely following performance gains, due to better
+memory access patterns, could be substantial.

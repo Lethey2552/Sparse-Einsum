@@ -9,7 +9,7 @@ Tensors are algebraic objects and a fundamental concept in mathematics, physics
 and computer science. They extend the idea of scalars, vectors and matrices to
 higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary
 number of dimensions. Each dimension of a tensor is represented by an index that spans
-the size of the dimension. The number of indices is commonly referred to as the
+the size of the dimension. The number of dimensions is commonly referred to as the
 tensor's ``rank" or ``order." The size of a tensor is determined by the product
 of the maximum values of each index's range.
 \\
@@ -59,7 +59,7 @@ A with indices i, j, k, both represented as a graph, can be seen in Figure
         \draw[-] (B_3.east) -- (I_3_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
     \end{tikzpicture}
     \caption{A matrix, a tensor and a tensor network visualized as a graph. Each index is represented
-        by an edge. Shared indices in a tensor network are represented by edges between nodes.}
+        by an edge. Shared indices of tensors in a tensor network are represented by edges between nodes.}
 \end{figure}
 
 \noindent
@@ -69,10 +69,10 @@ primitive type. We differentiate between dense and sparse tensors.
 \paragraph{Dense Tensors.}
 Dense tensors have a significant number of non-zero entries. However, there is no
 exact threshold which determines whether a tensor is dense or sparse. The density
-of a tensor, a metric indicating how many elements are non-zero compated to the total
-number of elements, is calculated as
+of a tensor, a metric indicating how many elements are non-zero compared to the total
+number of elements, is calculated as:
 \begin{equation*}
-    \frac{Number\ of\ non\text{-}zero\ elements}{Number\ of\ total\ elements}.
+    \frac{Number\ of\ non\text{-}zero\ elements}{Number\ of\ total\ elements}
 \end{equation*}
 
 \paragraph{Sparse Tensors.}
@@ -135,10 +135,8 @@ example would be written as:
 \noindent
 \\
 When using common Einstein summation APIs, tensor operations are encoded by using the
-indices of the tensors in a format string and the data itself.
-\newpage
-\noindent
-The format string for the above operation would come down to:
+indices of the tensors in a format string and the data itself. The format string for 
+the above operation would come down to:
 
 \[ijk,kmn \rightarrow ijmn\]
 \noindent

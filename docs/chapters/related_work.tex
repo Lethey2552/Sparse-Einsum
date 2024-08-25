@@ -23,7 +23,7 @@ Gray J. developed an Einsum function that calculates tensor expressions via a ba
 multiplication (BMM) approach~\cite{jcmgray}. This method allows for the computation of pairwise
 tensor expressions by mapping them to BMMs, using summation over indices, transposition
 and reshaping of the tensors. A BMM approach for evaluating Einstein summation expressions
-is also employed by Torch within its tensor library Aten. Sparse, a library designed for
+is also employed by Torch within its tensor library Aten~\cite{pytorch}. Sparse, a library designed for
 operations on sparse tensors, implements an Einsum function~\cite{sparse}. However, when used
 alone, Sparse struggles with large tensor expressions due to its limitations in handling a high
 number of different indices. This limitation can be overcome by using Sparse as a backend for
