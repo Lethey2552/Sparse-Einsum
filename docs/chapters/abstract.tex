@@ -1,9 +1,10 @@
 Einstein notation is a powerful tool for representing tensor expressions in many scientific and
 machine learning applications. For many of these applications sparse tensor operations are crucial,
 yet surprisingly, there are few algorithms tailored for solving Einstein summation problems for sparse tensors.
-To address this, we introduce a new approach based on Torch's algorithm that maps pairwise contractions
-to a sparse batch matrix multiplication kernel. We tested our method against three established approaches:
-the sparse tensor library Sparse, Torch, and a SQL based approach. Our experiments on real-world and
-synthetic benchmarks show that our algorithm solves sparse Einstein summation problems faster, handles
-higher-dimensional tensors, and computes larger problems where other methods fail. These findings highlight
-our algorithm's potential for improving efficiency in sparse Einstein summation.
+To address this shortcoming, we introduce a new approach that maps pairwise contractions to a
+sparse batch matrix multiplication kernel. We tested our method against three established approaches:
+the tensor library Sparse, Torch, and a SQL based approach. Our experiments on both real-world and
+synthetic benchmarks demonstrate that our algorithm outperforms others in solving sparse Einstein 
+summation problems. It efficiently handles higher-dimensional tensors and successfully computes 
+larger problems where other methods fail. These findings underscore the potential of our algorithm 
+to enhance efficiency and robustness in sparse Einstein summation.

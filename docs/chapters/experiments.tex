@@ -4,29 +4,28 @@
 \definecolor{plot_green}{rgb}{0, 0.729, 0.22}
 \definecolor{plot_gray}{rgb}{0.4, 0.4, 0.4}
 
-In this chapter, we compare five different methods - Sparse, our SQL Einsum implementation, Torch,
-our Sparse Einsum, and our Legacy Sparse Einsum - on different problems. In the plots, we will mark
+In this chapter, we compare five different methods: Sparse, our SQL Einsum implementation, Torch, our 
+Sparse Einsum, and our Legacy Sparse Einsum across various problems. In the plots, we will mark
 our implementations, SQL Einsum, Sparse Einsum and Legacy Sparse Einsum with an asterisk (*). In the
 first experiment, we evaluate their performance on three real-world instances of the
 ``Einsum Benchmark"~\cite{einsum_benchmark} dataset, which consists of real problems with complex
 tensor computations. In the second experiment, we asses their performance on various random tensor
 hypernetworks. For all computations, every method receives the same contraction path, which is computed
 before measuring the methods performance. It should be noted that we use Torch 2.0.1+cu118 as well
-as Sparse 0.15.4 as backends for opt\_einsum 3.3.0. The SQL queries to evaluate the Einsum problems
+as Sparse 0.15.4 as backends for opt\_einsum 3.3.0. This allows us to compute Einsum expressions with UTF-8 characters using Torch and Sparse. The SQL queries to evaluate the Einsum problems
 are computed using the Python module sqlite3 2.6.0, which uses SQLite 3.38.4 as the database engine.
-This allows us to compute Einsum expressions with UTF-8 characters using Torch and Sparse. The
-experiments are performed on a machine with an Intel i5-9600K 6-core processor running Windows 11
+The experiments are performed on a machine with an Intel i5-9600K 6-core processor running Windows 11
 Pro with 16 GB of RAM. Each core has a base frequency of 3.7 GHz and a max boost frequency of 4.6 GHz.
 To compile the algorithm, we use MSVC 14.34.31931. The evaluation is done in Python 3.11.0.
 
 \section{Einsum Benchmark Instances}
-In the following section, we discuss the results of the methods on three real model counting problems.
+In this section, we discuss the results of the methods on three real model counting problems.
 We chose these instances because they lead to sparse intermediate tensors and they are small enough
 to fit into memory on the machine we are benchmarking on. For each instance, Table \ref{tab:instance:data}
 lists the name, the number of input tensors, and the average density of the tensors after optimizing
 the contraction path for size.
 \begin{table}[hbp]
-    \caption{Instance Data with Tensor Count and Average Density}
+    \caption{Instance Data with Tensor Count and Average Density.}
     \label{tab:instance:data}
     \centering
     \begin{tabularx}{0.8\textwidth}{l  >{\raggedleft\arraybackslash}X  >{\raggedleft\arraybackslash}X}
