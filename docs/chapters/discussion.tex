@@ -27,23 +27,25 @@ tensor contractions. Often, this preprocessing is inefficient in
 that it contains redundant computations for indices, which can sometimes be handled far more
 effectively before the main phase of contraction. One way of handling this inefficiency could
 be to traverse the contraction path, that essentially forms a binary tree structure and compute
-the operations given by the diagonal indices and indices to be summed over beforehand. For example,
-say we have the Einsum expression
+the operations given by the diagonal indices and indices to be summed over beforehand. 
+\\
+\\
+\makebox[\linewidth][s]{For example, say we have the following Einsum expression based on three tensors:}
 \begin{equation*}
     ifbk, cjhb, ckkah \rightarrow bij
 \end{equation*}
-and we evaluate it using a contraction path that indicates to compute the expression
+Now, we evaluate it via a contraction path that indicates to compute the expression
 \begin{equation*}
+    \vspace{-1mm}
     cjhb, ckkah \rightarrow bjk,
 \end{equation*}
-followed by
+\makebox[\linewidth][s]{followed by another contraction that requires the result of the previous expression}
 \begin{equation*}
     ifbk, bjk \rightarrow bij.
 \end{equation*}
-Figure \ref{fig:traverse_tree} illustrates how we can traverse the binary tree from the root to the leafs and
-check which indices the corresponding parent requires. All diagonal indices and indices to be
-summed over can be removed and, if possible, we can permute the indices to fit our BMM requirements.
-\\
+Figure \ref{fig:traverse_tree} shows how we can traverse the binary tree from the root and
+check which indices the corresponding parent requires. The diagonals and summations over indices
+can be computed and the remaining indices can be reordered to fit the BMM.
 \\
 
 1.

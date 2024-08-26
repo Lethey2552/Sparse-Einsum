@@ -93,7 +93,9 @@ notation is known to produce execution times that are far from optimal, especial
 involving many tensors. The inefficiency stems from the fact that conventional query optimizers
 are unaware of the contraction order of the repeating indices within tensor expressions and are
 therefore incapable of effectively breaking down the query into smaller parts to exploit efficient
-contraction paths as described in Section \ref{sec:tensor:contractions}.\\
+contraction paths as described in Section \ref{sec:tensor:contractions}.
+\\
+\\
 One can get around this using intermediate tensors via subqueries or common table expressions,
 which decomposes one large Einstein summation query into smaller pieces and lets the database
 engine follow a predefined contraction order. More precisely, using GROUP BY and SUM
@@ -315,7 +317,7 @@ matrix multiplication using COO Tensors, refer to Algorithm \ref{alg:bmm}.
 \end{figure}
 
 \begin{algorithm}[H]
-    \caption{Sparse Batch Matrix Multiplication with COO Tensors}
+    \caption{Sparse Batch Matrix Multiplication with COO Tensors.}
     \label{alg:bmm}
     \begin{algorithmic}[1]
         \REQUIRE Tensors $A$, $B$

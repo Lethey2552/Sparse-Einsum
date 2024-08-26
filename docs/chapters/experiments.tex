@@ -11,7 +11,7 @@ first experiment, we evaluate their performance on three real-world instances of
 ``Einsum Benchmark"~\cite{einsum_benchmark} dataset, which consists of real problems with complex
 tensor computations. In the second experiment, we asses their performance on various random tensor
 hypernetworks. For all computations, every method receives the same contraction path, which is computed
-before measuring the methods performance. It should be noted that we use Torch 2.0.1+cu118 as well
+via cgreedy 0.0.3 before measuring the methods performance. It should be noted that we use Torch 2.0.1+cu118 as well
 as Sparse 0.15.4 as backends for opt\_einsum 3.3.0. This allows us to compute Einsum expressions with UTF-8 characters using Torch and Sparse. The SQL queries to evaluate the Einsum problems
 are computed using the Python module sqlite3 2.6.0, which uses SQLite 3.38.4 as the database engine.
 The experiments are performed on a machine with an Intel i5-9600K 6-core processor running Windows 11
@@ -134,7 +134,8 @@ again, not capable of finishing the computation. Compared to the others, Sparse 
             \legend{Sparse, SQL Einsum*, Torch, Legacy Sparse Einsum*, Sparse Einsum*}
         \end{axis}
     \end{tikzpicture}
-    \caption{Performance comparison of different methods for multiple instances.}
+    \caption{Performance comparison of different methods for multiple instances 
+    on a logarithmic scale.}
     \label{fig:exp:instances}
 \end{figure}
 
@@ -179,10 +180,10 @@ can have increases. It starts of with around the same it/s as SQL but declines f
 the other methods, coming in last with about the same performance as Torch. In general,
 SQL Einsum is superior for small till medium sizes of dimensions, but it also declines more
 steeply in comparison to all other methods. The SQL implementations iterations per second rise,
-when the maximum size of dimensions increases from 2 to 6 and from thereon decreases constantly.
+when the maximum size of dimensions increases from two to six and from thereon decreases constantly.
 Sparse Einsum and the legacy version of Sparse Einsum demonstrated very similar trends,
 though the legacy variant performed worse at all dimension sizes than the newer implementation.
-Still, both surpass the other methods towards the end.
+Still, both surpass the other methods with rising size of dimensions.
 
 \begin{figure}[H]
     \centering
@@ -277,7 +278,7 @@ Still, both surpass the other methods towards the end.
         \end{semilogyaxis}
     \end{tikzpicture}
     \caption{Performance of different methods as a function of maximum dimension size on a logarithmic scale.
-        The plot shows the number of iterations per second for each method across varying dimension sizes.}
+        The plot shows the number of iterations per second for each method.}
     \label{fig:exp:max_dim_size}
 \end{figure}
 
@@ -479,7 +480,7 @@ manages to outperform Torch in iterations per second with larger numbers of tens
         \end{semilogyaxis}
     \end{tikzpicture}
     \caption{Performance of different methods as a function of the number of tensors on a logarithmic scale. We set
-        max\_tensor\_order = max\_axis\_size = 9, because for larger values the tensors may not
+        \mbox{max\_tensor\_order = max\_axis\_size = 9}, because for larger values the tensors may not
         fit into memory upon generation.}
     \label{fig:exp:num_tensors}
 \end{figure}
