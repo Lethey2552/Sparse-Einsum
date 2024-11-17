@@ -1,0 +1,135 @@
+In this chapter, we discuss potential improvements to our C++ algorithm that could
+improve both the memory footprint and execution speed.
+
+\section{Iterative Approach for Batch Matrix Multiplication and Index Reordering}
+The current C++ implementation uses unordered maps to aggregate values from COO tensors.
+This is an inefficient way and can be slow for big tensors because it involves the
+maintenance of unordered maps. One such improvement can be using an iterative approach
+for the sparse batch matrix multiplication. Here we could guarantee the indices for the batch
+matrix multiplication are ordered as
+\begin{equation*}
+    bik, bjk \rightarrow bij.
+\end{equation*}
+By processing indices from left to right, we can ensure that we handle each unique index
+only once, thus avoiding redundant computations and making better use of memory and
+computational resources. Because the contraction path delivers an unambiguous order for
+tensor operations, reordering indices to process tensors iteratively could grant high
+performance savings. Index reordering will enable the algorithm to skip over portions
+of tensors that have already been processed, hence avoiding useless computations. This
+approach relies on the fact that, after processing a part of the tensor, it need not be visited
+again, and thus it traverses and processes tensor elements in a more efficient way. Not
+only does this decrease computational complexity, but it also avoids adding vast quantities
+of elements to a hash map.
+
+\section{Precomputation of Diagonal Indices and Summed Indices}
+The existing algorithm processes the diagonal and summed indices right before the actual pairwise 
+tensor contractions. Often, this preprocessing is inefficient in
+that it contains redundant computations for indices, which can sometimes be handled far more
+effectively before the main phase of contraction. One way of handling this inefficiency could
+be to traverse the contraction path, that essentially forms a binary tree structure and compute
+the operations given by the diagonal indices and indices to be summed over beforehand. 
+\\
+\\
+\makebox[\linewidth][s]{For example, say we have the following Einsum expression based on three tensors:}
+\begin{equation*}
+    ifbk, cjhb, ckkah \rightarrow bij
+\end{equation*}
+Now, we evaluate it via a contraction path that indicates to compute the expression
+\begin{equation*}
+    \vspace{-1mm}
+    cjhb, ckkah \rightarrow bjk,
+\end{equation*}
+\makebox[\linewidth][s]{followed by another contraction that requires the result of the previous expression}
+\begin{equation*}
+    ifbk, bjk \rightarrow bij.
+\end{equation*}
+Figure \ref{fig:traverse_tree} shows how we can traverse the binary tree from the root and
+check which indices the corresponding parent requires. The diagonals and summations over indices
+can be computed and the remaining indices can be reordered to fit the BMM.
+\\
+
+1.
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            level 1/.style={sibling distance=4cm},
+            level 2/.style={sibling distance=3cm},
+            level 3/.style={sibling distance=2cm},
+            every node/.append style={text centered},
+            edge from parent path={(\tikzparentnode) -- (\tikzchildnode)}
+        ]
+
+        % Root
+        \node {bij}
+        child {node {ifbk}}
+        child {node {bjk}
+                child {node {cjhb}}
+                child {node {ckkah}}
+            };
+
+    \end{tikzpicture}
+\end{figure}
+2.
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            level 1/.style={sibling distance=4cm},
+            level 2/.style={sibling distance=3cm},
+            level 3/.style={sibling distance=2cm},
+            every node/.append style={text centered},
+            edge from parent path={(\tikzparentnode) -- (\tikzchildnode)}
+        ]
+
+        % Root
+        \node {bij}
+        child {node {\st{f}bik}}
+        child {node {bkj}
+                child {node {cjhb}}
+                child {node {ckkah}}
+            };
+
+    \end{tikzpicture}
+\end{figure}
+3.
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            level 1/.style={sibling distance=4cm},
+            level 2/.style={sibling distance=3cm},
+            level 3/.style={sibling distance=2cm},
+            every node/.append style={text centered},
+            edge from parent path={(\tikzparentnode) -- (\tikzchildnode)}
+        ]
+
+        % Root
+        \node {bij}
+        child {node {\st{f}bik}}
+        child {node {bkj}
+                child {node {\st{c}bjh}}
+                child {node {\st{ack}hk}}
+            };
+
+    \end{tikzpicture}
+    \caption{An example for the removal of diagonal indices and indices to be summed over, as well as
+        the permutation of indices by traversing the binary tree given by the contraction path.}
+    \label{fig:traverse_tree}
+\end{figure}
+
+\noindent
+Such preprocessing makes it possible for the algorithm to perform fewer operations in total.
+When the main computation starts, the aforementioned indices that can be removed can be
+processed in the first pass. Hence, extra steps are not required. By rearranging indices
+such that only required operations are made during the contraction phase, the algorithm can
+reduce the overall processing time along with the computational overhead.
+
+\section{Memory Footprint Optimization via Multi Index Encoding}
+One of the possible bottlenecks in our latest implementation is that it consumes a lot of
+memory while storing and tracking tensor indices in COO format. The current practice is to
+store each index separately, thus making it expensive in terms of memory usage for large
+tensors and high-order contractions. Extra performance gains could be attained by compressing
+a number of indices into a single index through a multi-index encoding. For example, four
+16-bit indices may be combined into a single 64-bit integer. Such compression would reduce
+the memory footprint and could further improve computational speed by allowing bit-wise
+operations on the combined index. This would complicate the tracking of the indices, but the
+improvement of memory efficiency and the likely following performance gains, due to better
+memory access patterns, could be substantial.

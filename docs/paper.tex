@@ -1,18 +1,69 @@
-\documentclass[12pt]{report}
+\documentclass[12pt]{scrbook}
 \usepackage[utf8]{inputenc}
+\usepackage{algorithm}
+\usepackage{algorithmic}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage[backend=biber,style=numeric,]{biblatex}
-\usepackage{graphicx}
-\usepackage{setspace}
+\usepackage{bookmark}
+\usepackage{booktabs}
+\usepackage{calc}
+\usepackage{color}
+\usepackage{enumitem}
+\usepackage{float}
 \usepackage[top=3.0cm, bottom=3.0cm]{geometry}
-\usepackage[pagestyles]{titlesec}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{pgfplots}
+\usepackage{pdfpages}
+\usepackage{scrhack}
+\usepackage[automark,ilines]{scrlayer-scrpage}
+\usepackage{setspace}
+\usepackage{soul}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{positioning, quotes, calc, patterns}
+\pgfplotsset{compat=newest}
 
-\titleformat{\chapter}[hang]{\normalfont\Large\bfseries}{\thechapter}{1em}{\Large}
+% Set the page style and center the page number
+\pagestyle{scrplain}
+\cfoot[\pagemark]{\pagemark} % Center the page number in the footer
+\ofoot[]{} % Clear the default outer footer
+\ifoot[]{} % Clear the default inner footer
+
 \graphicspath{ {images/} }
 \addbibresource{literature.bib}
 
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{darkgreen}{rgb}{0.055, 0.549, 0.153}
+\definecolor{midgreen}{rgb}{0, 0.549, 0.082}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+\definecolor{blind-purple}{rgb}{0.863, 0.149, 0.498}
+\definecolor{blind-blue}{rgb}{0.118, 0.067, 0.773}
+\definecolor{blind-orange}{rgb}{0.996, 0.38, 0}
+\definecolor{blind-turquoise}{rgb}{0, 0.584, 0.62}
+%
+\lstset{frame=tb,
+    language=SQL,
+    aboveskip=3mm,
+    belowskip=3mm,
+    showstringspaces=false,
+    columns=flexible,
+    basicstyle={\small\ttfamily},
+    numbers=none,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{darkgreen},
+    stringstyle=\color{mauve},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=3 
+}
+
 \begin{document}
 
+\newgeometry{top=3.0cm, bottom=3.0cm, left=4cm, right=2cm}
 \begin{titlepage}
     \begin{center}
 
@@ -21,12 +72,11 @@
             \vspace*{\fill}
         \end{spacing}
         \begin{spacing}{2.5}
-            \textbf{\huge A Comparison of Different Algorithms for Einsum}\\[0.5cm]
+            \textbf{\huge A Comparison of Different Algorithms for Sparse Einsum}\\[0.5cm]
             \vspace*{\fill}
             \begin{spacing}{1.5}
                 \textbf{BACHELOR THESIS\\}
                 to be Awarded the Academic Degree\\
-                of\\
                 Bachelor of Science (B.Sc.)\\
                 in Informatics\\
             \end{spacing}
@@ -35,7 +85,7 @@
         \vspace*{\fill}
 
         \begin{spacing}{1.15}
-            \textbf{FRIEDRICH-SCHILLER-UNIVERSITY\\JENA\\}
+            \textbf{FRIEDRICH-SCHILLER-UNIVERSITY JENA\\}
             Faculty for Mathematics and Informatics
 
             \vspace*{\fill}
@@ -43,42 +93,46 @@
             \textit{Submitted by Leon Manthey}\\
             born on 31.10.1999 in Berlin\\
             Supervisor: Mark Blacher\\
-            Jena, 15.05.2024
+            Jena, 26.08.2024
 
         \end{spacing}
     \end{center}
 \end{titlepage}
+\cleardoublepage
 
-\begin{abstract}
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce eleifend orci
-    et venenatis cursus. Nullam eget ornare lacus. Donec non dolor non tellus
-    eleifend vehicula. Sed et lorem lectus. Vestibulum sagittis sed nisi ac interdum.
-    Duis nec accumsan velit, hendrerit malesuada magna. Aliquam erat volutpat.
-    Cras eu ante nec est malesuada volutpat. Proin quis posuere quam. Etiam aliquam
-    eros quis dui sagittis, a fermentum lectus rutrum. Nunc tempor mauris vel tellus
-    facilisis rhoncus. Aliquam ut leo eget metus volutpat vestibulum.
-    Nam non consequat ante. In rutrum felis in enim fringilla lacinia.
-    Phasellus ut imperdiet risus. Curabitur tincidunt libero sed urna dignissim,
-    eget rutrum felis scelerisque. Nunc ut convallis neque, non tincidunt nulla.
-    Curabitur quis condimentum leo. Phasellus laoreet ligula vel mi commodo, id
-    accumsan diam tristique. Maecenas euismod lorem in tempor iaculis.
-    Orci varius natoque penatibus et magnis dis parturient montes, nascetur
-    ridiculus mus. Ut eget purus sem. Suspendisse venenatis aliquet dignissim.
-    Integer turpis lorem, tempus non turpis et, gravida aliquet erat. Sed vel
-    neque non ex ultrices vestibulum. Aliquam purus quam, rhoncus non ante at,
-    convallis sagittis erat. Sed justo elit, vulputate vel accumsan non, porta eget
-    turpis. Proin eget ultrices sem. Nunc eu velit.
-\end{abstract}
+\chapter*{Abstract}
+\input{chapters/abstract.tex}
 
-\setcounter{page}{3}
+\chapter*{Zusammenfassung}
+\input{chapters/zusammenfassung.tex}
 
 \tableofcontents
 
 \newgeometry{top=3.0cm, bottom=3.0cm, left=4cm, right=2cm}
 
 \chapter{Introduction}
-\input{chapters/introduction_chapter.tex}
+\input{chapters/introduction.tex}
+
+\chapter{Background}
+\input{chapters/background.tex}
+
+\chapter{Related Work}
+\input{chapters/related_work.tex}
+
+\chapter{Algorithms}
+\input{chapters/algorithms.tex}
+
+\chapter{Experiments}
+\input{chapters/experiments.tex}
+
+\chapter{Discussion}
+\input{chapters/discussion.tex}
+
+\chapter{Conclusion}
+\input{chapters/conclusion.tex}
 
 \printbibliography
+
+\includepdf[pages=-]{chapters/Eigenständigkeitserklärung.pdf}
 
 \end{document}

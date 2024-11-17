@@ -1,0 +1,13 @@
+Die Einstein-Notation ist ein mächtiges Werkzeug, das vermehrt zur Darstellung von Tensor-Ausdrücken
+in diversen wissenschaftlichen Kontexten sowie im maschinellen Lernen verwendet wird. Viele dieser
+Anwendungen operieren auf dünnbesetzten Tensoren (auch sparse Tensoren genannt). Trotzdem existieren wenige
+Algorithmen, die speziell für die Lösung von Einstein-Summationsproblemen mit dünnbesetzten Tensoren
+entwickelt wurden. Der von uns in dieser Arbeit vorgestellte Algorithmus adressiert den Mangel solcher Methoden.
+Dabei werden die Einstein-Summations-probleme durch die Abbildung paarweiser Kontraktionen auf eine Batch-Matrix-Multiplikation
+für dünnbesetzte Tensoren berechnet. Vergleiche mit Sparse, einer Bibliothek für dünnbesetzte Tensoren, Torch und
+einem auf SQL basierenden Ansatz zeigen, dass unser Algorithmus effizienter arbeitet als diese drei bereits
+etablierten Methoden. Experimente mit aus realen Problemen entnommenen sowie synthe-tischen Benchmarks
+ergaben, dass unser Algorithmus Einstein-Summationsprobleme für dünnbesetzte Tensoren schneller berechnet,
+effizient mit höherdimensionalen Tensoren umgeht sowie größere Probleme lösen kann als die eben genannten drei Methoden.
+Diese Ergebnisse unterstreichen das Potenzial unseres Algorithmus, maßgeblich zur Effizienzsteigerung
+bei Einstein-Summationsproblemen für dünnbe-setzte Tensoren beitragen zu können.

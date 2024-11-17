@@ -1,0 +1,242 @@
+The following chapter serves to introduce the necessary background for tensors,
+Einstein notation and Einstein summation. Furthermore, we will provide various
+examples for operations that can be expressed using Einstein notation. Given the
+considerable overlap in topics, we will build on related literature [5], adapting
+and expanding it to meet our specific research requirements.
+
+\section{Tensors}
+Tensors are algebraic objects and a fundamental concept in mathematics, physics
+and computer science. They extend the idea of scalars, vectors and matrices to
+higher dimensions. In essence, a tensor is a multi-dimensional array with an arbitrary
+number of dimensions. Each dimension of a tensor is represented by an index that spans
+the size of the dimension. The number of dimensions is commonly referred to as the
+tensor's ``rank" or ``order." The size of a tensor is determined by the product
+of the maximum values of each index's range.
+\\
+\\
+For example, consider a tensor $T$ with indices $i,j,k$ and corresponding ranges
+$i \in \{1,2\},\ j \in \{1,2,3,4,5,6\}$ and $k \in \{1,2,3,4\}$. The size of
+tensor $T$ is calculated as follows: $2 \cdot 6 \cdot 4 = 48$. This means tensor
+$T$ has a total of $48$ elements. An example of a matrix A with indices i, j and a tensor
+A with indices i, j, k, both represented as a graph, can be seen in Figure
+\ref{fig:tensor:vec_mat_ten}.
+
+\begin{figure}[H]
+    \label{fig:tensor:vec_mat_ten}
+    \centering
+    \begin{tikzpicture}[
+            node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
+            node_inv/.style={circle, draw=white, fill=white, minimum size=7mm},
+        ]
+        %Nodes
+        \node[node_inv]  (I_1_1)                      {};
+        \node[node]      (A_1)       [right=of I_1_1] {A};
+        \node[node_inv]  (I_1_2)     [above=of A_1]   {};
+
+        \node[node_inv]  (I_2_1)     [right=of A_1]   {};
+        \node[node]      (A_2)       [right=of I_2_1] {A};
+        \node[node_inv]  (I_2_2)     [above=of A_2]   {};
+
+        \node[node_inv]  (I_3_1)     [right=of A_2]   {};
+        \node[node]      (A_3)       [right=of I_3_1] {A};
+        \node[node_inv]  (I_3_2)     [above=of A_3]   {};
+        \node[node]      (B_3)       [right=of A_3]   {B};
+        \node[node_inv]  (I_3_3)     [above=of B_3]   {};
+        \node[node_inv]  (I_3_4)     [right=of B_3]   {};
+
+        %Lines
+        \draw[-] (A_1.west) -- (I_1_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A_1.north) -- (I_1_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+
+        \draw[-] (A_2.west) -- (I_2_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A_2.north) -- (I_2_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+        \draw[-] (A_2.east) -- (I_3_1.west) node [above, fill=white, opacity=.0, text opacity=1] {k};
+
+        \draw[-] (A_3.west) -- (I_3_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A_3.north) -- (I_3_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+        \draw[-] (A_3.east) -- (B_3.west) node [midway, above, fill=white, opacity=.0, text opacity=1] {k};
+        \draw[-] (B_3.north) -- (I_3_3.south) node [right, fill=white, opacity=.0, text opacity=1] {m};
+        \draw[-] (B_3.east) -- (I_3_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
+    \end{tikzpicture}
+    \caption{A matrix, a tensor and a tensor network visualized as a graph. Each index is represented
+        by an edge. Shared indices of tensors in a tensor network are represented by edges between nodes.}
+\end{figure}
+
+\noindent
+In this work, a tensor is simply a multidimensional array containing data of a
+primitive type. We differentiate between dense and sparse tensors.
+
+\paragraph{Dense Tensors.}
+Dense tensors have a significant number of non-zero entries. However, there is no
+exact threshold which determines whether a tensor is dense or sparse. The density
+of a tensor, a metric indicating how many elements are non-zero compared to the total
+number of elements, is calculated as:
+\begin{equation*}
+    \frac{Number\ of\ non\text{-}zero\ elements}{Number\ of\ total\ elements}
+\end{equation*}
+
+\paragraph{Sparse Tensors.}
+In Sparse tensors most values are zero. They can greatly profit from specialized
+formats. For our tensor $T \in \mathbb{R}^{I \times J \times K}$ in dense format
+we need to save $I \cdot J \cdot K$ values no matter whether they are zero or not.
+Now consider that, if the vast majority of $T$'s values are zero, we could only save
+the coordinates of the non-zero values, that is the index of the value for each
+dimension. This is what we call the coordinate (COO) format. Each row of the COO
+representation encodes a single value of the tensor with each column holding the
+position of the value for the corresponding dimension and the last column giving
+the actual value. This can be done for an arbitrary number of dimensions by simply
+adding more columns for their respective coordinates. An example of a dense tensor
+(left) and its COO representation (right) could be the following:
+
+\begin{equation*}
+    \begin{bmatrix}
+        0 & 1 & 0 & 0  \\
+        0 & 0 & 4 & 0  \\
+        5 & 0 & 0 & 10 \\
+        0 & 0 & 0 & 0
+    \end{bmatrix}
+    \quad
+    \Rightarrow
+    \quad
+    \begin{bmatrix}
+        0 & 1 & 1  \\
+        1 & 2 & 4  \\
+        2 & 0 & 5  \\
+        2 & 3 & 10
+    \end{bmatrix}
+\end{equation*}
+
+\section{Einstein Notation and Einstein Summation}
+In 1916, Albert Einstein introduced the so called Einstein notation, also known as
+Einstein summation convention or Einstein summation notation, for the sake of
+representing tensor expressions in a concise manner. As an example, the following
+operation on the tensors $A \in \mathbb{R}^{I \times J \times K}$ and
+$B \in \mathbb{R}^{K \times M \times N}$ from Figure \ref{fig:tensor:vec_mat_ten},
+
+\[C_{ijmn} = \sum_{k}A_{ijk} \cdot B_{kmn}\]
+\noindent
+\\
+can be simplified by making the assumption that pairs of repeated indices in the expression
+are to be summed over, as is the rule for tensor contractions. Consequently, the contraction
+can be rewritten as:
+
+\[C_{ijmn} = A_{ijk} \cdot B_{kmn}\]
+\noindent
+\\
+To expand upon the expressive power of the original Einstein notation, modern Einstein
+notation was introduced. This notation is used by most linear algebra and machine
+learning libraries supporting Einstein summation, that is, the evaluation of the actual
+tensor expressions. Modern Einstein notation explicitly states the indices for the
+output tensor, enabling further operations like transpositions, traces or summation
+over non shared indices. 
+\\
+\\
+In modern Einstein notation, the expression from the previous example would be written as:
+
+\[A_{ijk}B_{kmn} \rightarrow C_{ijmn}\]
+\noindent
+\\
+When using common Einstein summation APIs, tensor operations are encoded by using the
+indices of the tensors in a format string and the data itself. The format string for 
+the above operation would come down to:
+
+\[ijk,kmn \rightarrow ijmn\]
+\noindent
+\\
+In Modern Einstein notation, indices that are not mentioned in the output are to be
+summed over. For the sake of simplicity, we will from now on refer to Einstein summation
+as Einsum, and we will use the original, the modern notation or just the format
+string, depending on the context. For expressions with two tensors we will call the first
+tensor the left tensor and the second tensor the right tensor.
+
+\section{Operations with Einsum}
+Einsum is a powerful tool for performing various tensor operations. Table \ref{tab:einsum:ops}
+shows some common operations that can be performed using Einsum.
+
+\begin{table}[hbp]
+    \caption{Example operations with Einsum.}
+    \label{tab:einsum:ops}
+    \centering
+    \def\arraystretch{1.1}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Operation}                 & \textbf{Formula}                                    & \textbf{Format string}         \\
+        \midrule
+        Dot Product                        & $c = \sum_{i} a_{i} b_{i}$                          & i,i $\rightarrow$              \\
+        Sum Over Axes                      & $b_{j} = \sum_{i} A_{ij}$                           & ij $\rightarrow$ j             \\
+        Outer Product                      & $C_{ij} = a_{i} b_{j}$                              & i,j $\rightarrow$ ij           \\
+        Matrix Multiplication              & $C_{ij} = \sum_{k} A_{ik} B_{kj}$                   & ik,kj $\rightarrow$ ij         \\
+        Batch Matrix Multiplication        & $C_{bij} = \sum_{k} A_{bik} B_{bkj}$                & bik,bkj $\rightarrow$ bij      \\
+        Tucker Decomposition \cite{tucker} & $T_{ijk} = \sum_{pqr} D_{pqr} A_{ip} B_{jq} C_{kr}$ & pqr,ip,jq,kr $\rightarrow$ ijk \\
+        \bottomrule
+    \end{tabular}
+    %}
+\end{table}
+
+\noindent
+These examples illustrate the versatility of Einsum in performing a wide range of
+tensor operations using a concise and readable notation, expressed as a format string.
+Note that while the examples provided are relatively simple, real-world Einstein
+summation problems may include thousands of tensors.
+
+\section{Contraction of Tensor Hypernetworks}
+\label{sec:tensor:contractions}
+Tensor contraction is the process of reducing one or multiple tensor's orders by summing
+over pairs of matching indices. Tensor networks where more than two tensors share an index
+are called tensor hypernetworks. 
+\\
+\\
+The contraction of the tensor hypernetwork
+$A \in \mathbb{R}^{I \times J \times K}, B \in \mathbb{R}^{K \times M \times N}$ and
+$C \in \mathbb{R}^{K \times L}$ in Figure \ref{fig:tensor:hypernetwork},
+
+\[T_{ijmnl} = \sum_{k}A_{ijk} \cdot B_{kmn} \cdot C_{kl}\]
+\noindent
+\\
+in modern Einstein notation written as
+
+\[ijk,kmn,kl \rightarrow ijmnl\]
+\noindent
+\\
+can be calculated in different orders. Either way, it is possible to get the same result by
+contracting $A$ and $B$ first, followed by $(AB) \cdot C$, by contracting $B$ and $C$
+and then $A \cdot (BC)$ or by contracting $A$ and $C$, followed by $(AC) \cdot B$.
+While the result of the contraction orders will be the same, the underlying number of
+operations may differ vastly. As a result, the order in which tensors are contracted
+can drastically change the performance of an algorithm. We call this order the contraction
+path.
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+            node/.style={circle, draw=black, fill=white, thick, minimum size=7mm},
+            node_inv/.style={circle, draw=white, fill=white, minimum size=7mm},
+        ]
+        %Nodes
+
+        \node[node_inv]  (I_1)                      {};
+        \node[node]      (A)       [right=of I_1] {A};
+        \node[node_inv]  (I_2)     [above=of A]   {};
+        \node[node]      (B)       [right=of A]   {B};
+        \node[node_inv]  (I_3)     [above=of B]   {};
+        \node[node_inv]  (I_4)     [right=of B]   {};
+
+        % Add a coordinate for the T-junction
+        \coordinate (T) at ($(A)!0.5!(B)$);
+        \node[node] (C) [below=of T] {C};
+        \node[node_inv] (I_5) [below=of C] {};
+
+        % Draw the T-junction edge
+        \draw[-] (T) -- (C);
+
+        %Lines
+        \draw[-] (A.west) -- (I_1.east) node [above, fill=white, opacity=.0, text opacity=1] {i};
+        \draw[-] (A.north) -- (I_2.south) node [right, fill=white, opacity=.0, text opacity=1] {j};
+        \draw[-] (A.east) -- (B.west) node [midway, above, fill=white, opacity=.0, text opacity=1] {k};
+        \draw[-] (B.north) -- (I_3.south) node [right, fill=white, opacity=.0, text opacity=1] {m};
+        \draw[-] (B.east) -- (I_4.west) node [above, fill=white, opacity=.0, text opacity=1] {n};
+        \draw[-] (C.south) -- (I_5.north) node [right, fill=white, opacity=.0, text opacity=1] {l};
+    \end{tikzpicture}
+    \caption{A tensor hypernetwork.}
+    \label{fig:tensor:hypernetwork}
+\end{figure}
