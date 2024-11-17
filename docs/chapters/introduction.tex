@@ -1,0 +1,68 @@
+Einstein notation is a powerful and compact notation for representing
+tensor expressions. It was introduced by Albert Einstein in the early 20th century
+in order to simplify tensor expressions in ``The Foundation of the General Theory of
+Relativity"~\cite{einstein1916}. Due to being brief but still comprehensive, Einstein
+notation has become a valuable tool in many fields such as physics, mathematics, and
+computer science.
+\\\\
+The fundamental operation for evaluating tensor expressions presented in Einstein
+notation is Einstein summation, often referred to simply as ``Einsum". This operation
+allows for the calculation of various tensor expressions, including element-wise
+multiplications, dot products, outer products, and matrix multiplications. The predominant
+reason for the adoption of Einsum notation in numerous applications, ranging from machine
+learning to scientific computing, is its conciseness.
+\\\\
+In many practical applications, especially in machine learning and scientific computing,
+the data involved can be sparse. In sparse tensors most values are zero. Handling sparse
+tensors efficiently requires specialized algorithms and data structures to avoid
+unnecessary computations and to save memory. Traditional libraries like NumPy~\cite{numpy}
+and other major artificial intelligence frameworks~\cite{tensorflow, pytorch} typically
+support Einstein summation for dense tensors, but lack support for sparse tensors. The only
+known library that aims to support Einsum operations on sparse tensors is Sparse~\cite{sparse}.
+However, like NumPy, Sparse only allows for a limited number of symbols to be used as
+indices, which is why we use opt\_einsum~\cite{opt_einsum}, a package for optimizing the
+contraction order of Einsum expressions. More importantly for us though, opt\_einsum can
+handle UTF-8 symbols and use Sparse and other libraries like Torch as a backend. Real Einstein
+summation problems often include expressions with hundreds or even thousands of higher order
+tensors. In order to express the aforementioned operations we require a large set of unique
+indices. Thus, our approaches, just like opt\_einsum, are capable of handling all symbols
+in the UTF-8 encoding.
+\\\\
+This thesis explores the implementation and performance of Einstein summation
+across different computing paradigms, with a particular focus on sparse tensors.
+Specifically, it focuses on explaining our following implementations and comparing them
+to multiple libraries:
+%
+\begin{itemize}
+      \item SQL-based Implementation:
+            This implementation is based on the algorithm presented in ``Efficient and
+            Portable Einstein Summation in SQL" by Blacher et al~\cite{sql_einsum}.
+            It constructs SQL queries dynamically using Python. While SQL is
+            traditionally used for database operations, this approach demonstrates
+            the ability of SQL in performing tensor operations.
+      \item C++ Implementation: The second implementation is written in C++, with two
+            versions, one naive and one optimized approach. The different versions
+            aim to explore the performance trade-offs between simplicity and optimization,
+            offering insights into how different coding strategies affect computational
+            efficiency.
+\end{itemize}
+%
+% Write about some of the results of the paper. I.e. we were able to outperform
+% this and that library and we accept more different indices as input.
+%
+By comparing these implementations, our goal is to provide a comprehensive analysis of
+the performance and scalability of sparse Einstein summation in diverse computing
+environments. The SQL-based implementation serves as a baseline for comparing all
+approaches. It showcases the potential of database query languages for tensor operations.
+Furthermore, the C++ implementations show how low-level optimizations impact
+computational performance. The code for our implementations is available on
+GitHub at: https://github.com/Lethey2552/Sparse-Einsum.
+\\
+\\
+We aim to determine the advantages and disadvantages of each approach by comparing
+our implementations against the sparse tensor library Sparse and highly performance-tuned
+dense tensor libraries like Torch. This will help identify which approach is best
+for a given set of use cases and computational requirements. The goal of this effort
+is to provide researchers and practitioners in disciplines that significantly rely
+on tensor calculations with practical insights by expanding the understanding of
+tensor operations and their effective implementation.
