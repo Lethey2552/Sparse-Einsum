@@ -1,19 +1,29 @@
 import numpy as np
-import sesum.sr as sr
 import sqlite3 as sql
-import opt_einsum as oe
-from einsum.utilities.classes.coo_matrix import Coo_matrix
-from operator import itemgetter
+from cgreedy import compute_path
+from string import ascii_letters
+from einsum.utilities.helper_functions import get_sizes, clean_einsum_notation
+from itertools import product
+
+DB_CONNECTION = sql.connect("SQL_einsum.db")
+DB = DB_CONNECTION.cursor()
+
+ASCII = list(ascii_letters)
 
 
-ASCII = [
-    "i", "j", "x", "y", "z",
-    "a", "b", "c", "d", "e",
-    "f", "g", "h", "k", "l",
-    "m", "n", "o", "p", "q",
-    "r", "s", "t", "u", "v",
-    "w"
-]
+def find_contraction(positions, input_sets, output_set):
+    remaining = list(input_sets)
+    inputs = (remaining.pop(i) for i in sorted(positions, reverse=True))
+    idc_contract = set.union(*inputs)
+    idc_remain = output_set.union(*remaining)
+
+    new_result = idc_remain & idc_contract
+    idc_removed = idc_contract - new_result
+    remaining.append(new_result)
+
+    return new_result, remaining, idc_removed, idc_contract
+
+# TODO: Handle SQL results being zero and shaping of output
 
 
 def sql_einsum_values(tensors: dict):
@@ -21,40 +31,45 @@ def sql_einsum_values(tensors: dict):
     Creates the tensors in COO format as SQL compatible structures
     and returns the appropriate query.
     """
-    query = ""
-
+    query_for_single_tensors = []
     for tensor_name, tensor in tensors.items():
-        cast = True
-        query += f"{tensor_name}({', '.join(ASCII[:len(tensor.shape)])}, val) AS (\n"
+        if isinstance(tensor, float) or isinstance(tensor, int):
+            query = f" {tensor_name}(val) AS ( VALUES ("
+            query += "("
+            query += f"CAST({tensor} AS DOUBLE PRECISION))))\n"
+        else:
+            query = f" {tensor_name}({', '.join(ASCII[:len(tensor.shape)])}, val) AS (\n"
+            # create value tuples
+            values = []
+            cast = False
+            for row, indices in enumerate(product(*[range(i) for i in tensor.shape])):
+                # skip zero values
+                if tensor[indices] == 0:
+                    continue
+                # if we add the first value we have to give the data type
+                if not cast:
+                    type_definition = "("
+                    for index in indices:
+                        type_definition += f"CAST({index} AS INTEGER), "
+                    type_definition += f"CAST({tensor[indices]} AS DOUBLE PRECISION))"
+                    values.append(type_definition)
+                    cast = True
+                else:
+                    values.append(f"{indices + (tensor[indices],)}")
 
-        it = np.nditer(tensor, flags=['multi_index'])
-        for x in it:
-            # skip zero values
-            if tensor[it.multi_index] == 0:
-                continue
+            # Handle the case where all values are zero
+            if not values:
+                # Insert a placeholder value (e.g., with indices 0, 0, 0,... and val 0.0)
+                type_definition = "("
+                type_definition += ", ".join([f"CAST(0 AS INTEGER)"]
+                                             * len(tensor.shape))
+                type_definition += ", CAST(0.0 AS DOUBLE PRECISION))"
+                values.append(type_definition)
 
-            # give data type for first entry with COO format
-            if cast:
-                type_casts = ""
-
-                for i in it.multi_index:
-                    type_casts += f"CAST({i} AS INTEGER), "
-                type_casts += f"CAST({x} AS INTEGER)"
-
-                query += f"VALUES({type_casts}),\n"
-
-                cast = False
-            else:
-                item_coo = "("
-
-                for i in it.multi_index:
-                    item_coo += f"{i}, "
-
-                query += f"{item_coo}{x}), "
-        query = query[:-2]
-        query += "\n), "
-
-    return query[:-2] + "\n"
+            query += f"  VALUES {', '.join(values)}\n)"
+        query_for_single_tensors.append(query)
+    query = f"WITH {', '.join(query_for_single_tensors)}"
+    return query
 
 
 def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
@@ -65,7 +80,6 @@ def sql_einsum_contraction(einsum_notation: str, tensor_names: list):
 
     # get tensor names and set constants
     arrays = tensor_names
-    len_arrays = len(arrays)
     array_aliases = []
     names = set()
     i = 1
@@ -170,7 +184,7 @@ def find_contraction(positions, input_sets, output_set):
     return new_result, remaining, idc_removed, idc_contract
 
 
-def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict, path_info):
+def sql_einsum_with_path(einsum_notation: str, tensor_names: list, path_info):
     # Contraction list
     path = path_info
     cl = []
@@ -183,13 +197,9 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
     c = 0
 
     # Build contraction tuple (positions, einsum_not, remaining_einsum_not)
-    einsum_notation = einsum_notation.replace(" ", "")
-    einsum_notation = einsum_notation.split("->")
-
-    input_idc = einsum_notation[0].split(",")
-    output_idc = einsum_notation[1]
-    input_sets = [set(indices) for indices in einsum_notation[0].split(",")]
-    output_set = set(einsum_notation[1])
+    input_idc, output_idc = clean_einsum_notation(einsum_notation)
+    input_sets = [set(indices) for indices in input_idc]
+    output_set = set(output_idc)
 
     ##### INFO ######
 
@@ -223,7 +233,7 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
                          einsum_str, remaining_formula]))
 
         input_idc.append(idx_result)
-        
+
     for contraction in cl:
         current_arrays = [arrays[idx] for idx in contraction[0]]
 
@@ -257,99 +267,52 @@ def sql_einsum_with_path(einsum_notation: str, tensor_names: list, tensors: dict
 
 
 def sql_einsum_query(einsum_notation: str, tensor_names: list, tensors: dict, path_info=None):
-    query = "WITH "
+    query = ""
     values_query = sql_einsum_values(tensors)
 
-    if path_info:
-        contraction_query = sql_einsum_with_path(
-            einsum_notation, tensor_names, tensors, path_info)
-    else:
-        contraction_query = sql_einsum_contraction(
-            einsum_notation, tensor_names)
+    tensor_shapes = [t.shape for t in tensors.values()]
+
+    input_idc, output_idc = clean_einsum_notation(einsum_notation)
+    shapes_dict = get_sizes(input_idc, tensor_shapes)
+    out_shape = tuple([shapes_dict[i] for i in output_idc])
+
+    if path_info is None:
+        path_info, _, _ = compute_path(
+            einsum_notation,
+            *tensor_shapes,
+            seed=0,
+            minimize='size',
+            max_repeats=8,
+            max_time=0.0,
+            progbar=False,
+            is_outer_optimal=False,
+            threshold_optimal=12
+        )
+
+    contraction_query = sql_einsum_with_path(
+        einsum_notation, tensor_names, path_info)
 
     query += values_query + contraction_query
 
-    return query
+    return query, out_shape
 
 
-def sql_einsum_query_opt(einsum_notation: str, tensor_names: list, tensors: dict, arrays: list):
-    # Get Sesum contraction path
-    path, flops_log10, size_log2 = sr.compute_path(
-        einsum_notation, 
-        *arrays, 
-        seed=0, 
-        minimize='size', 
-        algorithm="greedy", 
-        max_repeats=8,
-        max_time=0.0, 
-        progbar=False, 
-        is_outer_optimal=False,
-        threshold_optimal=12
-    )
+def sql_einsum_execute(query, res_shape):
+    sql_result = DB.execute(query)
+    sql_result = get_matrix_from_sql_response(sql_result.fetchall(), res_shape)
 
-    query = sql_einsum_query(
-        einsum_notation, 
-        tensor_names, 
-        tensors, 
-        path_info=path
-    )
-
-    return query
+    return sql_result
 
 
-def get_matrix_from_sql_response(coo_mat: np.ndarray):
-    max_dim = ()
-    for i in range(len(coo_mat[0]) - 1):
-        max_dim = max_dim + (max(coo_mat, key=itemgetter(i))[i] + 1,)
+def get_matrix_from_sql_response(coo_mat: np.ndarray, res_shape: tuple):
+    if len(coo_mat) == 0 or coo_mat[0][0] is None:
+        return np.zeros(res_shape)
 
-    mat = np.zeros(max_dim, dtype=int)
+    mat = np.zeros(res_shape)
 
+    # Populate the matrix with non-zero entries
     for entry in coo_mat:
-        mat[entry[:-1]] = entry[-1]
+        coords = tuple([int(i) for i in entry[:-1]])
+        mat[coords] = entry[-1]
 
     return mat
-
-
-def _get_sizes(einsum_notation, tensor_names, tensors):
-    index_sizes = {}
-    for einsum_index, tensor_name in zip(einsum_notation.split("->")[0].split(","), tensor_names):
-        for index, dimension in zip(list(einsum_index), list(np.array(tensors[tensor_name]).shape)):
-            if not index in index_sizes:
-                index_sizes[index] = dimension
-            else:
-                if index_sizes[index] != dimension:
-                    raise Exception(f"Dimension error for index '{index}'.")
-    return index_sizes
-
-
-if __name__ == "__main__":
-    einsum_notation = "kbi,bkj->bij"
-
-    tensor_names = ["A", "B"]
-    tensors = {
-        "A": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
-        "B": np.array([[[0, 1], [2, 3]], [[4, 5], [6, 7]]]),
-    }
-    arrays = [tensors["A"].shape, tensors["B"].shape]
-
-    query = sql_einsum_query_opt(
-        einsum_notation, tensor_names, tensors, arrays)
-
-    print(
-        f"--------SQL EINSUM QUERY--------\n\n{query}\n\n--------SQL EINSUM QUERY END--------\n\n")
-
-    # Implicitly create database if not present, run sql query and format result
-    db_connection = sql.connect("./test.db")
-    db = db_connection.cursor()
-    res = db.execute(query).fetchall()
-    coo_data = np.array([list(row) for row in res])
-    coo_shape = tuple([(max(col) + 1 )for col in coo_data[:, :-1].T])
-    coo_mat = Coo_matrix(coo_data, coo_shape)
-    mat = coo_mat.coo_to_standard()
-
-    # Get reference result
-    np_einsum = np.einsum(
-        einsum_notation, tensors["A"], tensors["B"])
-
-    print(
-        f"--------SQL EINSUM RESULT--------\n\n{mat}\n\n--------NUMPY EINSUM RESULT--------\n\n{np_einsum}")

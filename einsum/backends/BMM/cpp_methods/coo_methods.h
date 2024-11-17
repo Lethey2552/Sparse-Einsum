@@ -1,19 +1,19 @@
 #ifndef COO_MATMUL_H
 #define COO_MATMUL_H
 
+#include <algorithm>
+#include <assert.h>
+#include <execution>
+#include <iostream>
+#include <numeric>
+#include <omp.h>
+#include <string>
+#include <time.h>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <tuple>
-#include <algorithm>
-#include <iostream>
-#include <string>
-#include <time.h>
-#include <assert.h>
-#include <omp.h>
-#include <numeric>
 // #include <ips4o.hpp>
-#include <tbb/parallel_sort.h>
 
 // Define a custom hash function for std::pair<int, int>
 struct PairHash
@@ -57,23 +57,37 @@ struct Entry
     double value;
 };
 
-struct COOMatrix
-{
-    std::vector<std::vector<int>> data; // Integer indices
-    std::vector<double> values;         // Values
-    std::vector<int> shape;             // Shape of the matrix
-
-    COOMatrix(const std::vector<std::vector<int>> &data, const std::vector<double> &values, const std::vector<int> &shape)
-        : data(data), values(values), shape(shape) {}
-};
-
 void coo_bmm(const double *A_data, int A_rows, int A_cols,
              const double *B_data, int B_rows, int B_cols,
-             double **C_data, int *C_rows, int *C_cols);
-void single_einsum(const double *data, int rows, int cols, const char *notation, const int *shape,
+             double **C_data, int *C_rows, int *C_cols,
+             const bool legacy);
+void single_einsum(const double *data, int rows, int cols,
+                   const char *notation, const int *shape,
                    double **result_data, int *result_rows, int *result_cols,
                    int **new_shape, int *new_shape_size);
-void reshape(const double *data, int data_rows, int data_cols, const int *shape, const int *new_shape,
+void reshape(const double *data, int data_rows, int data_cols,
+             const int *shape, const int shape_length,
+             const int *new_shape, const int new_shape_length,
              double **result_data, int *result_rows, int *result_cols);
+void einsum_dim_2(
+    uint32_t *in_out_flat,
+    int32_t *in_out_sizes,
+    int n_tensors,
+    int n_map_items,
+    uint32_t *keys_sizes,
+    uint64_t *values_sizes,
+    int32_t *path,
+    double *arrays);
+
+//////////////// LEGACY FUNCTIONS ////////////////
+
+void legacy_single_einsum(const double *data, int rows, int cols,
+                          const char *notation, const int *shape,
+                          double **result_data, int *result_rows, int *result_cols,
+                          int **new_shape, int *new_shape_size);
+void legacy_reshape(const double *data, int data_rows, int data_cols,
+                    const int *shape, const int shape_length,
+                    const int *new_shape, const int new_shape_length,
+                    double **result_data, int *result_rows, int *result_cols);
 
 #endif // COO_MATMUL_H

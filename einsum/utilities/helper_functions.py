@@ -1,6 +1,5 @@
 import numpy as np
 import math
-from einsum.utilities.classes.coo_matrix import Coo_matrix
 
 
 def find_idc_types(input_idc, output_idc, shape_left, shape_right):
@@ -71,9 +70,9 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
         groups_right = (batch_idc, con_idc, keep_right)
         groups_out = (batch_idc, keep_left, keep_right)
     else:
-        groups_left = None
-        groups_right = None
-        groups_out = None
+        groups_left = ()
+        groups_right = ()
+        groups_out = ()
 
     if any(len(group) != 1 for group in groups_left):
         shape_left = tuple(
@@ -101,7 +100,28 @@ def find_idc_types(input_idc, output_idc, shape_left, shape_right):
     return eq_left, eq_right, shape_left, shape_right, shape_out, perm_AB
 
 
-def compare_matrices(mat_a: Coo_matrix, mat_b: np.ndarray):
-    mat_a_standard = mat_a.coo_to_standard()
+def compare_matrices(mat_a, mat_b: np.ndarray):
+    mat_a_standard = mat_a.to_numpy()
 
     return (np.allclose(mat_a_standard, mat_b))
+
+
+def clean_einsum_notation(einsum_notation: str):
+    einsum_notation = einsum_notation.replace(" ", "")
+    input_idc = einsum_notation.split("->")[0].split(",")
+    output_idc = einsum_notation.split("->")[1]
+
+    return input_idc, output_idc
+
+
+def get_sizes(input_idc, shapes):
+    index_sizes = {}
+    for einsum_index, shape in zip(input_idc, shapes):
+        shape = list(shape)
+        for index, dimension in zip(list(einsum_index), shape):
+            if not index in index_sizes:
+                index_sizes[index] = dimension
+            else:
+                if index_sizes[index] != dimension:
+                    raise Exception(f"Dimension error for index '{index}'.")
+    return index_sizes

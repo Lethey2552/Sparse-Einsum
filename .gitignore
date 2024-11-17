@@ -1,3 +1,5 @@
+sql_commands.py
+
 # CUDA
 coo_bmm_cuda/
 
