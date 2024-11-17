@@ -219,6 +219,9 @@ def sparse_einsum(einsum_notation: str,
     show_progress : bool, optional, default=True
         If True, progress information will be displayed during the computation of the contractions.
 
+    parallelization : bool, optional, default=True
+        If True, the computation will make use of parallel algorithms. This speeds up the computation for most purposes.
+
     Returns
     --------
     numpy.ndarray
